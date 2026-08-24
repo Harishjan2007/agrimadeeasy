@@ -1,0 +1,292 @@
+'use client';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import Link from 'next/link';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Minus, 
+  Search, 
+  ArrowRight, 
+  Sparkles, 
+  BarChart3,
+  AlertCircle,
+  RefreshCw
+} from 'lucide-react';
+import { CropPrediction } from '@/types';
+import { getCropPredictions } from '@/lib/supabase/crops';
+import PredictionCard from '@/components/prediction/PredictionCard';
+import { useLanguage } from '@/i18n';
+
+export default function PredictionPageClient() {
+  const [predictions, setPredictions] = useState<CropPrediction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { language, translations } = useLanguage();
+
+  const isTa = language === 'ta';
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [trendFilter, setTrendFilter] = useState<'all' | 'up' | 'down' | 'stable'>('all');
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await getCropPredictions();
+      if (res.error) {
+        setError(translations.prediction.noPredictionsDescription);
+      } else {
+        setPredictions(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load predictions:', err);
+      setError(translations.prediction.noPredictionsDescription);
+    } finally {
+      setLoading(false);
+    }
+  }, [translations.prediction.noPredictionsDescription]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const filteredPredictions = useMemo(() => {
+    return predictions.filter((p) => {
+      const cropName = p.crop?.name.toLowerCase() || '';
+      const marketName = p.market?.name.toLowerCase() || '';
+      const location = p.market?.location.toLowerCase() || '';
+      const period = p.prediction_period.toLowerCase();
+      const q = searchTerm.toLowerCase().trim();
+
+      const matchesSearch = !q || cropName.includes(q) || marketName.includes(q) || location.includes(q) || period.includes(q);
+      const matchesTrend = trendFilter === 'all' || p.trend === trendFilter || (trendFilter === 'up' && (p.trend as string) === 'increasing') || (trendFilter === 'down' && (p.trend as string) === 'decreasing');
+      return matchesSearch && matchesTrend;
+    });
+  }, [predictions, searchTerm, trendFilter]);
+
+  const upCount = predictions.filter((p) => p.trend === 'up' || (p.trend as string) === 'increasing').length;
+  const stableCount = predictions.filter((p) => p.trend === 'stable').length;
+  const downCount = predictions.filter((p) => p.trend === 'down' || (p.trend as string) === 'decreasing').length;
+
+  return (
+    <div className="bg-slate-50 min-h-screen pb-16">
+      {/* Hero Header */}
+      <div className="bg-gradient-to-r from-blue-900 via-slate-900 to-agri-950 text-white py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-3 border border-blue-500/30">
+                <Sparkles className="w-3.5 h-3.5" />
+                {isTa ? 'சந்தை விலை கணிப்புகள் & தேவைகள்' : 'Market Projections & Forward Price Trends'}
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                {translations.prediction.title}
+              </h1>
+              <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-2xl">
+                {translations.prediction.subtitle}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Link
+                href="/crop-price"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all"
+              >
+                <span>{isTa ? 'இன்றைய மண்டி விலைகள்' : "View Today's Mandi Prices"}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        
+        {/* Error State Banner */}
+        {error && (
+          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between gap-4 text-rose-800">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+              <div>
+                <p className="text-sm font-bold">{translations.common.error}</p>
+                <p className="text-xs text-rose-600 mt-0.5">{error}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => loadData()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors shrink-0 shadow-xs"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>{translations.common.retry}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Search & Trend Filters */}
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 mb-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            
+            {/* Search Input */}
+            <div className="w-full sm:w-80 relative">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={translations.prediction.searchPlaceholder}
+                className="w-full pl-10 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+                >
+                  {isTa ? 'அழிக்க' : 'Clear'}
+                </button>
+              )}
+            </div>
+
+            {/* Trend Filter Tabs */}
+            <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
+              <button
+                onClick={() => setTrendFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${
+                  trendFilter === 'all'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {isTa ? 'அனைத்து போக்குகள்' : 'All Trends'} ({predictions.length})
+              </button>
+              <button
+                onClick={() => setTrendFilter('up')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
+                  trendFilter === 'up'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                {translations.prediction.increasing} ({upCount})
+              </button>
+              <button
+                onClick={() => setTrendFilter('stable')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
+                  trendFilter === 'stable'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                }`}
+              >
+                <Minus className="w-3.5 h-3.5" />
+                {translations.prediction.stable} ({stableCount})
+              </button>
+              <button
+                onClick={() => setTrendFilter('down')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
+                  trendFilter === 'down'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                }`}
+              >
+                <TrendingDown className="w-3.5 h-3.5" />
+                {translations.prediction.decreasing} ({downCount})
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Prediction Cards Grid */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>{translations.prediction.title}</span>
+              {!loading && (
+                <span className="text-xs bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded-full">
+                  {filteredPredictions.length} {isTa ? 'பயிர்கள்' : 'Crops'}
+                </span>
+              )}
+            </h2>
+
+            {!loading && predictions.length > 0 && (
+              <button
+                onClick={() => loadData()}
+                className="text-xs text-blue-700 hover:text-blue-800 font-semibold flex items-center gap-1"
+                title={isTa ? 'புதுப்பிக்க' : 'Refresh predictions'}
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>{isTa ? 'புதுப்பிக்க' : 'Refresh'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Loading Skeleton */}
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-white rounded-2xl p-5 border border-slate-200 animate-pulse space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-200"></div>
+                      <div className="space-y-2">
+                        <div className="h-4 bg-slate-200 rounded w-24"></div>
+                        <div className="h-3 bg-slate-200 rounded w-16"></div>
+                      </div>
+                    </div>
+                    <div className="h-6 w-20 bg-slate-200 rounded-full"></div>
+                  </div>
+                  <div className="h-20 bg-slate-100 rounded-xl"></div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-slate-200 rounded w-3/4"></div>
+                    <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : predictions.length === 0 ? (
+            /* Global Empty State */
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm">
+              <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-slate-900">{translations.prediction.noPredictionsFound}</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                {translations.prediction.noPredictionsDescription}
+              </p>
+              <button
+                onClick={() => loadData()}
+                className="mt-5 btn-primary text-xs py-2 px-4 inline-flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>{translations.common.retry}</span>
+              </button>
+            </div>
+          ) : filteredPredictions.length === 0 ? (
+            /* Filter Empty State */
+            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
+              <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <h3 className="text-base font-semibold text-slate-800">{translations.common.noResults}</h3>
+              <p className="text-xs text-slate-500 mt-1">{translations.prediction.noPredictionsDescription}</p>
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setTrendFilter('all');
+                }}
+                className="mt-4 btn-secondary text-xs py-2 px-4"
+              >
+                {translations.common.clearFilters}
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredPredictions.map((prediction) => (
+                <PredictionCard key={prediction.id} prediction={prediction} />
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+}
