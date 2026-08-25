@@ -242,6 +242,7 @@ export const ta: Translations = {
     bookNow: 'வாடகைக்கு முன்பதிவு செய்',
     backToMachinery: 'இயந்திரங்கள் பட்டியலுக்குத் திரும்பு',
     noMachineryFound: 'இயந்திரங்கள் எதுவும் கிடைக்கவில்லை.',
+    noMachineryDescription: 'வேறு தேடல் சொல் அல்லது வகையைத் தேர்ந்தெடுத்து முயற்சிக்கவும்.',
     specifications: 'இயந்திர சிறப்பம்சங்கள்',
     operatorIncluded: 'இயக்குனர் (Driver) உடன்',
     fuelIncluded: 'டீசல் கட்டணம் உட்பட'

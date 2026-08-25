@@ -21,8 +21,8 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
   const { language, translations, translateCrop, translateCategory } = useLanguage();
   const isTa = language === 'ta';
 
-  const isUp = prediction.trend === 'up' || prediction.trend === 'increasing';
-  const isDown = prediction.trend === 'down' || prediction.trend === 'decreasing';
+  const isUp = prediction.trend === 'up';
+  const isDown = prediction.trend === 'down';
   const isStable = !isUp && !isDown;
 
   const currentPrice = Number(prediction.current_price);

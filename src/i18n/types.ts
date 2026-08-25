@@ -250,6 +250,7 @@ export interface Translations {
     bookNow: string;
     backToMachinery: string;
     noMachineryFound: string;
+    noMachineryDescription: string;
     specifications: string;
     operatorIncluded: string;
     fuelIncluded: string;

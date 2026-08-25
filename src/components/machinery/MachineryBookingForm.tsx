@@ -116,7 +116,7 @@ export default function MachineryBookingForm({
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-base sm:text-lg">
-                {translations.booking.title}
+                {translations.booking.modalTitle}
               </h3>
               <p className="text-xs text-slate-500 font-medium line-clamp-1">
                 {machinery.name}
@@ -138,7 +138,7 @@ export default function MachineryBookingForm({
               <CheckCircle2 className="w-10 h-10" />
             </div>
             <h4 className="text-xl font-extrabold text-slate-900">
-              {translations.booking.successTitle}
+              {translations.booking.bookingSubmitted}
             </h4>
             <p className="text-xs text-slate-600 max-w-xs mx-auto">
               {isTa 
@@ -254,7 +254,7 @@ export default function MachineryBookingForm({
                 className="btn-primary w-1/2 text-xs py-2.5 flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{translations.booking.confirmBooking}</span>
+                <span>{translations.booking.requestBooking}</span>
               </button>
             </div>
 

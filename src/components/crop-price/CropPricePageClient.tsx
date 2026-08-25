@@ -178,7 +178,7 @@ export default function CropPricePageClient() {
                 href="/dealers"
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all"
               >
-                <span>{translations.dealers.findDealersBtn || translations.nav.dealers}</span>
+                <span>{translations.home.findDealersBtn || translations.nav.dealers}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>

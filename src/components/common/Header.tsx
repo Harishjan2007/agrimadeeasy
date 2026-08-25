@@ -90,7 +90,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs">
       {/* Top micro-bar: announcement on left, portal shortcuts + compact Language Switcher on right */}
       <div className="bg-agri-900 text-white text-xs py-1.5 px-3 sm:px-4 overflow-hidden">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+        <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-2">
           {/* Announcement */}
           <div className="flex items-center gap-2 min-w-0 truncate">
             <span className="inline-block w-2 h-2 rounded-full bg-agri-400 animate-pulse shrink-0"></span>
@@ -147,8 +147,8 @@ export default function Header() {
       </div>
 
       {/* Main navigation header */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-18 gap-2 xl:gap-3 2xl:gap-4">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-18 gap-3 xl:gap-4 2xl:gap-6">
 
           {/* LEFT: Logo & Brand (shrink-0) */}
           <Link href="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0 group">
@@ -160,7 +160,7 @@ export default function Header() {
                 <span className="text-lg sm:text-xl font-black tracking-tight text-slate-900">
                   Agri<span className="text-agri-600">ME</span>
                 </span>
-                <span className="bg-agri-100 text-agri-800 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider">
+                <span className="bg-agri-100 text-agri-800 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
                   TN
                 </span>
               </div>
@@ -168,7 +168,7 @@ export default function Header() {
           </Link>
 
           {/* CENTER: Main Navigation (Desktop >= 1280px / xl) */}
-          <nav className="hidden xl:flex items-center justify-center gap-0.5 2xl:gap-1.5 flex-1 min-w-0 px-1">
+          <nav className="hidden xl:flex items-center justify-center gap-0.5 xl:gap-1 2xl:gap-1.5 flex-1 min-w-0 px-1">
             {navLinks.map((link) => {
               const active = isActive(link.href);
               const Icon = link.icon;
@@ -176,7 +176,7 @@ export default function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center gap-1 px-2 2xl:px-2.5 py-1.5 rounded-lg text-xs 2xl:text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
+                  className={`flex items-center gap-1 px-1.5 xl:px-2 2xl:px-2.5 py-1.5 rounded-lg text-xs 2xl:text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
                     active
                       ? 'bg-agri-50 text-agri-700 font-semibold shadow-xs'
                       : 'text-slate-600 hover:text-agri-700 hover:bg-slate-50'
@@ -189,28 +189,42 @@ export default function Header() {
             })}
           </nav>
 
-          {/* RIGHT: Account Actions (Profile | Sign In | Sign Up) - shrink-0 */}
-          <div className="hidden sm:flex items-center gap-2 xl:gap-2.5 2xl:gap-3 shrink-0 ml-auto xl:ml-0">
-            {!isSignedIn && (
-              <Link
-                href="/profile"
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs 2xl:text-sm font-semibold transition-all shrink-0 whitespace-nowrap ${
-                  isActive('/profile')
-                    ? 'bg-agri-50 text-agri-700 font-bold border border-agri-200 shadow-xs'
-                    : 'text-slate-600 hover:text-agri-700 hover:bg-slate-50'
-                }`}
-              >
-                <User className="w-4 h-4 shrink-0 text-slate-500" />
-                <span className="whitespace-nowrap">{translations.nav.profile}</span>
-              </Link>
-            )}
+          {/* RIGHT: Dedicated Account Action Group (Profile | Sign In | Sign Up) with clear separation */}
+          <div className="hidden xl:flex items-center gap-2.5 xl:gap-3 2xl:gap-4 shrink-0 ml-2 xl:ml-3 2xl:ml-4 pl-2 xl:pl-3 2xl:pl-4 border-l border-slate-200/80">
+            {!isSignedIn ? (
+              <div className="flex items-center gap-2 xl:gap-2.5 2xl:gap-3 shrink-0">
+                <Link
+                  href="/profile"
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs 2xl:text-sm font-semibold transition-all shrink-0 whitespace-nowrap ${
+                    isActive('/profile')
+                      ? 'bg-agri-50 text-agri-700 font-bold border border-agri-200 shadow-xs'
+                      : 'text-slate-600 hover:text-agri-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <User className="w-4 h-4 shrink-0 text-slate-500" />
+                  <span className="whitespace-nowrap">{translations.nav.profile}</span>
+                </Link>
 
-            {isSignedIn ? (
+                <Link
+                  href="/login"
+                  className="text-xs 2xl:text-sm font-semibold text-slate-700 hover:text-agri-700 px-2 xl:px-2.5 py-1.5 rounded-xl transition-colors shrink-0 whitespace-nowrap"
+                >
+                  {translations.nav.signIn}
+                </Link>
+
+                <Link
+                  href="/signup"
+                  className="btn-primary text-xs 2xl:text-sm py-1.5 px-3 xl:px-3.5 2xl:px-4 rounded-xl font-semibold shrink-0 whitespace-nowrap shadow-xs"
+                >
+                  {translations.nav.signUp}
+                </Link>
+              </div>
+            ) : (
               /* Signed In: Profile Badge + Sign Out Button */
               <div className="flex items-center gap-2 shrink-0">
                 <Link
                   href="/profile"
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shrink-0 ${
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shrink-0 whitespace-nowrap ${
                     isActive('/profile')
                       ? 'bg-agri-100 border-agri-300 text-agri-800 shadow-xs'
                       : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
@@ -227,6 +241,7 @@ export default function Header() {
                       {translateRole(activeRole)}
                     </span>
                   </div>
+                  <span className="2xl:hidden whitespace-nowrap">{translations.nav.profile}</span>
                 </Link>
 
                 <button
@@ -234,36 +249,21 @@ export default function Header() {
                   className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors shrink-0"
                   title={translations.nav.signOut}
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-4 h-4 shrink-0" />
                 </button>
-              </div>
-            ) : (
-              /* Not Signed In: Sign In + Sign Up */
-              <div className="flex items-center gap-2 xl:gap-2.5 shrink-0">
-                <Link
-                  href="/login"
-                  className="text-xs 2xl:text-sm font-semibold text-slate-700 hover:text-agri-700 px-2.5 2xl:px-3 py-1.5 rounded-xl transition-colors shrink-0 whitespace-nowrap"
-                >
-                  {translations.nav.signIn}
-                </Link>
-                <Link
-                  href="/signup"
-                  className="btn-primary text-xs 2xl:text-sm py-1.5 px-3.5 2xl:px-4 rounded-xl font-semibold shrink-0 whitespace-nowrap shadow-xs"
-                >
-                  {translations.nav.signUp}
-                </Link>
               </div>
             )}
           </div>
 
-          {/* Mobile / Tablet Menu Trigger Button (< 1280px) */}
+          {/* Mobile / Tablet Menu Trigger (< 1280px) */}
           <div className="flex items-center gap-1.5 xl:hidden shrink-0">
             <Link
               href="/profile"
-              className="p-1.5 text-slate-600 hover:text-agri-600 sm:hidden shrink-0"
+              className="p-2 text-slate-600 hover:text-agri-600 rounded-xl hover:bg-slate-100 shrink-0"
               aria-label="User Profile"
+              title={translations.nav.profile}
             >
-              <User className="w-5 h-5" />
+              <User className="w-5 h-5 shrink-0" />
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -271,7 +271,7 @@ export default function Header() {
               className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-agri-500 shrink-0"
               aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-6 h-6 shrink-0" /> : <Menu className="w-6 h-6 shrink-0" />}
             </button>
           </div>
         </div>

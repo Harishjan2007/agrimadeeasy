@@ -242,6 +242,7 @@ export const en: Translations = {
     bookNow: 'Book Equipment',
     backToMachinery: 'Back to Machinery Fleet',
     noMachineryFound: 'No farm machinery found.',
+    noMachineryDescription: 'Try adjusting your search criteria or filter to find available agricultural machinery.',
     specifications: 'Equipment Specifications',
     operatorIncluded: 'Includes Skilled Operator',
     fuelIncluded: 'Standard Diesel Tariff'
