@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Tractor, 
@@ -8,19 +8,32 @@ import {
   CalendarCheck, 
   Info 
 } from 'lucide-react';
-import { MOCK_MACHINERY, MOCK_BOOKINGS } from '@/lib/mock-data';
+import { MOCK_MACHINERY } from '@/lib/mock-data';
 import { Machinery, MachineryBooking } from '@/types';
 import MachineryCard from '@/components/machinery/MachineryCard';
 import MachineryBookingForm from '@/components/machinery/MachineryBookingForm';
 import { useLanguage } from '@/i18n';
+import { useAgri } from '@/context/AgriContext';
+import { getMachinery } from '@/lib/supabase/machinery';
 
 export default function MachineryPageClient() {
-  const [machinery] = useState<Machinery[]>(MOCK_MACHINERY);
-  const [bookings] = useState<MachineryBooking[]>(MOCK_BOOKINGS);
+  const { machinery: contextMachinery, bookings: contextBookings } = useAgri();
+  const [dbMachinery, setDbMachinery] = useState<Machinery[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('All');
   const [selectedMachineryForBooking, setSelectedMachineryForBooking] = useState<Machinery | null>(null);
   const { language, translations, translateMachineryType } = useLanguage();
+
+  useEffect(() => {
+    getMachinery().then((res) => {
+      if (res.data && res.data.length > 0) {
+        setDbMachinery(res.data);
+      }
+    });
+  }, []);
+
+  const machinery = dbMachinery.length > 0 ? dbMachinery : contextMachinery;
+  const bookings = contextBookings;
 
   const isTa = language === 'ta';
 

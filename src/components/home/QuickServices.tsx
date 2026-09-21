@@ -36,7 +36,7 @@ export default function QuickServices() {
         : 'Review forward market price projections and seasonal demand trends before harvesting.',
       href: '/prediction',
       icon: BarChart3,
-      badge: isTa ? 'AI முன்னறிவிப்பு' : 'AI Forecast',
+      badge: isTa ? 'விலைப்போக்கு முன்னறிவிப்பு' : 'Price Trend Forecast',
       iconBg: 'bg-blue-100 text-blue-700',
       border: 'hover:border-blue-300'
     },

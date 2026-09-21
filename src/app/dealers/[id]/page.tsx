@@ -256,7 +256,7 @@ export default function DealerDetailsPage() {
                 </span>
               </h2>
               <p className="text-xs text-slate-500">
-                {isTa ? 'நேரடி கொள்முதல் விலைகள் (குவிண்டாலுக்கு)' : 'Live guaranteed procurement rates per quintal'}
+                {isTa ? 'வியாபாரி குறிப்பிடும் கொள்முதல் விலைகள் (குவிண்டாலுக்கு)' : 'Dealer offered procurement rates per quintal (subject to lot quality)'}
               </p>
             </div>
           </div>

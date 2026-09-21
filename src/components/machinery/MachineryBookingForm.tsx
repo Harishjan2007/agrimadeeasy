@@ -11,6 +11,9 @@ import {
 } from 'lucide-react';
 import { Machinery } from '@/types';
 import { useLanguage } from '@/i18n';
+import { useAgri } from '@/context/AgriContext';
+import { useAuth } from '@/lib/supabase/useAuth';
+import { createMachineryBooking } from '@/lib/supabase/machinery';
 
 interface MachineryBookingFormProps {
   machinery: Machinery;
@@ -32,6 +35,8 @@ export default function MachineryBookingForm({
   onBook
 }: MachineryBookingFormProps) {
   const { language, translations } = useLanguage();
+  const { bookMachinery } = useAgri();
+  const { user } = useAuth();
   const isTa = language === 'ta';
 
   // Tomorrow as default date in YYYY-MM-DD
@@ -72,7 +77,7 @@ export default function MachineryBookingForm({
     };
   }, [startTime, endTime, machinery.price_per_hour]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -86,15 +91,32 @@ export default function MachineryBookingForm({
       return;
     }
 
-    // Save demo booking to local state
-    if (onBook) {
-      onBook({
+    const payload = {
+      machineryId: machinery.id,
+      bookingDate,
+      startTime,
+      endTime,
+      totalAmount
+    };
+
+    // 1. Persist to AgriContext / localStorage
+    bookMachinery(payload);
+
+    // 2. Persist to Supabase if authenticated
+    if (user?.id) {
+      await createMachineryBooking({
+        farmerId: user.id,
         machineryId: machinery.id,
         bookingDate,
         startTime,
         endTime,
         totalAmount
       });
+    }
+
+    // 3. Trigger callback if passed
+    if (onBook) {
+      onBook(payload);
     }
 
     setSubmitted(true);

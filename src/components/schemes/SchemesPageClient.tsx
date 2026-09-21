@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import Link from 'next/link';
 import { 
   Landmark, 
   Search, 
@@ -9,16 +8,16 @@ import {
   FileText, 
   Gift, 
   Users, 
-  ShieldCheck, 
-  ArrowRight, 
   AlertCircle, 
   RefreshCw, 
   Building2, 
-  CheckCircle2 
+  Sparkles, 
+  ListFilter
 } from 'lucide-react';
 import { GovernmentScheme } from '@/types';
 import { getSchemes } from '@/lib/supabase/schemes';
 import { useLanguage } from '@/i18n';
+import SchemeFinder from '@/components/schemes/SchemeFinder';
 
 export default function SchemesPageClient() {
   const [schemes, setSchemes] = useState<GovernmentScheme[]>([]);
@@ -28,10 +27,26 @@ export default function SchemesPageClient() {
 
   const isTa = language === 'ta';
 
+  // Navigation tab: 'finder' (Find Schemes for Me) | 'directory' (Browse All Schemes)
+  const [activeTab, setActiveTab] = useState<'finder' | 'directory'>('finder');
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGovLevel, setSelectedGovLevel] = useState<'All' | 'central' | 'state'>('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSchemeForModal, setSelectedSchemeForModal] = useState<GovernmentScheme | null>(null);
+
+  // Sync tab with URL query parameter (?tab=directory or ?tab=finder)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'directory' || tabParam === 'browse') {
+        setActiveTab('directory');
+      } else if (tabParam === 'finder') {
+        setActiveTab('finder');
+      }
+    }
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -130,14 +145,32 @@ export default function SchemesPageClient() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
-              <Link
-                href="/machinery"
-                className="btn-accent text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 shadow-lg"
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveTab('finder')}
+                className={`text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 rounded-xl font-bold transition-all shadow-md ${
+                  activeTab === 'finder'
+                    ? 'bg-emerald-400 text-slate-950 ring-2 ring-emerald-300 scale-[1.02]'
+                    : 'bg-white/15 text-white hover:bg-white/25 border border-white/20'
+                }`}
               >
-                <span>{isTa ? 'இயந்திர வாடகை & மானியங்கள்' : 'Machinery Fleet'}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>{translations.schemes.findSchemesForMeTab}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('directory')}
+                className={`text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 rounded-xl font-bold transition-all shadow-md ${
+                  activeTab === 'directory'
+                    ? 'bg-white text-slate-950 scale-[1.02]'
+                    : 'bg-white/15 text-white hover:bg-white/25 border border-white/20'
+                }`}
+              >
+                <ListFilter className="w-4 h-4" />
+                <span>{translations.schemes.browseAllTab}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -165,8 +198,59 @@ export default function SchemesPageClient() {
           </div>
         )}
 
-        {/* Search & Filters Container */}
-        <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200 mb-8 space-y-4">
+        {/* Top View Selector Tabs */}
+        <div className="flex items-center gap-2.5 mb-6 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setActiveTab('finder')}
+            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all whitespace-nowrap shadow-xs ${
+              activeTab === 'finder'
+                ? 'bg-emerald-600 text-white shadow-emerald-600/20 ring-2 ring-emerald-400'
+                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>{translations.schemes.findSchemesForMeTab}</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-400 text-slate-950 font-black">
+              {isTa ? 'புதியது' : 'NEW'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('directory')}
+            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all whitespace-nowrap shadow-xs ${
+              activeTab === 'directory'
+                ? 'bg-slate-900 text-white shadow-slate-900/20 ring-2 ring-slate-700'
+                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <Landmark className="w-4 h-4 text-emerald-500" />
+            <span>{translations.schemes.browseAllTab}</span>
+            {!loading && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-800 font-bold">
+                {schemes.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {activeTab === 'finder' ? (
+          /* ======================================================== */
+          /* SECTION 1: PERSONALIZED SCHEMES FINDER ("FIND FOR ME")   */
+          /* ======================================================== */
+          <SchemeFinder
+            schemes={schemes}
+            loading={loading}
+            onSelectSchemeForDetails={(s) => setSelectedSchemeForModal(s)}
+          />
+        ) : (
+          /* ======================================================== */
+          /* SECTION 2: BROWSE ALL SCHEMES DIRECTORY (PRESERVED)      */
+          /* ======================================================== */
+          <div>
+            {/* Search & Filters Container */}
+            <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200 mb-8 space-y-4">
           
           {/* Top Row: Search Box + Government Level Tabs */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
@@ -450,8 +534,10 @@ export default function SchemesPageClient() {
             </div>
           )}
         </div>
-
       </div>
+    )}
+
+  </div>
 
       {/* Scheme Detail Modal */}
       {selectedSchemeForModal && (

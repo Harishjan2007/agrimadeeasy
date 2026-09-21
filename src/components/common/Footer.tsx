@@ -24,7 +24,7 @@ export default function Footer() {
                 {isTa ? 'நேரடி மண்டி & வியாபாரி விலைகள்' : 'Direct Mandi & Buyer Prices'}
               </h4>
               <p className="text-xs text-slate-400 mt-0.5">
-                {isTa ? 'ஒழுங்குமுறை விற்பனைக்கூடங்கள் மற்றும் வியாபாரிகளின் நேரலை விலைகள்.' : 'Real-time crop rates directly from regulated mandis and verified buyers.'}
+                {isTa ? 'ஒழுங்குமுறை விற்பனைக்கூடங்கள் மற்றும் வியாபாரிகளின் சந்தை விலைகள்.' : 'Benchmark crop rates from regulated mandis and verified buyers.'}
               </p>
             </div>
           </div>

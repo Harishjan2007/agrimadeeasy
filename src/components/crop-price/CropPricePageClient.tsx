@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { 
-  TrendingUp, 
   Search, 
   Filter, 
   ArrowUpDown, 
@@ -13,11 +12,14 @@ import {
   Sparkles, 
   ChevronRight, 
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Scale,
+  ListFilter
 } from 'lucide-react';
 import { CropPrice, Crop, Market } from '@/types';
 import { getCropPrices, getCrops, getMarkets } from '@/lib/supabase/crops';
 import CropPriceCard from '@/components/crop-price/CropPriceCard';
+import CropPriceComparison from '@/components/crop-price/CropPriceComparison';
 import { useLanguage } from '@/i18n';
 
 export default function CropPricePageClient() {
@@ -30,6 +32,9 @@ export default function CropPricePageClient() {
 
   const isTa = language === 'ta';
 
+  // Navigation tab: 'compare' (Compare Market Prices) | 'directory' (All Market Prices Directory)
+  const [activeTab, setActiveTab] = useState<'compare' | 'directory'>('compare');
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedMarketId, setSelectedMarketId] = useState('all');
@@ -38,6 +43,19 @@ export default function CropPricePageClient() {
   // Calculator State
   const [calcCropId, setCalcCropId] = useState<string>('');
   const [calcQuantity, setCalcQuantity] = useState<number>(25); // Quintals
+
+  // Sync tab with URL query parameter (?tab=directory or ?tab=compare)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'directory' || tabParam === 'browse') {
+        setActiveTab('directory');
+      } else if (tabParam === 'compare') {
+        setActiveTab('compare');
+      }
+    }
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -155,8 +173,8 @@ export default function CropPricePageClient() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-agri-500/20 text-agri-300 text-xs font-semibold uppercase tracking-wider mb-3 border border-agri-500/30">
-                <TrendingUp className="w-3.5 h-3.5" />
-                {isTa ? 'நேரலை ஒழுங்குமுறை விற்பனைக்கூட பட்டியல்' : 'Live APMC Mandi & Regulated Market Directory'}
+                <Scale className="w-3.5 h-3.5" />
+                {isTa ? 'அரசு ஒழுங்குமுறை விற்பனைக்கூட பட்டியல்' : 'Regulated APMC Mandi Market Directory'}
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
                 {translations.cropPrices.title}
@@ -166,20 +184,39 @@ export default function CropPricePageClient() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveTab('compare')}
+                className={`text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 rounded-xl font-bold transition-all shadow-md ${
+                  activeTab === 'compare'
+                    ? 'bg-emerald-400 text-slate-950 ring-2 ring-emerald-300 scale-[1.02]'
+                    : 'bg-white/15 text-white hover:bg-white/25 border border-white/20'
+                }`}
+              >
+                <Scale className="w-4 h-4 text-emerald-950" />
+                <span>{translations.cropPrices.compareTab}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('directory')}
+                className={`text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 rounded-xl font-bold transition-all shadow-md ${
+                  activeTab === 'directory'
+                    ? 'bg-white text-slate-950 scale-[1.02]'
+                    : 'bg-white/15 text-white hover:bg-white/25 border border-white/20'
+                }`}
+              >
+                <ListFilter className="w-4 h-4" />
+                <span>{translations.cropPrices.directoryTab}</span>
+              </button>
+
               <Link
                 href="/prediction"
-                className="btn-accent text-xs sm:text-sm py-2.5 px-4 flex items-center gap-2 shadow-lg"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all"
               >
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 <span>{translations.nav.predictions}</span>
-              </Link>
-              <Link
-                href="/dealers"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all"
-              >
-                <span>{translations.home.findDealersBtn || translations.nav.dealers}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
@@ -208,8 +245,54 @@ export default function CropPricePageClient() {
           </div>
         )}
 
-        {/* Search & Filter Bar */}
-        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200">
+        {/* Top View Selector Tabs */}
+        <div className="flex items-center gap-2.5 mb-6 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setActiveTab('compare')}
+            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all whitespace-nowrap shadow-xs ${
+              activeTab === 'compare'
+                ? 'bg-emerald-600 text-white shadow-emerald-600/20 ring-2 ring-emerald-400'
+                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <Scale className="w-4 h-4 text-emerald-100" />
+            <span>{translations.cropPrices.compareTab}</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-400 text-slate-950 font-black">
+              {isTa ? 'புதியது' : 'NEW'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('directory')}
+            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all whitespace-nowrap shadow-xs ${
+              activeTab === 'directory'
+                ? 'bg-slate-900 text-white shadow-slate-900/20 ring-2 ring-slate-700'
+                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-emerald-500" />
+            <span>{translations.cropPrices.directoryTab}</span>
+            {!loading && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-800 font-bold">
+                {cropPrices.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {activeTab === 'compare' ? (
+          <CropPriceComparison
+            cropPrices={cropPrices}
+            crops={crops}
+            markets={markets}
+            loading={loading}
+          />
+        ) : (
+          <div>
+            {/* Search & Filter Bar */}
+            <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
             
             {/* Search Input */}
@@ -455,8 +538,8 @@ export default function CropPricePageClient() {
 
                   <div className="text-[11px] text-slate-500 pt-1">
                     {isTa
-                      ? `${translateCrop(selectedCalcCrop.name)} பயிருக்கான நேரலை மண்டி விலையின் அடிப்படையில் கணக்கிடப்பட்டது.`
-                      : `Calculated from current live APMC mandi pricing records for ${selectedCalcCrop.name}.`}
+                      ? `${translateCrop(selectedCalcCrop.name)} பயிருக்கான பதிவுசெய்யப்பட்ட மண்டி விலையின் அடிப்படையில் கணக்கிடப்பட்டது.`
+                      : `Calculated from current recorded APMC mandi benchmark prices for ${selectedCalcCrop.name}.`}
                   </div>
                 </div>
 
@@ -476,6 +559,8 @@ export default function CropPricePageClient() {
 
         </div>
       </div>
-    </div>
-  );
+    )}
+  </div>
+</div>
+);
 }

@@ -3,6 +3,7 @@ export type UserRole = 'farmer' | 'dealer' | 'machinery_provider';
 export interface Profile {
   id: string;
   name: string;
+  full_name?: string;
   email: string;
   phone: string;
   role: UserRole;
@@ -144,3 +145,42 @@ export interface MachineryBooking {
   farmer?: Profile;
   machinery?: Machinery;
 }
+
+export type ListingStatus = 'active' | 'sold' | 'delisted';
+
+export interface FarmerProduceListing {
+  id: string;
+  farmer_id: string;
+  crop_name: string;
+  category?: string;
+  quantity: number;
+  unit: string;
+  asking_price: number;
+  price_unit: string;
+  location: string;
+  available_date: string;
+  description?: string;
+  image_url?: string;
+  status: ListingStatus;
+  created_at: string;
+  updated_at: string;
+  farmer?: Profile;
+}
+
+export type ProduceRequestStatus = 'pending' | 'accepted' | 'rejected' | 'completed';
+
+export interface ProduceRequest {
+  id: string;
+  listing_id: string;
+  buyer_id: string;
+  farmer_id: string;
+  requested_quantity: number;
+  message?: string;
+  status: ProduceRequestStatus;
+  created_at: string;
+  updated_at: string;
+  listing?: FarmerProduceListing;
+  buyer?: Profile;
+  farmer?: Profile;
+}
+

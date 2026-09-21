@@ -14,7 +14,10 @@ import {
   Product,
   Machinery,
   MachineryBooking,
-  BookingStatus
+  BookingStatus,
+  FarmerProduceListing,
+  ProduceRequest,
+  ProduceRequestStatus
 } from '@/types';
 import {
   MOCK_CROPS,
@@ -98,9 +101,61 @@ export interface AgriContextType {
   clearCart: () => void;
   cartCount: number;
   cartTotal: number;
+
+  // Farmer Produce Marketplace
+  produceListings: FarmerProduceListing[];
+  produceRequests: ProduceRequest[];
+  addProduceListing: (listing: Omit<FarmerProduceListing, 'id' | 'created_at' | 'updated_at'>) => FarmerProduceListing;
+  updateProduceListingInContext: (id: string, updates: Partial<FarmerProduceListing>) => void;
+  deleteProduceListingInContext: (id: string) => void;
+  addProduceRequest: (request: Omit<ProduceRequest, 'id' | 'created_at' | 'updated_at'>) => ProduceRequest;
+  updateProduceRequestStatusInContext: (requestId: string, status: ProduceRequestStatus) => void;
 }
 
-const AgriContext = createContext<AgriContextType | undefined>(undefined);
+const defaultAgriContext: AgriContextType = {
+  currentUser: MOCK_PROFILES[0],
+  userRole: 'farmer',
+  switchRole: () => {},
+  setUser: () => {},
+  crops: MOCK_CROPS,
+  markets: MOCK_MARKETS,
+  cropPrices: MOCK_CROP_PRICES,
+  predictions: MOCK_PREDICTIONS,
+  schemes: MOCK_SCHEMES,
+  dealers: MOCK_DEALERS,
+  dealerCropPrices: MOCK_DEALER_CROP_PRICES,
+  updateDealerCropPrice: () => {},
+  addDealerCropPrice: () => {},
+  machinery: MOCK_MACHINERY,
+  toggleMachineryAvailability: () => {},
+  addMachinery: () => {},
+  bookings: MOCK_BOOKINGS,
+  bookMachinery: () => ({} as MachineryBooking),
+  updateBookingStatus: () => {},
+  cancelBooking: () => {},
+  products: MOCK_PRODUCTS,
+  addProduct: () => {},
+  updateProductStock: () => {},
+  inquiries: [],
+  submitProduceInquiry: () => {},
+  updateInquiryStatus: () => {},
+  cart: [],
+  addToCart: () => {},
+  removeFromCart: () => {},
+  updateCartQuantity: () => {},
+  clearCart: () => {},
+  cartCount: 0,
+  cartTotal: 0,
+  produceListings: [],
+  produceRequests: [],
+  addProduceListing: () => ({} as FarmerProduceListing),
+  updateProduceListingInContext: () => {},
+  deleteProduceListingInContext: () => {},
+  addProduceRequest: () => ({} as ProduceRequest),
+  updateProduceRequestStatusInContext: () => {}
+};
+
+const AgriContext = createContext<AgriContextType>(defaultAgriContext);
 
 const STORAGE_KEYS = {
   USER: 'agrime_current_user',
@@ -109,7 +164,9 @@ const STORAGE_KEYS = {
   BOOKINGS: 'agrime_bookings',
   PRODUCTS: 'agrime_products',
   INQUIRIES: 'agrime_inquiries',
-  CART: 'agrime_cart'
+  CART: 'agrime_cart',
+  PRODUCE_LISTINGS: 'agrime_produce_listings',
+  PRODUCE_REQUESTS: 'agrime_produce_requests'
 };
 
 export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -121,6 +178,8 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [inquiries, setInquiries] = useState<ProduceInquiry[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [produceListings, setProduceListings] = useState<FarmerProduceListing[]>([]);
+  const [produceRequests, setProduceRequests] = useState<ProduceRequest[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load persisted state on mount (client-side only)
@@ -146,6 +205,12 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const savedCart = localStorage.getItem(STORAGE_KEYS.CART);
       if (savedCart) setCart(JSON.parse(savedCart));
+
+      const savedListings = localStorage.getItem(STORAGE_KEYS.PRODUCE_LISTINGS);
+      if (savedListings) setProduceListings(JSON.parse(savedListings));
+
+      const savedRequests = localStorage.getItem(STORAGE_KEYS.PRODUCE_REQUESTS);
+      if (savedRequests) setProduceRequests(JSON.parse(savedRequests));
     } catch (e) {
       console.warn('Could not load localStorage state in AgriProvider', e);
     } finally {
@@ -164,10 +229,12 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
       localStorage.setItem(STORAGE_KEYS.INQUIRIES, JSON.stringify(inquiries));
       localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
+      localStorage.setItem(STORAGE_KEYS.PRODUCE_LISTINGS, JSON.stringify(produceListings));
+      localStorage.setItem(STORAGE_KEYS.PRODUCE_REQUESTS, JSON.stringify(produceRequests));
     } catch (e) {
       console.warn('Could not persist state to localStorage', e);
     }
-  }, [currentUser, dealerCropPrices, machinery, bookings, products, inquiries, cart, isLoaded]);
+  }, [currentUser, dealerCropPrices, machinery, bookings, products, inquiries, cart, produceListings, produceRequests, isLoaded]);
 
   // Switch role helper
   const switchRole = (role: UserRole) => {
@@ -368,6 +435,58 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
     0
   );
 
+  // Farmer Produce Marketplace actions
+  const addProduceListing = (
+    listingData: Omit<FarmerProduceListing, 'id' | 'created_at' | 'updated_at'>
+  ): FarmerProduceListing => {
+    const newListing: FarmerProduceListing = {
+      ...listingData,
+      id: `pl-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      farmer: currentUser
+    };
+    setProduceListings((prev) => [newListing, ...prev]);
+    return newListing;
+  };
+
+  const updateProduceListingInContext = (id: string, updates: Partial<FarmerProduceListing>) => {
+    setProduceListings((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, ...updates, updated_at: new Date().toISOString() } : item
+      )
+    );
+  };
+
+  const deleteProduceListingInContext = (id: string) => {
+    setProduceListings((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const addProduceRequest = (
+    requestData: Omit<ProduceRequest, 'id' | 'created_at' | 'updated_at'>
+  ): ProduceRequest => {
+    const newRequest: ProduceRequest = {
+      ...requestData,
+      id: `pr-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      buyer: currentUser
+    };
+    setProduceRequests((prev) => [newRequest, ...prev]);
+    return newRequest;
+  };
+
+  const updateProduceRequestStatusInContext = (
+    requestId: string,
+    status: ProduceRequestStatus
+  ) => {
+    setProduceRequests((prev) =>
+      prev.map((r) =>
+        r.id === requestId ? { ...r, status, updated_at: new Date().toISOString() } : r
+      )
+    );
+  };
+
   return (
     <AgriContext.Provider
       value={{
@@ -403,7 +522,14 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateCartQuantity,
         clearCart,
         cartCount,
-        cartTotal
+        cartTotal,
+        produceListings,
+        produceRequests,
+        addProduceListing,
+        updateProduceListingInContext,
+        deleteProduceListingInContext,
+        addProduceRequest,
+        updateProduceRequestStatusInContext
       }}
     >
       {children}
@@ -413,8 +539,5 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAgri = () => {
   const context = useContext(AgriContext);
-  if (!context) {
-    throw new Error('useAgri must be used within an AgriProvider');
-  }
-  return context;
+  return context || defaultAgriContext;
 };

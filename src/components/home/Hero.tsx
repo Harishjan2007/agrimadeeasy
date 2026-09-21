@@ -52,7 +52,7 @@ export default function Hero() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-left">
               <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-slate-700 bg-white/80 p-2.5 rounded-xl border border-slate-200/60 shadow-2xs">
                 <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0" />
-                <span>{isTa ? 'நேரலை மண்டி & வியாபாரி விலைகள்' : 'Live Mandi & Buyer Rates'}</span>
+                <span>{isTa ? 'மண்டி & வியாபாரி விலைகள்' : 'Regional Mandi & Buyer Rates'}</span>
               </div>
               <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-slate-700 bg-white/80 p-2.5 rounded-xl border border-slate-200/60 shadow-2xs">
                 <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0" />

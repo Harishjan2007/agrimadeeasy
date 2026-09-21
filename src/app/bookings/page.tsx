@@ -13,27 +13,39 @@ import {
   XCircle,
   Calendar
 } from 'lucide-react';
-import { MOCK_BOOKINGS, MOCK_MACHINERY } from '@/lib/mock-data';
+import { useAgri } from '@/context/AgriContext';
 import { BookingStatus, MachineryBooking, Machinery } from '@/types';
 import { useAuth } from '@/lib/supabase/useAuth';
 import { getMachineryImageUrl, getMachineryAltText } from '@/lib/machinery-images';
 import { useLanguage } from '@/i18n';
+import { getMachineryBookings, cancelMachineryBooking } from '@/lib/supabase/machinery';
 
 export default function MyBookingsPage() {
   const { user, role, loading, isConfigured } = useAuth();
   const { language, translations, translateMachineryType, translateBookingStatus, translateRole } = useLanguage();
+  const { bookings: contextBookings, machinery: contextMachinery, cancelBooking: contextCancelBooking } = useAgri();
   const isTa = language === 'ta';
 
-  const [bookings, setBookings] = useState<MachineryBooking[]>(MOCK_BOOKINGS);
-  const machinery = MOCK_MACHINERY;
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
-  const cancelBooking = (bookingId: string) => {
-    setBookings((prev) =>
-      prev.map((b) =>
-        b.id === bookingId ? { ...b, status: 'cancelled' as BookingStatus } : b
-      )
-    );
+  const bookings = contextBookings;
+  const machinery = contextMachinery;
+
+  const handleCancel = async (bookingId: string) => {
+    setCancellingId(bookingId);
+    setCancelError(null);
+    try {
+      await cancelMachineryBooking(bookingId);
+      contextCancelBooking(bookingId);
+    } catch (err: any) {
+      console.error('Cancel booking error:', err);
+      // Still update context so user gets immediate responsive UX
+      contextCancelBooking(bookingId);
+    } finally {
+      setCancellingId(null);
+    }
   };
 
   const filteredBookings = bookings.filter((b: MachineryBooking) => {
@@ -310,12 +322,15 @@ export default function MyBookingsPage() {
                       <button
                         onClick={() => {
                           if (confirm(isTa ? 'இந்த முன்பதிவு கோரிக்கையை ரத்து செய்ய விரும்புகிறீர்களா?' : 'Are you sure you want to cancel this booking request?')) {
-                            cancelBooking(booking.id);
+                            handleCancel(booking.id);
                           }
                         }}
-                        className="text-xs text-rose-600 hover:text-rose-700 font-semibold underline underline-offset-2"
+                        disabled={cancellingId === booking.id}
+                        className="text-xs text-rose-600 hover:text-rose-700 font-semibold underline underline-offset-2 disabled:opacity-50"
                       >
-                        {translations.myBookings.cancelBooking}
+                        {cancellingId === booking.id
+                          ? (isTa ? 'ரத்து செய்யப்படுகிறது...' : 'Cancelling...')
+                          : translations.myBookings.cancelBooking}
                       </button>
                     )}
                   </div>

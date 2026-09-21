@@ -122,6 +122,61 @@ export const MOCK_CROP_PRICES: CropPrice[] = [
     source: 'Vellore Mandi Board',
     crop: MOCK_CROPS[9],
     market: MOCK_MARKETS[0]
+  },
+  {
+    id: 'cp9',
+    crop_id: 'c2',
+    market_id: 'm2',
+    price: 2450,
+    unit: '₹/Quintal',
+    recorded_at: '2026-08-24T07:00:00Z',
+    source: 'Thiruvannamalai Regulated Market',
+    crop: MOCK_CROPS[1],
+    market: MOCK_MARKETS[1]
+  },
+  {
+    id: 'cp10',
+    crop_id: 'c2',
+    market_id: 'm3',
+    price: 2320,
+    unit: '₹/Quintal',
+    recorded_at: '2026-08-24T06:15:00Z',
+    source: 'Kanchipuram Agricultural Market',
+    crop: MOCK_CROPS[1],
+    market: MOCK_MARKETS[2]
+  },
+  {
+    id: 'cp11',
+    crop_id: 'c2',
+    market_id: 'm4',
+    price: 2510,
+    unit: '₹/Quintal',
+    recorded_at: '2026-08-24T07:45:00Z',
+    source: 'Salem Main Agri Market',
+    crop: MOCK_CROPS[1],
+    market: MOCK_MARKETS[3]
+  },
+  {
+    id: 'cp12',
+    crop_id: 'c3',
+    market_id: 'm1',
+    price: 6720,
+    unit: '₹/Quintal',
+    recorded_at: '2026-08-24T06:30:00Z',
+    source: 'Vellore Mandi Board',
+    crop: MOCK_CROPS[2],
+    market: MOCK_MARKETS[0]
+  },
+  {
+    id: 'cp13',
+    crop_id: 'c3',
+    market_id: 'm4',
+    price: 7050,
+    unit: '₹/Quintal',
+    recorded_at: '2026-08-24T07:30:00Z',
+    source: 'Salem Agri Board',
+    crop: MOCK_CROPS[2],
+    market: MOCK_MARKETS[3]
   }
 ];
 
@@ -140,6 +195,32 @@ export const MOCK_PREDICTIONS: CropPrediction[] = [
     market: MOCK_MARKETS[0]
   },
   {
+    id: 'pr1b',
+    crop_id: 'c1',
+    market_id: 'm1',
+    current_price: 3450,
+    predicted_min: 3750,
+    predicted_max: 4050,
+    trend: 'up',
+    prediction_date: '2026-08-24',
+    prediction_period: 'Next 30 Days (Post-Harvest Stabilization)',
+    crop: MOCK_CROPS[0],
+    market: MOCK_MARKETS[0]
+  },
+  {
+    id: 'pr1c',
+    crop_id: 'c1',
+    market_id: 'm4',
+    current_price: 3520,
+    predicted_min: 3680,
+    predicted_max: 3950,
+    trend: 'up',
+    prediction_date: '2026-08-24',
+    prediction_period: 'Next 15 Days (Mill Procurement)',
+    crop: MOCK_CROPS[0],
+    market: MOCK_MARKETS[3]
+  },
+  {
     id: 'pr2',
     crop_id: 'c3',
     market_id: 'm2',
@@ -151,6 +232,19 @@ export const MOCK_PREDICTIONS: CropPrediction[] = [
     prediction_period: 'Next 30 Days (High Mill Demand)',
     crop: MOCK_CROPS[2],
     market: MOCK_MARKETS[1]
+  },
+  {
+    id: 'pr2b',
+    crop_id: 'c3',
+    market_id: 'm4',
+    current_price: 7050,
+    predicted_min: 7200,
+    predicted_max: 7550,
+    trend: 'up',
+    prediction_date: '2026-08-24',
+    prediction_period: 'Next 15 Days (Oil Mill Inflow)',
+    crop: MOCK_CROPS[2],
+    market: MOCK_MARKETS[3]
   },
   {
     id: 'pr3',
@@ -174,7 +268,7 @@ export const MOCK_PREDICTIONS: CropPrediction[] = [
     predicted_max: 1650,
     trend: 'down',
     prediction_date: '2026-08-24',
-    prediction_period: 'Next 15 Days (High Supply Inflow)',
+    prediction_period: 'Next 7 Days (Arrival Surge)',
     crop: MOCK_CROPS[5],
     market: MOCK_MARKETS[2]
   },
@@ -187,9 +281,35 @@ export const MOCK_PREDICTIONS: CropPrediction[] = [
     predicted_max: 7900,
     trend: 'up',
     prediction_date: '2026-08-24',
-    prediction_period: 'Next 30 Days (Export Demand)',
+    prediction_period: 'Next 20 Days (Textile Demand)',
     crop: MOCK_CROPS[4],
     market: MOCK_MARKETS[4]
+  },
+  {
+    id: 'pr6',
+    crop_id: 'c10',
+    market_id: 'm1',
+    current_price: 2200,
+    predicted_min: 2600,
+    predicted_max: 3100,
+    trend: 'up',
+    prediction_date: '2026-08-24',
+    prediction_period: 'Next 15 Days (Seasonal Inflow Drop)',
+    crop: MOCK_CROPS[9],
+    market: MOCK_MARKETS[0]
+  },
+  {
+    id: 'pr7',
+    crop_id: 'c7',
+    market_id: 'm4',
+    current_price: 2450,
+    predicted_min: 2400,
+    predicted_max: 2520,
+    trend: 'stable',
+    prediction_date: '2026-08-24',
+    prediction_period: 'Next 30 Days (Steady Buffer)',
+    crop: MOCK_CROPS[6],
+    market: MOCK_MARKETS[3]
   }
 ];
 

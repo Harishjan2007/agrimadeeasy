@@ -15,9 +15,10 @@ import { useLanguage } from '@/i18n';
 
 interface PredictionCardProps {
   prediction: CropPrediction;
+  onSelect?: (prediction: CropPrediction) => void;
 }
 
-export default function PredictionCard({ prediction }: PredictionCardProps) {
+export default function PredictionCard({ prediction, onSelect }: PredictionCardProps) {
   const { language, translations, translateCrop, translateCategory } = useLanguage();
   const isTa = language === 'ta';
 
@@ -152,9 +153,16 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
       </div>
 
       {/* Footer */}
-      <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
-        <span className="truncate">{translations.prediction.trend}</span>
-        <span className="text-agri-600 font-medium group-hover:underline">{translations.common.viewDetails} →</span>
+      <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+        <span className="text-slate-500 truncate">{translations.prediction.priceDirection}:</span>
+        <button
+          type="button"
+          onClick={() => onSelect && onSelect(prediction)}
+          className="text-blue-700 font-bold hover:text-blue-800 hover:underline flex items-center gap-1"
+        >
+          <span>{isTa ? 'ஆலோசனை விவரங்கள்' : 'Open Decision Support'}</span>
+          <span>→</span>
+        </button>
       </div>
     </div>
   );

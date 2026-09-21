@@ -11,15 +11,20 @@ import {
   Sparkles, 
   BarChart3,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Scale
 } from 'lucide-react';
-import { CropPrediction } from '@/types';
-import { getCropPredictions } from '@/lib/supabase/crops';
+import { Crop, Market, CropPrediction } from '@/types';
+import { getCropPredictions, getCrops, getMarkets } from '@/lib/supabase/crops';
 import PredictionCard from '@/components/prediction/PredictionCard';
+import PredictionDecisionSupport from '@/components/prediction/PredictionDecisionSupport';
 import { useLanguage } from '@/i18n';
 
 export default function PredictionPageClient() {
   const [predictions, setPredictions] = useState<CropPrediction[]>([]);
+  const [crops, setCrops] = useState<Crop[]>([]);
+  const [markets, setMarkets] = useState<Market[]>([]);
+  const [selectedCropId, setSelectedCropId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { language, translations } = useLanguage();
@@ -34,14 +39,27 @@ export default function PredictionPageClient() {
     setError(null);
 
     try {
-      const res = await getCropPredictions();
-      if (res.error) {
+      const [predRes, cropsRes, marketsRes] = await Promise.all([
+        getCropPredictions(),
+        getCrops(),
+        getMarkets()
+      ]);
+
+      if (predRes.error) {
         setError(translations.prediction.noPredictionsDescription);
       } else {
-        setPredictions(res.data);
+        setPredictions(predRes.data);
+      }
+
+      if (cropsRes.data && cropsRes.data.length > 0) {
+        setCrops(cropsRes.data);
+      }
+
+      if (marketsRes.data && marketsRes.data.length > 0) {
+        setMarkets(marketsRes.data);
       }
     } catch (err) {
-      console.error('Failed to load predictions:', err);
+      console.error('Failed to load predictions & reference data:', err);
       setError(translations.prediction.noPredictionsDescription);
     } finally {
       setLoading(false);
@@ -70,6 +88,14 @@ export default function PredictionPageClient() {
   const stableCount = predictions.filter((p) => p.trend === 'stable').length;
   const downCount = predictions.filter((p) => p.trend === 'down' || (p.trend as string) === 'decreasing').length;
 
+  const handleCardSelect = (pred: CropPrediction) => {
+    setSelectedCropId(pred.crop_id);
+    const element = document.getElementById('decision-support-section');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
       {/* Hero Header */}
@@ -79,7 +105,7 @@ export default function PredictionPageClient() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-3 border border-blue-500/30">
                 <Sparkles className="w-3.5 h-3.5" />
-                {isTa ? 'சந்தை விலை கணிப்புகள் & தேவைகள்' : 'Market Projections & Forward Price Trends'}
+                {isTa ? 'சந்தை விலை போக்குகள் & முடிவு ஆதரவு' : 'Price Trend Forecasts & Decision Support'}
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
                 {translations.prediction.title}
@@ -89,13 +115,22 @@ export default function PredictionPageClient() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Compare Current Market Prices Link (Phase 4 -> Phase 3 connection) */}
+              <Link
+                href="/crop-price?tab=compare"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all"
+              >
+                <Scale className="w-4 h-4 text-emerald-100" />
+                <span>{translations.prediction.compareMarketPricesBtn}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+
               <Link
                 href="/crop-price"
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all"
               >
                 <span>{isTa ? 'இன்றைய மண்டி விலைகள்' : "View Today's Mandi Prices"}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
@@ -124,12 +159,23 @@ export default function PredictionPageClient() {
           </div>
         )}
 
-        {/* Search & Trend Filters */}
-        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 mb-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Interactive Crop Price Prediction & Decision-Support Section */}
+        <div id="decision-support-section">
+          <PredictionDecisionSupport
+            predictions={predictions}
+            crops={crops}
+            markets={markets}
+            externalSelectedCropId={selectedCropId}
+            onCropChange={(id) => setSelectedCropId(id)}
+          />
+        </div>
+
+        {/* Section Heading & Filter Bar for All Available Market Projections */}
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-xs border border-slate-200 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             
             {/* Search Input */}
-            <div className="w-full sm:w-80 relative">
+            <div className="w-full lg:w-80 relative">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -149,10 +195,10 @@ export default function PredictionPageClient() {
             </div>
 
             {/* Trend Filter Tabs */}
-            <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
+            <div className="flex items-center gap-1.5 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
               <button
                 onClick={() => setTrendFilter('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
                   trendFilter === 'all'
                     ? 'bg-slate-900 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -162,7 +208,7 @@ export default function PredictionPageClient() {
               </button>
               <button
                 onClick={() => setTrendFilter('up')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
                   trendFilter === 'up'
                     ? 'bg-emerald-600 text-white shadow-xs'
                     : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -173,7 +219,7 @@ export default function PredictionPageClient() {
               </button>
               <button
                 onClick={() => setTrendFilter('stable')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
                   trendFilter === 'stable'
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
@@ -184,7 +230,7 @@ export default function PredictionPageClient() {
               </button>
               <button
                 onClick={() => setTrendFilter('down')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
                   trendFilter === 'down'
                     ? 'bg-rose-600 text-white shadow-xs'
                     : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
@@ -202,7 +248,7 @@ export default function PredictionPageClient() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>{translations.prediction.title}</span>
+              <span>{translations.prediction.allProjections}</span>
               {!loading && (
                 <span className="text-xs bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded-full">
                   {filteredPredictions.length} {isTa ? 'பயிர்கள்' : 'Crops'}
@@ -280,7 +326,11 @@ export default function PredictionPageClient() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredPredictions.map((prediction) => (
-                <PredictionCard key={prediction.id} prediction={prediction} />
+                <PredictionCard
+                  key={prediction.id}
+                  prediction={prediction}
+                  onSelect={handleCardSelect}
+                />
               ))}
             </div>
           )}
