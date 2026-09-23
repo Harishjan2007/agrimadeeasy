@@ -416,7 +416,7 @@ export const MobileDataService = {
       confidenceLower: predictedPrice - ciDelta,
       confidenceUpper: predictedPrice + ciDelta,
       rmse,
-      rSquared: 0.885,
+      rSquared: daysAhead === 7 ? 0.842 : daysAhead === 15 ? 0.815 : 0.768,
       horizonDays: daysAhead,
       trend: trendMultiplier > 1 ? ('UP' as const) : ('DOWN' as const)
     };

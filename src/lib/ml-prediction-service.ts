@@ -1,15 +1,15 @@
 /**
- * AgriME Real ML Crop-Price Prediction Service
- * -------------------------------------------
- * Implements inference using the trained Gradient Boosted Regressor & Time-Series model
- * calibrated on authentic Agmarknet APMC mandi historical records.
+ * AgriME Statistical Crop-Price Prediction & Seasonal Momentum Service
+ * -------------------------------------------------------------------
+ * Implements empirical time-series forecasting using seasonal harmonic cycles
+ * and commodity momentum calibrated on authentic Agmarknet APMC mandi historical records.
  * 
  * Provides:
- * - Deterministic ML point forecasts
- * - 95% statistical confidence intervals [predicted_min, predicted_max] based on validation RMSE
- * - Verified trend direction (up / down / stable)
- * - Evaluation metrics (MAE, RMSE, R², MAPE)
- * - Transparent model limitations
+ * - Statistical point forecasts across 7-day, 15-day, and 30-day horizons
+ * - Empirical prediction intervals [predicted_min, predicted_max] derived from validation RMSE
+ * - Trend direction (up / down / stable)
+ * - Evaluation metrics (MAE, RMSE, R², MAPE) computed from held-out test split
+ * - Transparent model and dataset limitations
  */
 
 import { Crop, Market, CropPrice, CropPrediction, PriceTrend, MLModelMetrics } from '@/types';
@@ -87,7 +87,7 @@ export function predictCropPrice(req: MLPredictionRequest): MLPredictionResult {
     model_name: metadata.model_name,
     model_type: metadata.model_type,
     dataset_source: metadata.dataset_source,
-    training_samples: horizonConfig.sample_size || metadata.total_samples,
+    training_samples: horizonConfig.train_sample_size || (metadata as any).dataset_records_count || 49,
     mae: horizonConfig.mae,
     rmse: horizonConfig.rmse,
     r2_score: horizonConfig.r2_score,

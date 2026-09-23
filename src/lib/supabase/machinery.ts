@@ -320,15 +320,44 @@ export async function createMachineryBooking(payload: {
 }
 
 /**
- * Update the lifecycle status of a machinery reservation
+ * Strict Machinery Booking State Machine Transitions
+ * Prevents invalid state jumps (e.g. pending -> completed, cancelled -> in_progress)
+ */
+export const VALID_BOOKING_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
+  pending: ['accepted', 'rejected', 'cancelled'],
+  accepted: ['on_the_way', 'cancelled'],
+  rejected: [], // Terminal state
+  on_the_way: ['arrived', 'cancelled'],
+  arrived: ['in_progress', 'cancelled'],
+  in_progress: ['completed', 'cancelled'],
+  completed: [], // Terminal state
+  cancelled: [] // Terminal state
+};
+
+export function isValidBookingTransition(currentStatus: BookingStatus, newStatus: BookingStatus): boolean {
+  if (currentStatus === newStatus) return true; // Idempotent
+  const allowed = VALID_BOOKING_TRANSITIONS[currentStatus];
+  return Boolean(allowed && allowed.includes(newStatus));
+}
+
+/**
+ * Update the lifecycle status of a machinery reservation with transition validation
  */
 export async function updateBookingStatus(
   bookingId: string,
-  status: BookingStatus
+  status: BookingStatus,
+  currentStatus?: BookingStatus
 ): Promise<{
   success: boolean;
   error: Error | null;
 }> {
+  if (currentStatus && !isValidBookingTransition(currentStatus, status)) {
+    return {
+      success: false,
+      error: new Error(`Illegal booking transition: cannot move from '${currentStatus}' to '${status}'`)
+    };
+  }
+
   if (isSupabaseConfigured && supabase) {
     try {
       const { error } = await supabase

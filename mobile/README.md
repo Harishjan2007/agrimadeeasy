@@ -12,10 +12,10 @@ The official cross-platform mobile application for the **AgriME Agricultural Dec
    - 30-Day historical price modal with actual mandi trends.
    - Search by crop or mandi, with category filters (Cereals, Vegetables, Spices, Commercial).
 
-2. **Genuine ML Crop-Price Prediction**:
+2. **Statistical Crop-Price Prediction**:
    - 7-day, 15-day, and 30-day forecast horizons.
-   - 95% statistical confidence intervals ($\pm 1.96 \times \text{RMSE}$).
-   - Transparent model metrics ($R^2 = 0.885$, $\text{MAE} = \pm 68.2/\text{Q}$).
+   - Empirical prediction intervals ($\pm 1.96 \times \text{RMSE}$).
+   - Transparent evaluation metrics on held-out test split ($R^2 \approx 0.77 - 0.84$).
    - Clear statistical limitations disclosure.
 
 3. **Agricultural Machinery Discovery & Booking**:

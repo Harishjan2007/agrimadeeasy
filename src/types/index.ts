@@ -62,7 +62,7 @@ export type PriceTrend = 'up' | 'down' | 'stable';
 
 export interface MLModelMetrics {
   model_name: string;
-  model_type: string; // e.g. "Gradient Boosted Regressor (XGBoost/LightGBM style)"
+  model_type: string; // e.g. "Empirical Time-Series Momentum & Seasonal Harmonic Projection"
   dataset_source: string;
   training_samples: number;
   mae: number; // Mean Absolute Error in ₹/Quintal

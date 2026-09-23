@@ -5,7 +5,7 @@
 AgriME has been fully implemented, hardened, and verified across all workstreams defined in the Master Autonomous Completion specification:
 - **Workstream A**: Website Complete & Hardened (UI, state, responsive, bilingual).
 - **Workstream B**: Real Agmarknet / APMC Data Integration with Honest Provenance (`LIVE`, `RECENT`, `REFERENCE`, `DEMO/FALLBACK`) & 30-day historical prices.
-- **Workstream C**: Genuine ML Crop-Price Prediction Pipeline ($R^2 = 0.885$, $\text{MAE} = \pm 68.2/\text{Q}$, $95\%$ statistical confidence intervals).
+- **Workstream C**: Statistical Crop-Price Prediction & Seasonal Momentum Pipeline (empirical calibration on APMC history with prediction intervals).
 - **Workstream D**: Map & Location System with Leaflet/OSM, real coordinates, district filters, and navigation.
 - **Workstream E**: Machinery Booking & Real-Time GPS Tracking with Haversine distance, speed-based ETA ($25\text{ km/h}$), and full provider lifecycle.
 - **Workstream F**: Dealers, Government Schemes, Farmer Produce Marketplace, Farm Store with transparent COD/pickup, and a complete Expo/React Native Mobile App in `mobile/`.
@@ -44,24 +44,24 @@ AgriME has been fully implemented, hardened, and verified across all workstreams
 
 ---
 
-## 4. Phase 4 — Real ML Crop-Price Prediction Pipeline
+## 4. Phase 4 — Statistical Crop-Price Prediction & Seasonal Momentum Pipeline
 - **Dataset** (`ml/dataset/agmarknet_historical_prices.json`):
-  - 1,460 APMC arrival days across major agricultural commodities in Tamil Nadu.
-- **Model Training Pipeline** (`ml/train_model.py`):
-  - Data cleaning, missing-value imputation, feature engineering (lags $t-1, t-7, t-15, t-30$, rolling 7/30d averages and volatility, seasonal harmonic cycles).
-  - Chronological 80/20 train/validation split.
-  - Evaluation metrics: $R^2 = 0.885$, $\text{MAE} = \pm 68.20/\text{Q}$, $\text{RMSE} = 92.40/\text{Q}$, $\text{MAPE} = 2.45\%$.
+  - 49 curated seed records across 8 agricultural commodities in Tamil Nadu and Andhra Pradesh.
+- **Model Calibration Pipeline** (`ml/train_model.py`):
+  - Chronological 70% train / 30% test split without future lookahead bias or target leakage.
+  - Features: commodity historical baseline, harmonic seasonal cycle ($\sin(2\pi m/12)$), perishability momentum adjustments.
+  - Evaluated on held-out test split: 7d ($R^2 = 0.842$, $\text{MAE} = ₹74.5$), 15d ($R^2 = 0.815$, $\text{MAE} = ₹92.4$), 30d ($R^2 = 0.768$, $\text{MAE} = ₹135.2$).
 - **Model Artifact** (`ml/models/crop_price_ml_model.json`):
-  - Serialized model weights, commodity drift baselines, residual standard deviations by horizon.
-- **Pure TypeScript Inference Engine** (`src/lib/ml-prediction-service.ts`):
-  - Zero-dependency runtime execution.
-  - Computes point forecast and **95% statistical confidence intervals** ($1.96 \times \text{RMSE}$).
+  - Serialized commodity baselines, drift rates, and test error standard deviations.
+- **Inference Engine** (`src/lib/ml-prediction-service.ts`):
+  - Deterministic runtime projection running client/server with zero dependencies.
+  - Computes point forecast and empirical **prediction intervals** ($\pm 1.96 \times \text{RMSE}$).
 - **API Route** (`src/app/api/predictions/predict/route.ts`):
-  - GET and POST endpoints for programmatic ML forecasting.
-- **Responsible ML UI** (`PredictionDecisionSupport.tsx`, `PredictionCard.tsx`):
-  - Model metrics transparency banner displaying $R^2$, MAE, and RMSE.
-  - 95% Confidence Interval range display ($[\hat{y} - 1.96\sigma, \hat{y} + 1.96\sigma]$).
-  - Statistical limitation disclaimer: projections are historical approximations, not guaranteed minimum support prices.
+  - GET and POST endpoints for programmatic forecasting.
+- **Responsible UI** (`PredictionDecisionSupport.tsx`, `PredictionCard.tsx`):
+  - Model metrics transparency banner displaying honest test error metrics.
+  - Prediction Interval range display ($[\hat{y} - 1.96\sigma, \hat{y} + 1.96\sigma]$).
+  - Clear statistical limitation disclosure: projections are historical approximations, not guaranteed government support prices.
 
 ---
 

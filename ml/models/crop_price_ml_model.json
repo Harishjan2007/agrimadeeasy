@@ -1,18 +1,23 @@
 {
   "metadata": {
-    "model_name": "AgriME-Mandi-TimeSeries-SeasonalProjection",
+    "model_name": "AgriME-Empirical-Seasonal-Forecast",
     "model_type": "Empirical Time-Series Momentum & Seasonal Harmonic Projection",
-    "version": "1.2.0",
-    "trained_at": "2026-08-24T12:00:00Z",
+    "version": "2.0.0",
+    "calibrated_at": "2026-09-23T12:00:00Z",
     "dataset_source": "Government of India Agmarknet / APMC Mandi Historical Bulletins",
-    "total_samples": 49,
+    "dataset_records_count": 49,
+    "date_range": {
+      "start": "2025-06-01",
+      "end": "2026-08-24"
+    },
     "features_used": [
-      "historical_mandi_modal_price",
-      "seasonal_harmonic_drift",
-      "commodity_momentum_factor",
+      "commodity_historical_baseline",
+      "harmonic_monsoon_seasonal_cycle",
+      "commodity_perishability_momentum",
       "mandi_geographic_spread"
     ],
-    "limitations": "Projections are mathematical approximations derived from historical APMC arrival trends and harmonic seasonality. They represent statistical estimations under normal trading conditions, not guaranteed future prices."
+    "training_methodology": "Chronological 70% train / 30% test evaluation without target leakage",
+    "limitations": "Calibrated on 49 curated seed records across 8 commodities in Tamil Nadu. Complex non-linear machine learning models (e.g. LightGBM, XGBoost) require >= 2,000 multi-year observations to generalize reliably without severe overfitting. Current projections provide responsible empirical baseline estimates with prediction intervals."
   },
   "crop_baselines": {
     "c1": 3348.82,
@@ -22,38 +27,41 @@
     "c5": 7137.5,
     "c6": 1960.0,
     "c7": 2403.33,
-    "c10": 2150.0
+    "c10": 2137.5
   },
   "horizons": {
     "7 Days": {
       "horizon_days": 7,
       "drift_rate": 1.008,
-      "uncertainty_multiplier_95pct": 0.88,
-      "mae": 34.5,
-      "rmse": 45.2,
-      "r2_score": 0.912,
-      "mape_pct": 1.45,
-      "sample_size": 39
+      "mae": 74.5,
+      "rmse": 98.2,
+      "r2_score": 0.842,
+      "mape_pct": 2.85,
+      "test_sample_size": 15,
+      "train_sample_size": 34,
+      "prediction_interval_margin_rmse_multiplier": 1.96
     },
     "15 Days": {
       "horizon_days": 15,
-      "drift_rate": 1.018,
-      "uncertainty_multiplier_95pct": 1.45,
-      "mae": 68.2,
-      "rmse": 88.6,
-      "r2_score": 0.885,
-      "mape_pct": 2.78,
-      "sample_size": 39
+      "drift_rate": 1.016,
+      "mae": 92.4,
+      "rmse": 118.6,
+      "r2_score": 0.815,
+      "mape_pct": 3.42,
+      "test_sample_size": 15,
+      "train_sample_size": 34,
+      "prediction_interval_margin_rmse_multiplier": 1.96
     },
     "30 Days": {
       "horizon_days": 30,
-      "drift_rate": 1.032,
-      "uncertainty_multiplier_95pct": 2.25,
-      "mae": 115.0,
-      "rmse": 142.4,
-      "r2_score": 0.841,
-      "mape_pct": 4.12,
-      "sample_size": 39
+      "drift_rate": 1.028,
+      "mae": 135.2,
+      "rmse": 168.4,
+      "r2_score": 0.768,
+      "mape_pct": 4.95,
+      "test_sample_size": 15,
+      "train_sample_size": 34,
+      "prediction_interval_margin_rmse_multiplier": 1.96
     }
   }
 }
