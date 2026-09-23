@@ -18,6 +18,8 @@ export async function GET(req: NextRequest) {
         sourceNote: liveData.sourceNote,
         badge: getProvenanceBadgeConfig('LIVE'),
         count: liveData.records.length,
+        lastUpdated: new Date().toISOString(),
+        apiKeyConfigured: true,
         data: liveData.records
       });
     }
@@ -30,6 +32,8 @@ export async function GET(req: NextRequest) {
       sourceNote: 'Verified APMC Mandi Bulletin (Tamil Nadu / Andhra Pradesh APMC Markets)',
       badge: getProvenanceBadgeConfig('RECENT'),
       count: localPrices.data.length,
+      lastUpdated: new Date().toISOString(),
+      apiKeyConfigured: Boolean(process.env.DATA_GOV_IN_API_KEY),
       data: localPrices.data
     });
   } catch (error: any) {

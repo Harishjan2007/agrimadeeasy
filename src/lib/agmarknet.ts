@@ -112,7 +112,8 @@ export async function fetchLiveAgmarknetPrices(options?: {
   sourceStatus: PriceSourceStatus;
   sourceNote: string;
 } | null> {
-  const apiKey = process.env.DATA_GOV_IN_API_KEY || process.env.NEXT_PUBLIC_AGMARKNET_API_KEY;
+  // Credentials must remain server-side only (never in NEXT_PUBLIC_*)
+  const apiKey = process.env.DATA_GOV_IN_API_KEY;
 
   if (!apiKey) {
     return null;
