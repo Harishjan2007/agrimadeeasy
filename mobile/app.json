@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "AgriME",
+    "slug": "agrime-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#15803d"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.agrime.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "AgriME requires your location to discover nearby APMC mandis, agricultural dealers, and provide live GPS machinery tracking."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#15803d"
+      },
+      "package": "com.agrime.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

@@ -22,6 +22,7 @@ export interface Translations {
     machineryPortal: string;
     mandiDirectory: string;
     fleetCatalog: string;
+    map: string;
     liveTickerAnnouncement: string;
     tagline: string;
     specializedPortals: string;
@@ -733,6 +734,86 @@ export interface Translations {
     markCompleted: string;
     hourlyRate: string;
     availabilityStatus: string;
+    startTrip: string;
+    markArrived: string;
+    startWork: string;
+    complete: string;
+    gpsActive: string;
+    gpsError: string;
+    activeJobs: string;
+    allBookings: string;
+  };
+
+  // Location Map & Discovery (/map)
+  map: {
+    title: string;
+    subtitle: string;
+    searchPlaceholder: string;
+    all: string;
+    dealers: string;
+    machinery: string;
+    markets: string;
+    viewOnMap: string;
+    getDirections: string;
+    useMyLocation: string;
+    chooseManualLocation: string;
+    locationPermissionTitle: string;
+    locationPermissionDesc: string;
+    allowLocation: string;
+    denyLocation: string;
+    locationDenied: string;
+    locationDeniedDesc: string;
+    locationUnavailable: string;
+    manualLocationPrompt: string;
+    selectDistrict: string;
+    currentLocation: string;
+    distanceUnavailable: string;
+    mapCoordinatesUnavailable: string;
+    noResultsFound: string;
+    noResultsDesc: string;
+    mapView: string;
+    listView: string;
+    openMap: string;
+    exploreNearby: string;
+    mapAttribution: string;
+    provider: string;
+    equipmentType: string;
+    ratePerHour: string;
+    buyingQuotes: string;
+    viewCropPrices: string;
+    nearbyResults: string;
+    coordinatesMissingNotice: string;
+  };
+
+  // Real-Time Machinery Tracking
+  tracking: {
+    title: string;
+    trackMachinery: string;
+    trackingModalTitle: string;
+    statusOnTheWay: string;
+    statusArrived: string;
+    statusInProgress: string;
+    statusCompleted: string;
+    statusCancelled: string;
+    providerLocation: string;
+    farmerDestination: string;
+    lastUpdated: string;
+    eta: string;
+    etaUnavailable: string;
+    liveGpsTransmitting: string;
+    liveLocationUnavailable: string;
+    callDriver: string;
+    startTrip: string;
+    markArrived: string;
+    startWork: string;
+    completeWork: string;
+    tripStarted: string;
+    arrivalNotice: string;
+    workStartedNotice: string;
+    workCompletedNotice: string;
+    gpsAccuracy: string;
+    stopTrackingNotice: string;
+    refreshLocation: string;
   };
 
   // Crop Name Translations (Display helper)

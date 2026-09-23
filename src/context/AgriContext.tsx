@@ -80,10 +80,13 @@ export interface AgriContextType {
     endTime: string;
     totalAmount: number;
   }) => MachineryBooking;
-  updateBookingStatus: (bookingId: string, status: BookingStatus) => void;
+  updateBookingStatus: (bookingId: string, status: BookingStatus) => boolean;
   cancelBooking: (bookingId: string) => void;
   toggleMachineryAvailability: (machineryId: string) => void;
   addMachinery: (newMachine: Omit<Machinery, 'id' | 'created_at' | 'updated_at'>) => void;
+  machineryTracking: Record<string, MachineryTracking>;
+  updateMachineryLocation: (bookingId: string, locationData: Omit<MachineryTracking, 'id' | 'created_at'>) => void;
+  getMachineryLocation: (bookingId: string) => MachineryTracking | null;
 
   // Dealer actions
   updateDealerCropPrice: (priceId: string, newPrice: number) => void;
@@ -131,8 +134,11 @@ const defaultAgriContext: AgriContextType = {
   addMachinery: () => {},
   bookings: MOCK_BOOKINGS,
   bookMachinery: () => ({} as MachineryBooking),
-  updateBookingStatus: () => {},
+  updateBookingStatus: () => true,
   cancelBooking: () => {},
+  machineryTracking: {},
+  updateMachineryLocation: () => {},
+  getMachineryLocation: () => null,
   products: MOCK_PRODUCTS,
   addProduct: () => {},
   updateProductStock: () => {},
@@ -166,7 +172,8 @@ const STORAGE_KEYS = {
   INQUIRIES: 'agrime_inquiries',
   CART: 'agrime_cart',
   PRODUCE_LISTINGS: 'agrime_produce_listings',
-  PRODUCE_REQUESTS: 'agrime_produce_requests'
+  PRODUCE_REQUESTS: 'agrime_produce_requests',
+  TRACKING: 'agrime_machinery_tracking'
 };
 
 export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -175,6 +182,7 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [dealerCropPrices, setDealerCropPrices] = useState<DealerCropPrice[]>(MOCK_DEALER_CROP_PRICES);
   const [machinery, setMachinery] = useState<Machinery[]>(MOCK_MACHINERY);
   const [bookings, setBookings] = useState<MachineryBooking[]>(MOCK_BOOKINGS);
+  const [machineryTracking, setMachineryTracking] = useState<Record<string, MachineryTracking>>({});
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [inquiries, setInquiries] = useState<ProduceInquiry[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -196,6 +204,9 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const savedBookings = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
       if (savedBookings) setBookings(JSON.parse(savedBookings));
+
+      const savedTracking = localStorage.getItem(STORAGE_KEYS.TRACKING);
+      if (savedTracking) setMachineryTracking(JSON.parse(savedTracking));
 
       const savedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       if (savedProducts) setProducts(JSON.parse(savedProducts));
@@ -226,6 +237,7 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem(STORAGE_KEYS.DEALER_PRICES, JSON.stringify(dealerCropPrices));
       localStorage.setItem(STORAGE_KEYS.MACHINERY, JSON.stringify(machinery));
       localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+      localStorage.setItem(STORAGE_KEYS.TRACKING, JSON.stringify(machineryTracking));
       localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
       localStorage.setItem(STORAGE_KEYS.INQUIRIES, JSON.stringify(inquiries));
       localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
@@ -234,7 +246,7 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.warn('Could not persist state to localStorage', e);
     }
-  }, [currentUser, dealerCropPrices, machinery, bookings, products, inquiries, cart, produceListings, produceRequests, isLoaded]);
+  }, [currentUser, dealerCropPrices, machinery, bookings, machineryTracking, products, inquiries, cart, produceListings, produceRequests, isLoaded]);
 
   // Switch role helper
   const switchRole = (role: UserRole) => {
@@ -291,7 +303,35 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newBooking;
   };
 
-  const updateBookingStatus = (bookingId: string, status: BookingStatus) => {
+  const isValidStatusTransition = (current: BookingStatus, next: BookingStatus): boolean => {
+    if (current === next) return true;
+    
+    const allowed: Record<BookingStatus, BookingStatus[]> = {
+      pending: ['accepted', 'rejected', 'cancelled'],
+      accepted: ['on_the_way', 'cancelled'],
+      on_the_way: ['arrived', 'cancelled'],
+      arrived: ['in_progress', 'cancelled'],
+      in_progress: ['completed'],
+      completed: [],
+      cancelled: [],
+      rejected: []
+    };
+
+    return allowed[current]?.includes(next) ?? false;
+  };
+
+  const updateBookingStatus = (bookingId: string, status: BookingStatus): boolean => {
+    const booking = bookings.find((b) => b.id === bookingId);
+    if (!booking) {
+      console.warn(`Booking ${bookingId} not found`);
+      return false;
+    }
+
+    if (!isValidStatusTransition(booking.status, status)) {
+      console.warn(`Invalid booking state transition from ${booking.status} to ${status}`);
+      return false;
+    }
+
     setBookings((prev) =>
       prev.map((b) =>
         b.id === bookingId
@@ -299,6 +339,27 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : b
       )
     );
+    return true;
+  };
+
+  const updateMachineryLocation = (
+    bookingId: string, 
+    locationData: Omit<MachineryTracking, 'id' | 'created_at'>
+  ) => {
+    setMachineryTracking((prev) => ({
+      ...prev,
+      [bookingId]: {
+        ...locationData,
+        id: prev[bookingId]?.id || `trk-${Date.now()}`,
+        booking_id: bookingId,
+        created_at: prev[bookingId]?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    }));
+  };
+
+  const getMachineryLocation = (bookingId: string): MachineryTracking | null => {
+    return machineryTracking[bookingId] || null;
   };
 
   const cancelBooking = (bookingId: string) => {
@@ -510,6 +571,9 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cancelBooking,
         toggleMachineryAvailability,
         addMachinery,
+        machineryTracking,
+        updateMachineryLocation,
+        getMachineryLocation,
         updateDealerCropPrice,
         addDealerCropPrice,
         addProduct,

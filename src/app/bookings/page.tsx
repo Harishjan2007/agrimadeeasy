@@ -11,7 +11,8 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-  Calendar
+  Calendar,
+  Navigation
 } from 'lucide-react';
 import { useAgri } from '@/context/AgriContext';
 import { BookingStatus, MachineryBooking, Machinery } from '@/types';
@@ -19,6 +20,8 @@ import { useAuth } from '@/lib/supabase/useAuth';
 import { getMachineryImageUrl, getMachineryAltText } from '@/lib/machinery-images';
 import { useLanguage } from '@/i18n';
 import { getMachineryBookings, cancelMachineryBooking } from '@/lib/supabase/machinery';
+import MachineryTrackingModal from '@/components/machinery/MachineryTrackingModal';
+import { PageHeader, EmptyState, StatusBadge } from '@/components/ui';
 
 export default function MyBookingsPage() {
   const { user, role, loading, isConfigured } = useAuth();
@@ -29,6 +32,8 @@ export default function MyBookingsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [selectedTrackingBooking, setSelectedTrackingBooking] = useState<MachineryBooking | null>(null);
+  const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
 
   const bookings = contextBookings;
   const machinery = contextMachinery;
@@ -123,113 +128,56 @@ export default function MyBookingsPage() {
     );
   }
 
-  const getStatusBadge = (status: BookingStatus) => {
-    switch (status) {
-      case 'pending':
-        return (
-          <span className="badge-status-pending">
-            <Clock className="w-3.5 h-3.5" />
-            <span>{translateBookingStatus('pending')}</span>
-          </span>
-        );
-      case 'accepted':
-        return (
-          <span className="badge-status-accepted">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>{translateBookingStatus('accepted')}</span>
-          </span>
-        );
-      case 'rejected':
-        return (
-          <span className="badge-status-rejected">
-            <XCircle className="w-3.5 h-3.5" />
-            <span>{translateBookingStatus('rejected')}</span>
-          </span>
-        );
-      case 'completed':
-        return (
-          <span className="badge-status-completed">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>{translateBookingStatus('completed')}</span>
-          </span>
-        );
-      case 'cancelled':
-        return (
-          <span className="badge-status-cancelled">
-            <AlertCircle className="w-3.5 h-3.5" />
-            <span>{translateBookingStatus('cancelled')}</span>
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
-
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
-      {/* Top Navigation Bar */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+      {/* Modern AgriME Page Header */}
+      <PageHeader
+        title={translations.myBookings.title}
+        subtitle={translations.myBookings.subtitle}
+        badge={isTa ? 'இயந்திர முன்பதிவு மையம்' : 'Machinery Booking Center'}
+        icon={CalendarCheck}
+        iconColor="text-agri-700"
+        iconBg="bg-agri-50 border-agri-200"
+        backHref="/machinery"
+        backLabel={translations.myBookings.backToMachinery}
+        stats={[
+          { label: isTa ? 'மொத்த முன்பதிவுகள்' : 'Total Bookings', value: bookings.length },
+          { label: isTa ? 'செயலில் உள்ளவை' : 'Active', value: bookings.filter((b: MachineryBooking) => ['pending', 'accepted', 'on_the_way', 'arrived', 'in_progress'].includes(b.status)).length },
+          { label: isTa ? 'நிறைவடைந்தவை' : 'Completed', value: bookings.filter((b: MachineryBooking) => b.status === 'completed').length }
+        ]}
+        actions={
           <Link
             href="/machinery"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-agri-700 transition-colors"
+            className="btn-primary text-xs sm:text-sm py-2 px-3.5 flex items-center gap-1.5 shadow-xs"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span>{translations.myBookings.backToMachinery}</span>
+            <Tractor className="w-4 h-4" />
+            <span>{translations.myBookings.rentAnother}</span>
           </Link>
-
-          <Link
-            href="/machinery"
-            className="btn-primary text-xs py-1.5 px-3"
-          >
-            {translations.myBookings.rentAnother}
-          </Link>
-        </div>
-      </div>
-
-      {/* Hero Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-agri-950 to-slate-900 text-white py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-agri-500/20 text-agri-300 text-xs font-semibold uppercase tracking-wider mb-2 border border-agri-500/30">
-                <CalendarCheck className="w-3.5 h-3.5" />
-                {isTa ? 'விவசாயி உபகரண முன்பதிவு நிலை' : 'Farmer Equipment Booking Status'}
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                {translations.myBookings.title}
-              </h1>
-              <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl">
-                {translations.myBookings.subtitle}
-              </p>
-            </div>
-
-            <div className="text-xs bg-white/10 border border-white/15 rounded-2xl p-4 text-center sm:text-right backdrop-blur-xs">
-              <span className="text-slate-300 block">{translations.myBookings.totalBookings}</span>
-              <span className="text-2xl font-black text-white">{bookings.length}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
 
         {/* Status Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-6">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-6 scrollbar-none">
           {[
             { id: 'all', label: `${translations.myBookings.allBookings} (${bookings.length})` },
             { id: 'pending', label: `${translateBookingStatus('pending')} (${bookings.filter((b: MachineryBooking) => b.status === 'pending').length})` },
             { id: 'accepted', label: `${translateBookingStatus('accepted')} (${bookings.filter((b: MachineryBooking) => b.status === 'accepted').length})` },
+            { id: 'on_the_way', label: `${translateBookingStatus('on_the_way')} (${bookings.filter((b: MachineryBooking) => b.status === 'on_the_way').length})` },
+            { id: 'arrived', label: `${translateBookingStatus('arrived')} (${bookings.filter((b: MachineryBooking) => b.status === 'arrived').length})` },
+            { id: 'in_progress', label: `${translateBookingStatus('in_progress')} (${bookings.filter((b: MachineryBooking) => b.status === 'in_progress').length})` },
             { id: 'completed', label: `${translateBookingStatus('completed')} (${bookings.filter((b: MachineryBooking) => b.status === 'completed').length})` },
             { id: 'cancelled', label: `${translateBookingStatus('cancelled')} (${bookings.filter((b: MachineryBooking) => b.status === 'cancelled').length})` }
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setFilterStatus(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${filterStatus === tab.id
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                }`}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shadow-2xs ${
+                filterStatus === tab.id
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+              }`}
             >
               {tab.label}
             </button>
@@ -238,20 +186,12 @@ export default function MyBookingsPage() {
 
         {/* Bookings List */}
         {filteredBookings.length === 0 ? (
-          <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm">
-            <Tractor className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-base font-semibold text-slate-800">{translations.myBookings.noBookings}</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              {translations.myBookings.noBookingsDescription}
-            </p>
-            <Link
-              href="/machinery"
-              className="mt-4 inline-flex items-center gap-2 btn-primary text-xs py-2 px-4"
-            >
-              <Tractor className="w-4 h-4" />
-              <span>{translations.myBookings.browseMachinery}</span>
-            </Link>
-          </div>
+          <EmptyState
+            title={translations.myBookings.noBookings}
+            description={translations.myBookings.noBookingsDescription}
+            actionLabel={translations.myBookings.browseMachinery}
+            actionHref="/machinery"
+          />
         ) : (
           <div className="space-y-4">
             {filteredBookings.map((booking: MachineryBooking) => {
@@ -305,9 +245,9 @@ export default function MyBookingsPage() {
                   </div>
 
                   {/* Right: Status Badge, Amount & Actions */}
-                  <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between gap-4 pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                  <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between gap-3 pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-100">
                     <div>
-                      {getStatusBadge(booking.status)}
+                      <StatusBadge status={booking.status} size="sm" />
                     </div>
 
                     <div className="text-right">
@@ -316,6 +256,24 @@ export default function MyBookingsPage() {
                         ₹{booking.total_amount.toLocaleString('en-IN')}
                       </span>
                     </div>
+
+                    {/* Live Track Machinery Button for active statuses */}
+                    {['accepted', 'on_the_way', 'arrived', 'in_progress'].includes(booking.status) && (
+                      <button
+                        onClick={() => {
+                          setSelectedTrackingBooking(booking);
+                          setIsTrackingModalOpen(true);
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                          booking.status === 'on_the_way'
+                            ? 'bg-amber-600 hover:bg-amber-700 text-white animate-pulse'
+                            : 'bg-slate-900 hover:bg-slate-800 text-white'
+                        }`}
+                      >
+                        <Navigation className="w-3.5 h-3.5 text-amber-300" />
+                        <span>{translations.tracking.trackMachinery || (isTa ? 'கண்காணிக்கவும்' : 'Track Machinery')}</span>
+                      </button>
+                    )}
 
                     {/* Cancel action if pending/accepted */}
                     {(booking.status === 'pending' || booking.status === 'accepted') && (
@@ -340,6 +298,15 @@ export default function MyBookingsPage() {
           </div>
         )}
 
+        {/* Live Machinery Tracking Modal */}
+        <MachineryTrackingModal
+          booking={selectedTrackingBooking}
+          isOpen={isTrackingModalOpen}
+          onClose={() => {
+            setIsTrackingModalOpen(false);
+            setSelectedTrackingBooking(null);
+          }}
+        />
       </div>
     </div>
   );

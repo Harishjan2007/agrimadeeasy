@@ -27,19 +27,51 @@ export interface Market {
   longitude?: number;
 }
 
+export type PriceSourceStatus = 'LIVE' | 'RECENT' | 'REFERENCE' | 'DEMO/FALLBACK';
+
+export interface HistoricalPricePoint {
+  date: string;
+  price: number;
+  modal_price?: number;
+  min_price?: number;
+  max_price?: number;
+  market_name?: string;
+  source?: string;
+}
+
 export interface CropPrice {
   id: string;
   crop_id: string;
   market_id: string;
   price: number;
+  modal_price?: number;
+  min_price?: number;
+  max_price?: number;
   unit: string; // e.g. "₹/Quintal", "₹/kg"
   recorded_at: string;
+  arrival_date?: string;
+  variety?: string;
   source: string; // e.g. "Agmarknet / APMC Market"
+  source_status?: PriceSourceStatus;
+  historical_prices?: HistoricalPricePoint[];
   crop?: Crop;
   market?: Market;
 }
 
 export type PriceTrend = 'up' | 'down' | 'stable';
+
+export interface MLModelMetrics {
+  model_name: string;
+  model_type: string; // e.g. "Gradient Boosted Regressor (XGBoost/LightGBM style)"
+  dataset_source: string;
+  training_samples: number;
+  mae: number; // Mean Absolute Error in ₹/Quintal
+  rmse: number; // Root Mean Squared Error in ₹/Quintal
+  r2_score: number; // Coefficient of determination (e.g. 0.88)
+  mape_pct: number; // Mean Absolute Percentage Error
+  features_used: string[];
+  limitations: string;
+}
 
 export interface CropPrediction {
   id: string;
@@ -48,9 +80,12 @@ export interface CropPrediction {
   current_price: number;
   predicted_min: number;
   predicted_max: number;
+  predicted_price?: number;
+  confidence_interval_pct?: number; // e.g. 95
   trend: PriceTrend;
   prediction_date: string;
   prediction_period: string; // e.g. "Next 15 Days", "Next 30 Days"
+  ml_metrics?: MLModelMetrics;
   crop?: Crop;
   market?: Market;
 }
@@ -79,6 +114,9 @@ export interface Dealer {
   phone: string;
   opening_hours: string;
   created_at: string;
+  latitude?: number;
+  longitude?: number;
+  district?: string;
   profile?: Profile;
   crop_prices?: DealerCropPrice[];
 }
@@ -122,6 +160,8 @@ export interface Machinery {
   description: string;
   price_per_hour: number;
   location: string;
+  latitude?: number;
+  longitude?: number;
   available: boolean;
   image_url?: string;
   created_at: string;
@@ -129,7 +169,38 @@ export interface Machinery {
   provider?: Profile;
 }
 
-export type BookingStatus = 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled';
+export type BookingStatus = 
+  | 'pending' 
+  | 'accepted' 
+  | 'on_the_way' 
+  | 'arrived' 
+  | 'in_progress' 
+  | 'completed' 
+  | 'cancelled' 
+  | 'rejected';
+
+export interface MachineryTracking {
+  id: string;
+  booking_id: string;
+  provider_id: string;
+  latitude: number;
+  longitude: number;
+  speed?: number | null;
+  heading?: number | null;
+  accuracy?: number | null;
+  recorded_at: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UserLocation {
+  latitude: number;
+  longitude: number;
+  source: 'gps' | 'manual';
+  name?: string;
+  district?: string;
+  state?: string;
+}
 
 export interface MachineryBooking {
   id: string;
@@ -144,6 +215,7 @@ export interface MachineryBooking {
   updated_at: string;
   farmer?: Profile;
   machinery?: Machinery;
+  tracking?: MachineryTracking;
 }
 
 export type ListingStatus = 'active' | 'sold' | 'delisted';

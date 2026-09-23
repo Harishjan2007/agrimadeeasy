@@ -153,23 +153,30 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
    */
   const translateBookingStatus = useCallback((status?: string): string => {
     if (!status) return '';
+    const normalized = status.toLowerCase();
     if (language === 'en') {
-      switch (status.toLowerCase()) {
+      switch (normalized) {
         case 'pending': return 'Pending';
         case 'accepted': return 'Accepted';
-        case 'rejected': return 'Rejected';
+        case 'on_the_way': return 'On the Way';
+        case 'arrived': return 'Arrived';
+        case 'in_progress': return 'In Progress';
         case 'completed': return 'Completed';
         case 'cancelled': return 'Cancelled';
+        case 'rejected': return 'Rejected';
         default: return status;
       }
     }
 
-    switch (status.toLowerCase()) {
+    switch (normalized) {
       case 'pending': return 'நிலுவையில்';
       case 'accepted': return 'ஏற்கப்பட்டது';
-      case 'rejected': return 'நிராகரிக்கப்பட்டது';
+      case 'on_the_way': return 'வழியில் உள்ளது';
+      case 'arrived': return 'வந்து சேர்ந்தது';
+      case 'in_progress': return 'பணியில் உள்ளது';
       case 'completed': return 'நிறைவு';
       case 'cancelled': return 'ரத்து செய்யப்பட்டது';
+      case 'rejected': return 'நிராகரிக்கப்பட்டது';
       default: return status;
     }
   }, [language]);

@@ -16,7 +16,8 @@ import {
   ArrowRight,
   LogOut,
   CalendarCheck,
-  LayoutDashboard
+  LayoutDashboard,
+  MapPin
 } from 'lucide-react';
 import { useAuth } from '@/lib/supabase/useAuth';
 import { UserRole } from '@/types';
@@ -47,6 +48,7 @@ export default function Header() {
     if (isSignedIn && activeRole === 'dealer') {
       return [
         { href: '/', label: translations.nav.home, icon: Sprout },
+        { href: '/map', label: translations.nav.map, icon: MapPin },
         { href: '/dealer', label: translations.nav.dealerPortal, icon: LayoutDashboard },
         { href: '/ecommerce', label: translations.nav.ecommerce, icon: ShoppingBag },
         { href: '/dealers', label: translations.nav.mandiDirectory, icon: Store },
@@ -56,6 +58,7 @@ export default function Header() {
     if (isSignedIn && activeRole === 'machinery_provider') {
       return [
         { href: '/', label: translations.nav.home, icon: Sprout },
+        { href: '/map', label: translations.nav.map, icon: MapPin },
         { href: '/machinery-provider', label: translations.nav.machineryHostPortal, icon: LayoutDashboard },
         { href: '/machinery', label: translations.nav.fleetCatalog, icon: Tractor },
       ];
@@ -64,6 +67,7 @@ export default function Header() {
     // Default farmer & guest links: Home + 7 core modules
     return [
       { href: '/', label: translations.nav.home, icon: Sprout },
+      { href: '/map', label: translations.nav.map, icon: MapPin },
       { href: '/crop-price', label: translations.nav.cropPrices, icon: TrendingUp },
       { href: '/prediction', label: translations.nav.predictions, icon: TrendingUp },
       { href: '/dealers', label: translations.nav.dealers, icon: Store },

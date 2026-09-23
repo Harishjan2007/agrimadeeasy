@@ -26,6 +26,7 @@ import { updateUserProfile } from '@/lib/supabase/auth';
 import { MOCK_PROFILES } from '@/lib/mock-data';
 import { UserRole, Profile } from '@/types';
 import { useLanguage } from '@/i18n';
+import { PageHeader } from '@/components/ui';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -195,33 +196,22 @@ export default function ProfilePage() {
 
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-agri-950 to-slate-900 text-white py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-agri-600 text-white flex items-center justify-center text-2xl sm:text-3xl font-extrabold shadow-lg border-2 border-white/20">
-                {activeProfile.name ? activeProfile.name.charAt(0).toUpperCase() : 'U'}
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                  {activeProfile.name}
-                </h1>
-                <div className="flex items-center gap-2 mt-1">
-                  {getRoleBadge(activeRole)}
-                </div>
-              </div>
-            </div>
-
-            <div className="text-xs text-slate-300 bg-white/10 px-3 py-2 rounded-xl border border-white/10 backdrop-blur-xs flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-agri-400" />
-              <span>{isConfigured ? (isTa ? 'சரிபார்க்கப்பட்ட கணக்கு' : 'Verified Supabase Account') : (isTa ? 'மாதிரி கணக்கு முறை' : 'Demo Account Mode')}</span>
-            </div>
+      {/* Modern Page Header */}
+      <PageHeader
+        title={activeProfile.name || translations.nav.profile}
+        subtitle={activeProfile.email || activeProfile.phone}
+        badge={isConfigured ? (isTa ? 'சரிபார்க்கப்பட்ட கணக்கு' : 'Verified Account') : (isTa ? 'மாதிரி பயனர்' : 'Demo Profile')}
+        icon={User}
+        iconColor="text-emerald-700"
+        iconBg="bg-emerald-50 border-emerald-200"
+        actions={
+          <div className="flex items-center gap-2">
+            {getRoleBadge(activeRole)}
           </div>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
         
         {/* Success Alert */}
         {saveSuccess && (

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { CropPrice, Crop, Market } from '@/types';
 import { useLanguage } from '@/i18n';
+import { getProvenanceBadgeConfig } from '@/lib/agmarknet';
 
 interface CropPriceComparisonProps {
   cropPrices: CropPrice[];
@@ -442,25 +443,45 @@ export default function CropPriceComparison({
                           </div>
                         </div>
 
-                        {/* High/Low Status Badges */}
-                        {isHighest && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-                            <TrendingUp className="w-3 h-3" />
-                            <span>{isTa ? 'அதிகபட்ச விலை' : 'Highest'}</span>
-                          </span>
-                        )}
-                        {isLowest && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
-                            <TrendingDown className="w-3 h-3" />
-                            <span>{isTa ? 'குறைந்தபட்ச விலை' : 'Lowest'}</span>
-                          </span>
-                        )}
+                        {/* Badges: Provenance + High/Low */}
+                        <div className="flex flex-col items-end gap-1">
+                          {(() => {
+                            const itemBadge = getProvenanceBadgeConfig(item.source_status);
+                            return (
+                              <span
+                                className={`inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${itemBadge.bgColor} ${itemBadge.textColor} ${itemBadge.borderColor}`}
+                                title={isTa ? itemBadge.descriptionTa : itemBadge.descriptionEn}
+                              >
+                                <span className={`w-1 h-1 rounded-full ${itemBadge.dotColor}`}></span>
+                                <span>{isTa ? itemBadge.labelTa : itemBadge.labelEn}</span>
+                              </span>
+                            );
+                          })()}
+
+                          {isHighest && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                              <TrendingUp className="w-3 h-3" />
+                              <span>{isTa ? 'அதிகபட்ச விலை' : 'Highest'}</span>
+                            </span>
+                          )}
+                          {isLowest && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                              <TrendingDown className="w-3 h-3" />
+                              <span>{isTa ? 'குறைந்தபட்ச விலை' : 'Lowest'}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Price Box */}
                       <div className="mt-3 p-3 rounded-xl bg-slate-50/90 border border-slate-100">
-                        <div className="text-[11px] font-semibold text-slate-500">
-                          {t.latestAvailablePrice}
+                        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                          <span>{isTa ? 'மண்டி மாதிரி விலை' : 'Mandi Modal Rate'}</span>
+                          {item.variety && (
+                            <span className="text-[10px] font-medium text-slate-400 truncate max-w-[120px]">
+                              {item.variety}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-baseline gap-1 mt-0.5">
                           <span className="text-2xl font-black text-slate-900">
@@ -470,6 +491,15 @@ export default function CropPriceComparison({
                             /{item.unit || 'Quintal'}
                           </span>
                         </div>
+
+                        {/* Min / Max Range */}
+                        {(item.min_price || item.max_price) && (
+                          <div className="mt-1 text-[11px] text-slate-500 flex items-center gap-2">
+                            <span>Min: <strong>₹{(item.min_price || Math.round(itemPrice * 0.96)).toLocaleString('en-IN')}</strong></span>
+                            <span>•</span>
+                            <span>Max: <strong>₹{(item.max_price || Math.round(itemPrice * 1.04)).toLocaleString('en-IN')}</strong></span>
+                          </div>
+                        )}
 
                         {/* Difference vs Average */}
                         {comparisonStats?.isMultiple && (

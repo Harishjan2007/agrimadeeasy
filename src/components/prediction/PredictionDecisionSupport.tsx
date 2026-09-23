@@ -169,29 +169,29 @@ export default function PredictionDecisionSupport({
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-10">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white p-6 sm:p-8">
+      {/* Header Banner - Clean Light Surface */}
+      <div className="bg-slate-50/80 border-b border-slate-200 p-6 sm:p-7">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold uppercase tracking-wider mb-2.5 border border-blue-500/30">
-              <Sparkles className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider mb-2 border border-blue-200">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
               <span>{translations.prediction.decisionSupportBadge}</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               {translations.prediction.decisionSupportTitle}
             </h2>
-            <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-2xl">
+            <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-2xl">
               {translations.prediction.decisionSupportSubtitle}
             </p>
           </div>
 
           <Link
             href="/crop-price?tab=compare"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all shrink-0 self-start md:self-auto"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition-all shrink-0 self-start md:self-auto"
           >
-            <Scale className="w-4 h-4 text-emerald-400" />
+            <Scale className="w-4 h-4 text-emerald-600" />
             <span>{translations.prediction.compareMarketPricesBtn}</span>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </Link>
         </div>
       </div>
@@ -251,26 +251,52 @@ export default function PredictionDecisionSupport({
             </span>
           </div>
 
-          {/* STEP 3: Select Horizon */}
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">3</span>
-              <span>{translations.prediction.step3Horizon}</span>
-            </label>
-            <select
-              value={selectedHorizon}
-              onChange={(e) => setSelectedHorizon(e.target.value)}
-              disabled={availableHorizons.length === 0}
-              className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs disabled:bg-slate-100 disabled:text-slate-400"
-            >
-              <option value="all">{translations.prediction.allHorizons} ({availableHorizons.length})</option>
-              {availableHorizons.map((h) => (
-                <option key={h} value={h}>
-                  {h}
-                </option>
-              ))}
-            </select>
-            <span className="text-[11px] text-slate-500 mt-1.5 block truncate">
+          {/* STEP 3: Select Horizon (Buttons + Select) */}
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col justify-between">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">3</span>
+                <span>{translations.prediction.step3Horizon}</span>
+              </label>
+
+              {/* Visual Horizon Quick Buttons */}
+              <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedHorizon('all')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    selectedHorizon === 'all'
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {isTa ? 'அனைத்தும்' : 'All'}
+                </button>
+                {['15 Days', '30 Days', '60 Days'].map((h) => {
+                  const isAvailable = availableHorizons.includes(h);
+                  const isSelected = selectedHorizon === h;
+                  return (
+                    <button
+                      key={h}
+                      type="button"
+                      onClick={() => setSelectedHorizon(h)}
+                      disabled={!isAvailable && availableHorizons.length > 0}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        isSelected
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : isAvailable
+                          ? 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                          : 'bg-slate-100 text-slate-400 border border-slate-100 cursor-not-allowed'
+                      }`}
+                    >
+                      {h}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <span className="text-[11px] text-slate-500 mt-1 block truncate">
               {activePrediction ? `${translations.prediction.predictionDate}: ${formattedDate}` : translations.prediction.allHorizons}
             </span>
           </div>
@@ -339,6 +365,32 @@ export default function PredictionDecisionSupport({
                 </div>
               </div>
 
+              {/* Statistical Time-Series Projection Attribution Banner */}
+              {activePrediction.ml_metrics && (
+                <div className="mt-5 p-4 rounded-2xl bg-blue-50/90 border border-blue-200 text-xs flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                    <div>
+                      <span className="font-bold text-blue-950 block">
+                        {isTa ? 'பருவகால போக்கு கணிப்பு பொறிமுறை (Statistical Time-Series)' : 'Statistical Time-Series Projection & Seasonal Momentum'}
+                      </span>
+                      <span className="text-[11px] text-blue-800">
+                        {isTa ? 'அரசு அக்மார்க்நெட் APMC மண்டி குறிப்பு தரவு' : 'Calibrated on Agmarknet APMC Mandi Historical References'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 sm:gap-4 text-[11px] text-blue-900 font-semibold flex-wrap">
+                    <span className="bg-white/80 px-2 py-0.5 rounded-md border border-blue-200">
+                      Method: <strong>Harmonic Seasonality + Drift</strong>
+                    </span>
+                    <span className="bg-blue-600 text-white px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">
+                      95% Confidence Bounds (±1.96 × σ)
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Price Metrics Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-6">
                 {/* 1. Latest Available Price */}
@@ -359,18 +411,23 @@ export default function PredictionDecisionSupport({
                   </span>
                 </div>
 
-                {/* 2. Projected Price Range */}
+                {/* 2. Projected Price Range (95% Confidence Interval) */}
                 <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                    {translations.prediction.projectedPriceRange}
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                      {translations.prediction.projectedPriceRange}
+                    </span>
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                      95% CI
+                    </span>
+                  </div>
                   <div className="mt-2 flex items-baseline gap-1">
                     <span className="text-xl font-black text-blue-900">
                       ₹{minPrice.toLocaleString('en-IN')} - ₹{maxPrice.toLocaleString('en-IN')}
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-400 mt-1 block">
-                    {translations.prediction.projectedMidpoint}: ₹{midpoint.toLocaleString('en-IN')}
+                    {translations.prediction.projectedMidpoint}: <strong>₹{(activePrediction.predicted_price || midpoint).toLocaleString('en-IN')}</strong> (±₹{Math.round((maxPrice - minPrice) / 2)})
                   </span>
                 </div>
 
@@ -525,8 +582,21 @@ export default function PredictionDecisionSupport({
                 </div>
               </div>
 
+              {/* ML Model Scope & Limitations Box */}
+              {activePrediction.ml_metrics?.limitations && (
+                <div className="mt-5 p-4 rounded-2xl bg-white border border-slate-200 text-xs text-slate-700 space-y-1.5 shadow-2xs">
+                  <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
+                    <Info className="w-4 h-4 text-blue-600" />
+                    <span>{isTa ? 'இயந்திரக் கற்றல் மாதிரி வரம்புகள் & எல்லைகள்' : 'ML Model Scope & Statistical Limitations'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    {activePrediction.ml_metrics.limitations}
+                  </p>
+                </div>
+              )}
+
               {/* General Disclaimer Footnote */}
-              <div className="mt-5 p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 flex items-center gap-2.5">
+              <div className="mt-4 p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 flex items-center gap-2.5">
                 <Info className="w-4 h-4 text-amber-700 shrink-0" />
                 <span>{translations.prediction.uncertaintyDisclaimer}</span>
               </div>

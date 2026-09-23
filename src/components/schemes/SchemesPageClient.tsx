@@ -12,12 +12,15 @@ import {
   RefreshCw, 
   Building2, 
   Sparkles, 
-  ListFilter
+  ListFilter,
+  CheckCircle2,
+  ShieldCheck
 } from 'lucide-react';
 import { GovernmentScheme } from '@/types';
 import { getSchemes } from '@/lib/supabase/schemes';
 import { useLanguage } from '@/i18n';
 import SchemeFinder from '@/components/schemes/SchemeFinder';
+import { PageHeader, EmptyState } from '@/components/ui';
 
 export default function SchemesPageClient() {
   const [schemes, setSchemes] = useState<GovernmentScheme[]>([]);
@@ -128,53 +131,49 @@ export default function SchemesPageClient() {
 
   return (
     <div className="bg-slate-50 min-h-screen pb-16 overflow-x-hidden">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-900 via-agri-900 to-slate-900 text-white py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-3 border border-emerald-500/30">
-                <Landmark className="w-3.5 h-3.5" />
-                {isTa ? 'அரசு நலத்திட்டங்கள் மற்றும் மானியங்கள்' : 'Verified Government Welfare & Subsidy Programs'}
-              </div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight break-words">
-                {translations.schemes.title}
-              </h1>
-              <p className="text-emerald-100 text-xs sm:text-sm mt-2 max-w-2xl leading-relaxed">
-                {translations.schemes.subtitle}
-              </p>
-            </div>
+      {/* Modern Page Header */}
+      <PageHeader
+        title={translations.schemes.title}
+        subtitle={translations.schemes.subtitle}
+        badge={isTa ? 'அரசு நலத்திட்டங்கள் & மானியங்கள்' : 'Verified Government Schemes & Subsidies'}
+        icon={Landmark}
+        iconColor="text-emerald-700"
+        iconBg="bg-emerald-50 border-emerald-200"
+        stats={[
+          { label: isTa ? 'மொத்த திட்டங்கள்' : 'Total Schemes', value: schemes.length },
+          { label: isTa ? 'மத்திய அரசு' : 'Central Govt', value: schemes.filter((s) => s.government_level === 'central').length },
+          { label: isTa ? 'மாநில அரசு' : 'State Govt', value: schemes.filter((s) => s.government_level === 'state').length }
+        ]}
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setActiveTab('finder')}
+              className={`text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 rounded-xl font-bold transition-all ${
+                activeTab === 'finder'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>{translations.schemes.findSchemesForMeTab}</span>
+            </button>
 
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab('finder')}
-                className={`text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 rounded-xl font-bold transition-all shadow-md ${
-                  activeTab === 'finder'
-                    ? 'bg-emerald-400 text-slate-950 ring-2 ring-emerald-300 scale-[1.02]'
-                    : 'bg-white/15 text-white hover:bg-white/25 border border-white/20'
-                }`}
-              >
-                <Sparkles className="w-4 h-4 text-amber-300" />
-                <span>{translations.schemes.findSchemesForMeTab}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('directory')}
-                className={`text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 rounded-xl font-bold transition-all shadow-md ${
-                  activeTab === 'directory'
-                    ? 'bg-white text-slate-950 scale-[1.02]'
-                    : 'bg-white/15 text-white hover:bg-white/25 border border-white/20'
-                }`}
-              >
-                <ListFilter className="w-4 h-4" />
-                <span>{translations.schemes.browseAllTab}</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('directory')}
+              className={`text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 rounded-xl font-bold transition-all ${
+                activeTab === 'directory'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <ListFilter className="w-4 h-4 text-slate-500" />
+              <span>{translations.schemes.browseAllTab}</span>
+            </button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         

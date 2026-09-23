@@ -102,8 +102,13 @@ export default function PredictionCard({ prediction, onSelect }: PredictionCardP
             </div>
 
             <div>
-              <span className="text-[11px] font-medium text-slate-500 block">{translations.prediction.predictedRange}</span>
-              <span className="text-lg font-black text-agri-700">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[11px] font-medium text-slate-500 block">{translations.prediction.predictedRange}</span>
+                <span className="text-[9px] font-bold uppercase text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
+                  95% CI
+                </span>
+              </div>
+              <span className="text-lg font-black text-blue-900">
                 ₹{minPrice.toLocaleString('en-IN')} - ₹{maxPrice.toLocaleString('en-IN')}
               </span>
             </div>

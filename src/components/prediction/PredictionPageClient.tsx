@@ -18,6 +18,7 @@ import { Crop, Market, CropPrediction } from '@/types';
 import { getCropPredictions, getCrops, getMarkets } from '@/lib/supabase/crops';
 import PredictionCard from '@/components/prediction/PredictionCard';
 import PredictionDecisionSupport from '@/components/prediction/PredictionDecisionSupport';
+import { PageHeader } from '@/components/ui';
 import { useLanguage } from '@/i18n';
 
 export default function PredictionPageClient() {
@@ -98,44 +99,38 @@ export default function PredictionPageClient() {
 
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
-      {/* Hero Header */}
-      <div className="bg-gradient-to-r from-blue-900 via-slate-900 to-agri-950 text-white py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-3 border border-blue-500/30">
-                <Sparkles className="w-3.5 h-3.5" />
-                {isTa ? 'சந்தை விலை போக்குகள் & முடிவு ஆதரவு' : 'Price Trend Forecasts & Decision Support'}
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                {translations.prediction.title}
-              </h1>
-              <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-2xl">
-                {translations.prediction.subtitle}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Compare Current Market Prices Link (Phase 4 -> Phase 3 connection) */}
-              <Link
-                href="/crop-price?tab=compare"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all"
-              >
-                <Scale className="w-4 h-4 text-emerald-100" />
-                <span>{translations.prediction.compareMarketPricesBtn}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-
-              <Link
-                href="/crop-price"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all"
-              >
-                <span>{isTa ? 'இன்றைய மண்டி விலைகள்' : "View Today's Mandi Prices"}</span>
-              </Link>
-            </div>
+      {/* Modern AgriME Page Header */}
+      <PageHeader
+        title={translations.prediction.title}
+        subtitle={translations.prediction.subtitle}
+        badge={isTa ? 'பருவகால விலை மதிப்பீடு & முடிவு ஆதரவு' : 'Seasonal Price Estimates & Decision Support'}
+        icon={TrendingUp}
+        iconColor="text-blue-700"
+        iconBg="bg-blue-50 border-blue-200"
+        stats={[
+          { label: isTa ? 'கணிப்புகள்' : 'Total Forecasts', value: predictions.length },
+          { label: isTa ? 'ஏறும் போக்கு' : 'Rising', value: upCount },
+          { label: isTa ? 'நிலையானது' : 'Stable', value: stableCount },
+        ]}
+        actions={
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Link
+              href="/crop-price?tab=compare"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all"
+            >
+              <Scale className="w-4 h-4 text-emerald-100" />
+              <span>{translations.prediction.compareMarketPricesBtn}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <Link
+              href="/crop-price"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all"
+            >
+              <span>{isTa ? 'இன்றைய மண்டி விலைகள்' : "View Today's Mandi Prices"}</span>
+            </Link>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         

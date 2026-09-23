@@ -21,6 +21,7 @@ import { getCropPrices, getCrops, getMarkets } from '@/lib/supabase/crops';
 import CropPriceCard from '@/components/crop-price/CropPriceCard';
 import CropPriceComparison from '@/components/crop-price/CropPriceComparison';
 import { useLanguage } from '@/i18n';
+import { PageHeader, EmptyState, LoadingState } from '@/components/ui';
 
 export default function CropPricePageClient() {
   const [cropPrices, setCropPrices] = useState<CropPrice[]>([]);
@@ -165,63 +166,48 @@ export default function CropPricePageClient() {
 
   const mandiTotalRevenue = Math.round((calcQuantity || 0) * selectedCalcMandiPrice);
 
+  // Precompute price ranges per crop across all markets
+  const priceRangesByCrop = useMemo(() => {
+    const map = new Map<string, { highest: number; lowest: number; avg: number }>();
+    cropPrices.forEach((p) => {
+      const existing = map.get(p.crop_id);
+      const price = Number(p.price);
+      if (!existing) {
+        map.set(p.crop_id, { highest: price, lowest: price, avg: price });
+      } else {
+        existing.highest = Math.max(existing.highest, price);
+        existing.lowest = Math.min(existing.lowest, price);
+      }
+    });
+    return map;
+  }, [cropPrices]);
+
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-agri-900 via-agri-800 to-agri-950 text-white py-10 px-4 sm:px-6 lg:px-8 shadow-inner">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-agri-500/20 text-agri-300 text-xs font-semibold uppercase tracking-wider mb-3 border border-agri-500/30">
-                <Scale className="w-3.5 h-3.5" />
-                {isTa ? 'அரசு ஒழுங்குமுறை விற்பனைக்கூட பட்டியல்' : 'Regulated APMC Mandi Market Directory'}
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                {translations.cropPrices.title}
-              </h1>
-              <p className="text-agri-100 text-sm sm:text-base mt-2 max-w-2xl">
-                {translations.cropPrices.subtitle}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab('compare')}
-                className={`text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 rounded-xl font-bold transition-all shadow-md ${
-                  activeTab === 'compare'
-                    ? 'bg-emerald-400 text-slate-950 ring-2 ring-emerald-300 scale-[1.02]'
-                    : 'bg-white/15 text-white hover:bg-white/25 border border-white/20'
-                }`}
-              >
-                <Scale className="w-4 h-4 text-emerald-950" />
-                <span>{translations.cropPrices.compareTab}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('directory')}
-                className={`text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 rounded-xl font-bold transition-all shadow-md ${
-                  activeTab === 'directory'
-                    ? 'bg-white text-slate-950 scale-[1.02]'
-                    : 'bg-white/15 text-white hover:bg-white/25 border border-white/20'
-                }`}
-              >
-                <ListFilter className="w-4 h-4" />
-                <span>{translations.cropPrices.directoryTab}</span>
-              </button>
-
-              <Link
-                href="/prediction"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>{translations.nav.predictions}</span>
-              </Link>
-            </div>
+      {/* Modernized Clean Page Header */}
+      <PageHeader
+        title={translations.cropPrices.title}
+        subtitle={translations.cropPrices.subtitle}
+        badge={isTa ? 'அரசு ஒழுங்குமுறை மண்டி' : 'APMC Mandi Directory'}
+        icon={Scale}
+        iconBg="bg-emerald-50 border-emerald-200 text-emerald-700"
+        stats={[
+          { label: isTa ? 'பயிர்கள்' : 'Crops', value: crops.length },
+          { label: isTa ? 'மண்டிகள்' : 'Mandis', value: markets.length },
+          { label: isTa ? 'விலைகள்' : 'Rates', value: cropPrices.length }
+        ]}
+        actions={
+          <div className="flex items-center gap-2">
+            <Link
+              href="/prediction"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>{translations.nav.predictions}</span>
+            </Link>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         
@@ -466,12 +452,18 @@ export default function CropPricePageClient() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {filteredPrices.map((item) => (
-                  <CropPriceCard
-                    key={item.id}
-                    item={item}
-                  />
-                ))}
+                {filteredPrices.map((item) => {
+                  const ranges = priceRangesByCrop.get(item.crop_id);
+                  return (
+                    <CropPriceCard
+                      key={item.id}
+                      item={item}
+                      highestPrice={ranges?.highest}
+                      lowestPrice={ranges?.lowest}
+                      averagePrice={ranges?.avg}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>

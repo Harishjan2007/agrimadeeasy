@@ -21,6 +21,7 @@ import FarmerMarketplace from '@/components/ecommerce/FarmerMarketplace';
 import { Product, ProductCategory } from '@/types';
 import { useLanguage } from '@/i18n';
 import { useAgri } from '@/context/AgriContext';
+import { PageHeader, SearchBar, CategoryTabs, EmptyState } from '@/components/ui';
 
 interface ConfirmedOrder {
   id: string;
@@ -112,74 +113,77 @@ export default function EcommercePageClient() {
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
       
-      {/* Header Hero Banner */}
-      <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-agri-950 text-white py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-semibold uppercase tracking-wider mb-3 border border-purple-500/30">
-                <Store className="w-3.5 h-3.5" />
-                {isTa ? 'வேளாண் வணிகத் தளம்' : 'Agricultural Commerce & Direct Marketplace'}
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                {activeTab === 'inputs' ? translations.ecommerce.title : tMarketplace.title}
-              </h1>
-              <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-2xl">
-                {activeTab === 'inputs' ? translations.ecommerce.subtitle : tMarketplace.subtitle}
-              </p>
-            </div>
-
-            {/* View Cart Button (For Agri-Inputs) */}
-            <div className="flex items-center gap-3">
+      {/* Modern Page Header */}
+      <PageHeader
+        title={activeTab === 'inputs' ? translations.ecommerce.title : tMarketplace.title}
+        subtitle={activeTab === 'inputs' ? translations.ecommerce.subtitle : tMarketplace.subtitle}
+        badge={isTa ? 'வேளாண் வணிகத் தளம்' : 'Agricultural Commerce & Direct Marketplace'}
+        icon={activeTab === 'inputs' ? ShoppingBag : Sprout}
+        iconColor={activeTab === 'inputs' ? 'text-purple-700' : 'text-emerald-700'}
+        iconBg={activeTab === 'inputs' ? 'bg-purple-50 border-purple-200' : 'bg-emerald-50 border-emerald-200'}
+        stats={
+          activeTab === 'inputs'
+            ? [
+                { label: isTa ? 'பொருட்கள்' : 'Products', value: products.length },
+                { label: isTa ? 'கூடை' : 'Cart Items', value: cartCount },
+                { label: isTa ? 'மதிப்பு' : 'Cart Value', value: `₹${cartTotal.toLocaleString('en-IN')}` }
+              ]
+            : undefined
+        }
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            {activeTab === 'inputs' && (
               <button
+                type="button"
                 onClick={() => setCartDrawerOpen(true)}
-                className="btn-primary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-2 shadow-lg relative"
+                className="btn-primary text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 shadow-xs relative"
               >
                 <ShoppingCart className="w-4 h-4" />
                 <span>{translations.ecommerce.cart} ({cartCount})</span>
                 {cartCount > 0 && (
-                  <span className="bg-harvest-400 text-harvest-950 text-[11px] font-extrabold px-1.5 py-0.2 rounded-full">
+                  <span className="bg-amber-400 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
                     ₹{cartTotal.toLocaleString('en-IN')}
                   </span>
                 )}
               </button>
-            </div>
+            )}
           </div>
+        }
+      />
 
-          {/* TWO MAIN VISIBLE SECTIONS / TABS */}
-          <div className="mt-8 pt-6 border-t border-white/10 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              id="tab-buy-inputs"
-              onClick={() => setActiveTab('inputs')}
-              className={`px-5 py-3 rounded-2xl font-bold text-sm sm:text-base flex items-center gap-2.5 transition-all shadow-md ${
-                activeTab === 'inputs'
-                  ? 'bg-white text-slate-950 shadow-white/10 ring-2 ring-purple-400/50 scale-[1.02]'
-                  : 'bg-white/10 text-white/80 hover:bg-white/15 hover:text-white backdrop-blur-md'
-              }`}
-            >
-              <span className="text-lg">🛒</span>
-              <span>{tMarketplace.buyInputsTab}</span>
-            </button>
+      {/* Modern Section Switch Tabs */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+          <button
+            type="button"
+            id="tab-buy-inputs"
+            onClick={() => setActiveTab('inputs')}
+            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all ${
+              activeTab === 'inputs'
+                ? 'bg-purple-600 text-white shadow-xs'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <span>🛒</span>
+            <span>{tMarketplace.buyInputsTab}</span>
+          </button>
 
-            <button
-              type="button"
-              id="tab-farmer-produce"
-              onClick={() => setActiveTab('produce')}
-              className={`px-5 py-3 rounded-2xl font-bold text-sm sm:text-base flex items-center gap-2.5 transition-all shadow-md ${
-                activeTab === 'produce'
-                  ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/25 ring-2 ring-emerald-300 scale-[1.02]'
-                  : 'bg-white/10 text-white/80 hover:bg-white/15 hover:text-white backdrop-blur-md'
-              }`}
-            >
-              <span className="text-lg">🌾</span>
-              <span>{tMarketplace.farmerProduceTab}</span>
-              <span className="ml-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-400 text-slate-950">
-                {isTa ? 'புதியது' : 'NEW'}
-              </span>
-            </button>
-          </div>
-
+          <button
+            type="button"
+            id="tab-farmer-produce"
+            onClick={() => setActiveTab('produce')}
+            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all ${
+              activeTab === 'produce'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <span>🌾</span>
+            <span>{tMarketplace.farmerProduceTab}</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-amber-400 text-slate-950">
+              {isTa ? 'புதியது' : 'NEW'}
+            </span>
+          </button>
         </div>
       </div>
 

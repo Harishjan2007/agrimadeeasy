@@ -28,6 +28,9 @@ interface RawDealerRow {
   address: string;
   phone: string;
   opening_hours: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  district?: string | null;
   created_at: string;
   updated_at?: string;
   dealer_crop_prices: RawDealerCropPriceRow[] | null;
@@ -64,6 +67,9 @@ function mapRawDealer(row: RawDealerRow): Dealer {
     address: row.address,
     phone: row.phone,
     opening_hours: row.opening_hours,
+    latitude: row.latitude !== null && row.latitude !== undefined ? Number(row.latitude) : undefined,
+    longitude: row.longitude !== null && row.longitude !== undefined ? Number(row.longitude) : undefined,
+    district: row.district || undefined,
     created_at: row.created_at,
     crop_prices: activePrices
   };
@@ -89,6 +95,9 @@ export async function getDealers(): Promise<{
           address,
           phone,
           opening_hours,
+          latitude,
+          longitude,
+          district,
           created_at,
           updated_at,
           dealer_crop_prices (

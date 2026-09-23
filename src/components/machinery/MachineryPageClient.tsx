@@ -15,6 +15,7 @@ import MachineryBookingForm from '@/components/machinery/MachineryBookingForm';
 import { useLanguage } from '@/i18n';
 import { useAgri } from '@/context/AgriContext';
 import { getMachinery } from '@/lib/supabase/machinery';
+import { PageHeader, SearchBar, CategoryTabs, EmptyState } from '@/components/ui';
 
 export default function MachineryPageClient() {
   const { machinery: contextMachinery, bookings: contextBookings } = useAgri();
@@ -62,91 +63,67 @@ export default function MachineryPageClient() {
 
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-agri-950 text-white py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold uppercase tracking-wider mb-3 border border-amber-500/30">
-                <Tractor className="w-3.5 h-3.5" />
-                {isTa ? 'விவசாய இயந்திரங்கள் & வாடகை மையம்' : 'Farm Machinery & Equipment Rental Hub'}
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                {translations.machinery.title}
-              </h1>
-              <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-2xl">
-                {translations.machinery.subtitle}
-              </p>
-            </div>
-
-            {/* Quick Access to My Bookings */}
-            <div className="flex items-center gap-3">
-              <Link
-                href="/bookings"
-                className="btn-primary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-2 shadow-lg"
-              >
-                <CalendarCheck className="w-4 h-4" />
-                <span>{translations.nav.myBookings} ({activeBookingsCount})</span>
-              </Link>
-            </div>
+      {/* Modern Page Header */}
+      <PageHeader
+        title={translations.machinery.title}
+        subtitle={translations.machinery.subtitle}
+        badge={isTa ? 'விவசாய இயந்திரங்கள் & வாடகை மையம்' : 'Farm Equipment & Machinery Hub'}
+        icon={Tractor}
+        iconColor="text-amber-700"
+        iconBg="bg-amber-50 border-amber-200"
+        stats={[
+          { label: isTa ? 'மொத்த இயந்திரங்கள்' : 'Listed Units', value: machinery.length },
+          { label: isTa ? 'வாடகைக்கு தயார்' : 'Available', value: machinery.filter((m) => m.available).length },
+          { label: isTa ? 'என் முன்பதிவுகள்' : 'My Bookings', value: activeBookingsCount }
+        ]}
+        actions={
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Link
+              href="/map?category=machinery"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition-all"
+            >
+              <span>{isTa ? 'வரைபடத்தில் காண்க' : 'View on Map'}</span>
+            </Link>
+            <Link
+              href="/bookings"
+              className="btn-primary text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 shadow-xs"
+            >
+              <CalendarCheck className="w-4 h-4" />
+              <span>{translations.nav.myBookings} ({activeBookingsCount})</span>
+            </Link>
           </div>
-        </div>
-      </div>
-
-      {/* Demo Notice */}
-      <div className="bg-amber-50 border-b border-amber-200/80 px-4 py-2.5">
-        <div className="max-w-7xl mx-auto flex items-center gap-2 text-xs text-amber-800">
-          <Info className="w-4 h-4 text-amber-600 shrink-0" />
-          <span>
-            {isTa
-              ? 'இயந்திர வாடகை முன்பதிவு மாதிரிக்கானது. உங்கள் முன்பதிவு விவரங்களை "என் முன்பதிவுகள்" பக்கத்தில் சரிபார்க்கலாம்.'
-              : 'Machine equipment listings and rental schedules are interactive demo simulations. Submitted bookings will appear directly in your "My Bookings" portal.'}
-          </span>
-        </div>
-      </div>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         
-        {/* Search & Type Filters */}
-        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 mb-8">
+        {/* Search & Category Filter Section */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200 mb-8 space-y-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            
-            <div className="w-full md:w-96 relative">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
+            <div className="w-full md:w-96">
+              <SearchBar
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={setSearchTerm}
                 placeholder={translations.machinery.searchPlaceholder}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
+                size="md"
               />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
-                >
-                  {isTa ? 'அழிக்க' : 'Clear'}
-                </button>
-              )}
             </div>
 
-            {/* Type Filter Tabs */}
-            <div className="flex items-center gap-1.5 w-full md:w-auto overflow-x-auto pb-1">
-              {types.map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setSelectedType(type)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${
-                    selectedType === type
-                      ? 'bg-amber-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {type === 'All' ? (isTa ? 'அனைத்தும்' : 'All') : translateMachineryType(type)}
-                </button>
-              ))}
+            {/* Category Tabs */}
+            <div className="w-full md:w-auto">
+              <CategoryTabs
+                tabs={[
+                  { id: 'All', label: isTa ? 'அனைத்தும்' : 'All', count: machinery.length, icon: '🚜' },
+                  { id: 'Tractor', label: isTa ? 'டிராக்டர்' : 'Tractors', count: machinery.filter(m => m.type === 'Tractor').length, icon: '🚜' },
+                  { id: 'Paddy Harvester', label: isTa ? 'அறுவடை இயந்திரம்' : 'Harvesters', count: machinery.filter(m => m.type === 'Paddy Harvester').length, icon: '🌾' },
+                  { id: 'Power Tiller', label: isTa ? 'பவர் டில்லர்' : 'Tillers', count: machinery.filter(m => m.type === 'Power Tiller').length, icon: '⚙️' },
+                  { id: 'Other', label: isTa ? 'பிற உபகரணங்கள்' : 'Other', count: machinery.filter(m => m.type !== 'Tractor' && m.type !== 'Paddy Harvester' && m.type !== 'Power Tiller').length, icon: '🛠️' },
+                ]}
+                activeTab={selectedType}
+                onChange={setSelectedType}
+                size="sm"
+              />
             </div>
-
           </div>
         </div>
 
@@ -156,26 +133,21 @@ export default function MachineryPageClient() {
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <span>{translations.machinery.title}</span>
               <span className="text-xs bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-full">
-                {filteredMachinery.length} {isTa ? 'இயந்திரங்கள்' : 'Units Listed'}
+                {filteredMachinery.length} {isTa ? 'இயந்திரங்கள்' : 'Units'}
               </span>
             </h2>
           </div>
 
           {filteredMachinery.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
-              <Tractor className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-slate-800">{translations.machinery.noMachineryFound}</h3>
-              <p className="text-xs text-slate-500 mt-1">{translations.machinery.noMachineryDescription}</p>
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedType('All');
-                }}
-                className="mt-4 btn-secondary text-xs py-2 px-4"
-              >
-                {translations.common.clearFilters}
-              </button>
-            </div>
+            <EmptyState
+              title={translations.machinery.noMachineryFound}
+              description={translations.machinery.noMachineryDescription}
+              actionLabel={translations.common.clearFilters}
+              onAction={() => {
+                setSearchTerm('');
+                setSelectedType('All');
+              }}
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredMachinery.map((item) => (

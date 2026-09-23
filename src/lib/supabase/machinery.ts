@@ -1,5 +1,6 @@
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from './client';
-import { Machinery, MachineryBooking, BookingStatus, MachineryType } from '@/types';
+import { Machinery, MachineryBooking, BookingStatus, MachineryType, MachineryTracking } from '@/types';
 import { MOCK_MACHINERY, MOCK_BOOKINGS } from '@/lib/mock-data';
 
 interface RawMachineryRow {
@@ -10,6 +11,8 @@ interface RawMachineryRow {
   description: string;
   price_per_hour: number;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   available: boolean;
   image_url?: string;
   created_at: string;
@@ -40,6 +43,8 @@ interface RawMachineryBookingRow {
     type: string;
     price_per_hour: number;
     location: string;
+    latitude?: number | null;
+    longitude?: number | null;
     image_url?: string;
     profiles?: {
       id: string;
@@ -47,6 +52,20 @@ interface RawMachineryBookingRow {
       phone: string;
     } | null;
   } | null;
+}
+
+interface RawTrackingRow {
+  id: string;
+  booking_id: string;
+  provider_id: string;
+  latitude: number;
+  longitude: number;
+  speed?: number | null;
+  heading?: number | null;
+  accuracy?: number | null;
+  recorded_at: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 /**
@@ -69,6 +88,8 @@ export async function getMachinery(): Promise<{
           description,
           price_per_hour,
           location,
+          latitude,
+          longitude,
           available,
           image_url,
           created_at,
@@ -97,6 +118,8 @@ export async function getMachinery(): Promise<{
           description: row.description,
           price_per_hour: Number(row.price_per_hour),
           location: row.location,
+          latitude: row.latitude !== null && row.latitude !== undefined ? Number(row.latitude) : undefined,
+          longitude: row.longitude !== null && row.longitude !== undefined ? Number(row.longitude) : undefined,
           available: row.available,
           image_url: row.image_url,
           created_at: row.created_at,
@@ -125,7 +148,7 @@ export async function getMachinery(): Promise<{
 /**
  * Fetch reservations for a farmer or machinery provider
  */
-export async function getMachineryBookings(farmerId?: string): Promise<{
+export async function getMachineryBookings(farmerId?: string, providerId?: string): Promise<{
   data: MachineryBooking[];
   error: Error | null;
   isConfigured: boolean;
@@ -151,6 +174,8 @@ export async function getMachineryBookings(farmerId?: string): Promise<{
             type,
             price_per_hour,
             location,
+            latitude,
+            longitude,
             image_url,
             profiles:provider_id (
               id,
@@ -173,7 +198,7 @@ export async function getMachineryBookings(farmerId?: string): Promise<{
       }
 
       if (data && data.length > 0) {
-        const mapped: MachineryBooking[] = (data as unknown as RawMachineryBookingRow[]).map((row) => ({
+        let mapped: MachineryBooking[] = (data as unknown as RawMachineryBookingRow[]).map((row) => ({
           id: row.id,
           farmer_id: row.farmer_id,
           machinery_id: row.machinery_id,
@@ -192,6 +217,8 @@ export async function getMachineryBookings(farmerId?: string): Promise<{
             description: '',
             price_per_hour: Number(row.machinery.price_per_hour),
             location: row.machinery.location,
+            latitude: row.machinery.latitude !== null && row.machinery.latitude !== undefined ? Number(row.machinery.latitude) : undefined,
+            longitude: row.machinery.longitude !== null && row.machinery.longitude !== undefined ? Number(row.machinery.longitude) : undefined,
             available: true,
             image_url: row.machinery.image_url,
             created_at: row.created_at,
@@ -207,6 +234,11 @@ export async function getMachineryBookings(farmerId?: string): Promise<{
             } : undefined
           } : undefined
         }));
+
+        if (providerId) {
+          mapped = mapped.filter((b) => b.machinery?.provider_id === providerId);
+        }
+
         return { data: mapped, error: null, isConfigured: true };
       }
     } catch (err) {
@@ -250,7 +282,6 @@ export async function createMachineryBooking(payload: {
 
       if (error) {
         console.error('Supabase createMachineryBooking error:', error);
-        // Return local representation
         const fallbackBooking: MachineryBooking = {
           id: `bk-${Date.now()}`,
           farmer_id: payload.farmerId,
@@ -273,7 +304,6 @@ export async function createMachineryBooking(payload: {
     }
   }
 
-  // Fallback offline object
   const localBooking: MachineryBooking = {
     id: `bk-${Date.now()}`,
     farmer_id: payload.farmerId,
@@ -290,9 +320,12 @@ export async function createMachineryBooking(payload: {
 }
 
 /**
- * Cancel an existing reservation
+ * Update the lifecycle status of a machinery reservation
  */
-export async function cancelMachineryBooking(bookingId: string): Promise<{
+export async function updateBookingStatus(
+  bookingId: string,
+  status: BookingStatus
+): Promise<{
   success: boolean;
   error: Error | null;
 }> {
@@ -300,19 +333,199 @@ export async function cancelMachineryBooking(bookingId: string): Promise<{
     try {
       const { error } = await supabase
         .from('machinery_bookings')
-        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .update({ status, updated_at: new Date().toISOString() })
         .eq('id', bookingId);
 
       if (error) {
-        console.error('Supabase cancelMachineryBooking error:', error);
+        console.error('Supabase updateBookingStatus error:', error);
         return { success: false, error: new Error(error.message) };
       }
       return { success: true, error: null };
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to cancel booking');
+      const error = err instanceof Error ? err : new Error('Failed to update booking status');
       return { success: false, error };
     }
   }
 
   return { success: true, error: null };
 }
+
+/**
+ * Cancel an existing reservation
+ */
+export async function cancelMachineryBooking(bookingId: string): Promise<{
+  success: boolean;
+  error: Error | null;
+}> {
+  return updateBookingStatus(bookingId, 'cancelled');
+}
+
+/**
+ * Save / Upsert latest real-time GPS coordinates of active machinery provider
+ */
+export async function saveMachineryLocation(payload: {
+  bookingId: string;
+  providerId: string;
+  latitude: number;
+  longitude: number;
+  speed?: number | null;
+  heading?: number | null;
+  accuracy?: number | null;
+}): Promise<{
+  data: MachineryTracking | null;
+  error: Error | null;
+}> {
+  const record = {
+    booking_id: payload.bookingId,
+    provider_id: payload.providerId,
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+    speed: payload.speed ?? null,
+    heading: payload.heading ?? null,
+    accuracy: payload.accuracy ?? null,
+    recorded_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('machinery_tracking')
+        .upsert(record, { onConflict: 'booking_id' })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase saveMachineryLocation error:', error);
+        const fallback: MachineryTracking = {
+          id: `trk-${Date.now()}`,
+          ...record
+        };
+        return { data: fallback, error: null };
+      }
+
+      return { data: data as MachineryTracking, error: null };
+    } catch (err) {
+      console.warn('saveMachineryLocation exception, using local state:', err);
+    }
+  }
+
+  const localTracking: MachineryTracking = {
+    id: `trk-${Date.now()}`,
+    ...record
+  };
+  return { data: localTracking, error: null };
+}
+
+/**
+ * Fetch latest GPS location for an active booking
+ */
+export async function getMachineryLocation(bookingId: string): Promise<{
+  data: MachineryTracking | null;
+  error: Error | null;
+}> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('machinery_tracking')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('recorded_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Supabase getMachineryLocation error:', error);
+        return { data: null, error: new Error(error.message) };
+      }
+
+      return { data: (data as MachineryTracking) || null, error: null };
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to fetch machinery location');
+      return { data: null, error };
+    }
+  }
+
+  return { data: null, error: null };
+}
+
+/**
+ * Real-time subscription to active machinery tracking updates
+ * Uses Supabase Realtime channel postgres_changes.
+ * Falls back to 10s interval polling if Realtime is unconfigured or disconnects.
+ * Returns an unsubscribe callback for clean component unmounting.
+ */
+export function subscribeToMachineryTracking(
+  bookingId: string,
+  onUpdate: (location: MachineryTracking) => void
+): () => void {
+  let isCleanedUp = false;
+  let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+  // 1. Initial fetch
+  getMachineryLocation(bookingId).then(({ data }) => {
+    if (data && !isCleanedUp) {
+      onUpdate(data);
+    }
+  });
+
+  // 2. Supabase Realtime channel subscription
+  let channel: RealtimeChannel | null = null;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      channel = supabase
+        .channel(`tracking:${bookingId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'machinery_tracking',
+            filter: `booking_id=eq.${bookingId}`
+          },
+          (payload) => {
+            if (!isCleanedUp && payload.new) {
+              onUpdate(payload.new as MachineryTracking);
+            }
+          }
+        )
+        .subscribe((status) => {
+          // If Realtime is unavailable or timed out, start fallback polling
+          if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
+            startFallbackPolling();
+          }
+        });
+    } catch (err) {
+      console.warn('Realtime subscription failed, engaging fallback polling:', err);
+      startFallbackPolling();
+    }
+  } else {
+    startFallbackPolling();
+  }
+
+  function startFallbackPolling() {
+    if (pollInterval || isCleanedUp) return;
+    pollInterval = setInterval(async () => {
+      if (isCleanedUp) return;
+      const { data } = await getMachineryLocation(bookingId);
+      if (data && !isCleanedUp) {
+        onUpdate(data);
+      }
+    }, 10000);
+  }
+
+  // Return cleanup function
+  return () => {
+    isCleanedUp = true;
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+    if (channel && supabase) {
+      supabase.removeChannel(channel);
+      channel = null;
+    }
+  };
+}
+

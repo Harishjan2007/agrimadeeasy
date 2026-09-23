@@ -19,6 +19,7 @@ import { Dealer, Crop, CropPrice } from '@/types';
 import { getDealers } from '@/lib/supabase/dealers';
 import { getCropPrices, getCrops } from '@/lib/supabase/crops';
 import DealerCard from '@/components/dealers/DealerCard';
+import { PageHeader, EmptyState } from '@/components/ui';
 import { useLanguage } from '@/i18n';
 
 export default function DealersPageClient() {
@@ -157,35 +158,38 @@ export default function DealersPageClient() {
 
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
-      {/* Hero Header */}
-      <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-agri-950 text-white py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold uppercase tracking-wider mb-3 border border-amber-500/30">
-                <Store className="w-3.5 h-3.5" />
-                {translations.dealers.directBuyerBadge}
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                {translations.dealers.title}
-              </h1>
-              <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-2xl">
-                {translations.dealers.subtitle}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 flex-wrap">
-              <Link
-                href="/crop-price"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs transition-all"
-              >
-                <TrendingUp className="w-4 h-4 text-slate-950" />
-                <span>{isTa ? 'மண்டி விலை ஒப்பீடு' : 'Check Mandi Benchmarks'}</span>
-              </Link>
-            </div>
+      {/* Modern Page Header */}
+      <PageHeader
+        title={translations.dealers.title}
+        subtitle={translations.dealers.subtitle}
+        badge={translations.dealers.directBuyerBadge}
+        icon={Store}
+        iconColor="text-amber-700"
+        iconBg="bg-amber-50 border-amber-200"
+        stats={[
+          { label: isTa ? 'வியபாரிகள்' : 'Total Buyers', value: dealers.length },
+          { label: isTa ? 'மாவட்டங்கள்' : 'Districts', value: availableLocations.length },
+          { label: isTa ? 'கொள்முதல் பயிர்கள்' : 'Crops Bought', value: availableCrops.length },
+        ]}
+        actions={
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Link
+              href="/map?category=dealers"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition-all"
+            >
+              <MapPin className="w-4 h-4 text-agri-600" />
+              <span>{isTa ? 'வரைபடத்தில் காண்க' : 'View on Map'}</span>
+            </Link>
+            <Link
+              href="/crop-price"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition-all"
+            >
+              <TrendingUp className="w-4 h-4 text-white" />
+              <span>{isTa ? 'மண்டி விலை ஒப்பீடு' : 'Check Mandi Benchmarks'}</span>
+            </Link>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         
@@ -393,17 +397,12 @@ export default function DealersPageClient() {
             </div>
           ) : filteredDealers.length === 0 ? (
             /* Filter Empty State */
-            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
-              <Store className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-slate-800">{translations.dealers.noDealersForFilter}</h3>
-              <p className="text-xs text-slate-500 mt-1">{translations.dealers.noDealersDescription}</p>
-              <button
-                onClick={handleClearFilters}
-                className="mt-4 btn-secondary text-xs py-2 px-4"
-              >
-                {translations.dealers.clearFilters}
-              </button>
-            </div>
+            <EmptyState
+              title={translations.dealers.noDealersForFilter}
+              description={translations.dealers.noDealersDescription}
+              actionLabel={translations.dealers.clearFilters}
+              onAction={handleClearFilters}
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredDealers.map((dealer) => (

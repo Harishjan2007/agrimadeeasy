@@ -9,7 +9,8 @@ import {
   Tractor, 
   ShoppingBag, 
   Landmark, 
-  ArrowRight 
+  ArrowRight,
+  MapPin
 } from 'lucide-react';
 import { useLanguage } from '@/i18n';
 
@@ -18,6 +19,17 @@ export default function QuickServices() {
   const isTa = language === 'ta';
 
   const services = [
+    {
+      title: translations.nav.map || (isTa ? 'விவசாய வரைபடம்' : 'Agri Map & Discovery'),
+      description: isTa 
+        ? 'அருகிலுள்ள வியாபாரிகள், வாடகை இயந்திரங்கள் மற்றும் மண்டிகளை நேரடி தூரத்துடன் வரைபடத்தில் கண்டறியவும்.'
+        : 'Find nearby crop buyers, rental tractors, and mandis with real-time distance on an interactive map.',
+      href: '/map',
+      icon: MapPin,
+      badge: isTa ? 'நேரடி வரைபடம்' : 'Live Discovery',
+      iconBg: 'bg-emerald-100 text-emerald-800',
+      border: 'hover:border-emerald-400'
+    },
     {
       title: translations.nav.cropPrices,
       description: isTa 
