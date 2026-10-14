@@ -134,6 +134,7 @@ export const ta: Translations = {
     mandiLocation: 'மண்டி அமைவிடம்',
 
     // Phase 3: Market Comparison & Selling Decision Support
+    liveMandiTab: 'நேரடி மண்டி அறிக்கை (data.gov.in)',
     compareTab: 'சந்தை விலைகளை ஒப்பிடுக',
     directoryTab: 'அனைத்து மண்டி விலைகள் பட்டியல்',
     compareBadge: 'முடிவு ஆதரவு • சந்தை விலை ஒப்பீடு',
@@ -175,6 +176,7 @@ export const ta: Translations = {
     subtitle: 'அறுவடை விற்பனையைத் திட்டமிட உதவும் 15-30 நாட்கள் முன்னறிவிப்பு மற்றும் விலை போக்குகள்.',
     searchPlaceholder: 'கணிக்கப்பட்ட பயிர் அல்லது மண்டியைத் தேடவும்...',
     currentPrice: 'தற்போதைய விலை',
+    predictedPrice: 'கணிக்கப்பட்ட விலை',
     predictedRange: 'எதிர்பார்க்கப்படும் விலை வரம்பு',
     predictedMin: 'குறைந்தபட்ச எதிர்பார்ப்பு',
     predictedMax: 'அதிகபட்ச எதிர்பார்ப்பு',

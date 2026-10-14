@@ -21,3 +21,28 @@ export const supabase = (() => {
     return null;
   }
 })();
+
+/**
+ * Safely formats Supabase / PostgREST errors into readable string descriptions,
+ * preventing `{}` serialization in Next.js Turbopack console and error overlays.
+ */
+export function formatSupabaseError(error: unknown): string {
+  if (!error) return 'Unknown error';
+  if (typeof error === 'string') return error;
+  if (typeof error === 'object') {
+    const err = error as Record<string, unknown>;
+    const parts = [
+      err.message ? `message: ${err.message}` : null,
+      err.code ? `code: ${err.code}` : null,
+      err.details ? `details: ${err.details}` : null,
+      err.hint ? `hint: ${err.hint}` : null
+    ].filter(Boolean);
+    if (parts.length > 0) return parts.join(', ');
+    try {
+      const str = JSON.stringify(error);
+      if (str && str !== '{}') return str;
+    } catch {}
+  }
+  return String(error);
+}
+

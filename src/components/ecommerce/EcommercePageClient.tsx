@@ -121,15 +121,7 @@ export default function EcommercePageClient() {
         icon={activeTab === 'inputs' ? ShoppingBag : Sprout}
         iconColor={activeTab === 'inputs' ? 'text-purple-700' : 'text-emerald-700'}
         iconBg={activeTab === 'inputs' ? 'bg-purple-50 border-purple-200' : 'bg-emerald-50 border-emerald-200'}
-        stats={
-          activeTab === 'inputs'
-            ? [
-                { label: isTa ? 'பொருட்கள்' : 'Products', value: products.length },
-                { label: isTa ? 'கூடை' : 'Cart Items', value: cartCount },
-                { label: isTa ? 'மதிப்பு' : 'Cart Value', value: `₹${cartTotal.toLocaleString('en-IN')}` }
-              ]
-            : undefined
-        }
+
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {activeTab === 'inputs' && (

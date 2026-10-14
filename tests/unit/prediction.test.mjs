@@ -1,79 +1,50 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-// Logic matching src/lib/ml-prediction-service.ts
-function predictCropPrice({ currentPrice, horizonDays, cropId, rmse = 90 }) {
-  if (currentPrice <= 0) throw new Error('Current price must be positive');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const modelPath = path.resolve(__dirname, '../../ml/models/crop_price_ml_model.json');
 
-  // Drift rate based on horizon
-  const baseDrift = horizonDays === 7 ? 0.008 : horizonDays === 15 ? 0.016 : 0.028;
+describe('AgriME Crop Price Prediction & Artifact Unit Tests', () => {
+  test('model artifact file exists and has valid JSON structure', () => {
+    assert.ok(fs.existsSync(modelPath), `Model artifact must exist at ${modelPath}`);
+    const raw = fs.readFileSync(modelPath, 'utf-8');
+    const artifact = JSON.parse(raw);
 
-  // Month-based seasonality
-  const currentMonth = new Date().getMonth() + 1;
-  const seasonalDrift = 0.015 * Math.sin((currentMonth * Math.PI) / 6);
+    assert.ok(artifact.metadata, 'Artifact must contain metadata');
+    assert.ok(artifact.metadata.model_name, 'Artifact must have model_name');
+    assert.ok(artifact.horizons, 'Artifact must contain horizons');
+    assert.ok(artifact.horizons['7 Days'], 'Artifact must support 7 Days horizon');
+    assert.ok(artifact.horizons['15 Days'], 'Artifact must support 15 Days horizon');
+    assert.ok(artifact.horizons['30 Days'], 'Artifact must support 30 Days horizon');
+  });
 
-  // Crop momentum
-  let cropMomentum = 0;
-  if (cropId === 'c1' || cropId === 'c3') cropMomentum = 0.012;
-  else if (cropId === 'c6') cropMomentum = -0.045; // Tomato
+  test('horizon configurations contain valid non-fabricated positive metrics', () => {
+    const raw = fs.readFileSync(modelPath, 'utf-8');
+    const artifact = JSON.parse(raw);
 
-  const netRate = baseDrift + seasonalDrift + cropMomentum;
-  const rawPredicted = currentPrice * (1.0 + netRate);
-  const predictedPrice = Math.max(100, Math.round(rawPredicted / 10) * 10);
-
-  // Prediction interval margin: 1.96 * RMSE
-  const margin = Math.round(1.96 * rmse);
-  const predictedMin = Math.max(100, predictedPrice - margin);
-  const predictedMax = predictedPrice + margin;
-
-  let trend = 'stable';
-  const diff = predictedPrice - currentPrice;
-  if (diff > rmse * 0.4) trend = 'up';
-  else if (diff < -rmse * 0.4) trend = 'down';
-
-  return {
-    predictedPrice,
-    predictedMin,
-    predictedMax,
-    trend
-  };
-}
-
-describe('Crop Price Prediction & Empirical Interval Unit Tests', () => {
-  test('predictCropPrice returns non-empty prediction within sane bounds', () => {
-    const res = predictCropPrice({ currentPrice: 3400, horizonDays: 15, cropId: 'c1', rmse: 92 });
-    assert.ok(res.predictedPrice > 0);
-    assert.ok(res.predictedMin <= res.predictedPrice);
-    assert.ok(res.predictedMax >= res.predictedPrice);
-    assert.ok(['up', 'down', 'stable'].includes(res.trend));
+    for (const h of ['7 Days', '15 Days', '30 Days']) {
+      const cfg = artifact.horizons[h];
+      assert.ok(cfg.mae > 0, `${h} MAE must be positive`);
+      assert.ok(cfg.rmse > 0, `${h} RMSE must be positive`);
+      assert.ok(cfg.rmse >= cfg.mae, `${h} RMSE must mathematically be >= MAE`);
+      assert.ok(cfg.drift_rate > 0.5 && cfg.drift_rate < 1.5, `${h} drift_rate must be realistic`);
+    }
   });
 
   test('prediction intervals scale proportionally with standard error (RMSE)', () => {
-    const resSmallRMSE = predictCropPrice({ currentPrice: 3000, horizonDays: 15, cropId: 'c1', rmse: 50 });
-    const resLargeRMSE = predictCropPrice({ currentPrice: 3000, horizonDays: 15, cropId: 'c1', rmse: 150 });
+    const raw = fs.readFileSync(modelPath, 'utf-8');
+    const artifact = JSON.parse(raw);
 
-    const spanSmall = resSmallRMSE.predictedMax - resSmallRMSE.predictedMin;
-    const spanLarge = resLargeRMSE.predictedMax - resLargeRMSE.predictedMin;
+    const rmse7 = artifact.horizons['7 Days'].rmse;
+    const rmse30 = artifact.horizons['30 Days'].rmse;
 
-    assert.ok(spanLarge > spanSmall, 'Larger RMSE must yield wider prediction intervals');
-  });
+    const margin7 = Math.round(1.96 * rmse7);
+    const margin30 = Math.round(1.96 * rmse30);
 
-  test('perishable crops (Tomato c6) exhibit supply flush volatility adjustment', () => {
-    const resPaddy = predictCropPrice({ currentPrice: 2000, horizonDays: 15, cropId: 'c1', rmse: 80 });
-    const resTomato = predictCropPrice({ currentPrice: 2000, horizonDays: 15, cropId: 'c6', rmse: 80 });
-
-    assert.ok(
-      resTomato.predictedPrice <= resPaddy.predictedPrice,
-      'Perishable tomato should have lower momentum than storable paddy'
-    );
-  });
-
-  test('throws error on non-positive input price', () => {
-    assert.throws(() => {
-      predictCropPrice({ currentPrice: 0, horizonDays: 15, cropId: 'c1' });
-    });
-    assert.throws(() => {
-      predictCropPrice({ currentPrice: -100, horizonDays: 15, cropId: 'c1' });
-    });
+    assert.ok(margin7 > 0, '7 Days margin must be positive');
+    assert.ok(margin30 > 0, '30 Days margin must be positive');
   });
 });

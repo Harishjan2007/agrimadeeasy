@@ -281,7 +281,7 @@ export default function GlobalSearch({
           ) : (
             <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100">
               {results.map((item) => {
-                const ItemIcon = item.icon;
+                const IconComponent = item.icon;
                 return (
                   <Link
                     key={item.id}
@@ -290,38 +290,36 @@ export default function GlobalSearch({
                       setIsOpen(false);
                       setQuery('');
                     }}
-                    className="p-3.5 hover:bg-slate-50 flex items-center justify-between gap-3 transition-colors group"
+                    className="p-3 sm:p-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${item.iconBg}`}
-                      >
-                        <ItemIcon className="w-4 h-4" />
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${item.iconBg}`}>
+                        <IconComponent className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm truncate group-hover:text-agri-700 transition-colors">
+                          <span className="font-bold text-slate-900 text-xs sm:text-sm group-hover:text-emerald-700 transition-colors truncate">
                             {item.title}
-                          </h4>
-                          <span className="text-[10px] font-bold uppercase px-2 py-0.2 rounded-full bg-slate-100 text-slate-700 shrink-0">
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 uppercase shrink-0">
                             {item.badge}
                           </span>
                         </div>
                         {item.subtitle && (
-                          <p className="text-[11px] text-slate-500 truncate mt-0.5 max-w-sm">
+                          <p className="text-[11px] text-slate-500 truncate mt-0.5">
                             {item.subtitle}
                           </p>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0 ml-3">
                       {item.priceTag && (
-                        <span className="text-xs font-black text-slate-900 bg-slate-100 px-2 py-1 rounded-lg">
+                        <span className="font-black text-xs sm:text-sm text-slate-900 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
                           {item.priceTag}
                         </span>
                       )}
-                      <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-700 transition-colors" />
+                      <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </Link>
                 );

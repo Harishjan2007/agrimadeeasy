@@ -166,11 +166,6 @@ export default function DealersPageClient() {
         icon={Store}
         iconColor="text-amber-700"
         iconBg="bg-amber-50 border-amber-200"
-        stats={[
-          { label: isTa ? 'வியபாரிகள்' : 'Total Buyers', value: dealers.length },
-          { label: isTa ? 'மாவட்டங்கள்' : 'Districts', value: availableLocations.length },
-          { label: isTa ? 'கொள்முதல் பயிர்கள்' : 'Crops Bought', value: availableCrops.length },
-        ]}
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
             <Link

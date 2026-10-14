@@ -24,13 +24,14 @@
 import { PriceSourceStatus } from '@/types';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
-export const AGMARKNET_RESOURCE_ID = '9ef84268-d588-465a-a308-a864a43d0070';
+export const AGMARKNET_RESOURCE_ID = '35985678-0d79-46b4-9ed6-6f13308a1d24';
 export const AGMARKNET_BASE_URL = `https://api.data.gov.in/resource/${AGMARKNET_RESOURCE_ID}`;
 
 export interface NormalizedCropPriceRecord {
   commodity: string;
   normalized_crop_name: string;
   variety: string;
+  grade?: string;
   market: string;
   district: string;
   state: string;
@@ -123,6 +124,7 @@ export function validateAndNormalizeRecord(raw: any): NormalizedCropPriceRecord 
   const rawState = String(raw.state || raw.State || 'Tamil Nadu').trim();
   const rawDistrict = String(raw.district || raw.District || '').trim();
   const rawVariety = String(raw.variety || raw.Variety || 'General').trim();
+  const rawGrade = String(raw.grade || raw.Grade || '').trim();
   const rawDate = String(raw.arrival_date || raw.Arrival_Date || new Date().toISOString().split('T')[0]).trim();
 
   if (!rawCommodity || !rawMarket) {
@@ -174,6 +176,7 @@ export function validateAndNormalizeRecord(raw: any): NormalizedCropPriceRecord 
     commodity: rawCommodity,
     normalized_crop_name: normalizeCropName(rawCommodity),
     variety: rawVariety,
+    grade: rawGrade || undefined,
     market: rawMarket,
     district: rawDistrict,
     state: rawState,
@@ -218,7 +221,7 @@ export async function ingestGovernmentCropPrices(options?: {
   limit?: number;
 }): Promise<IngestionResult> {
   // 1. Strict server-side credential check
-  const apiKey = process.env.DATA_GOV_IN_API_KEY;
+  const apiKey = process.env.DATA_GOV_IN_API_KEY?.trim();
 
   if (!apiKey) {
     return {
@@ -237,7 +240,7 @@ export async function ingestGovernmentCropPrices(options?: {
 
   const state = options?.state || 'Tamil Nadu';
   const limit = options?.limit || 100;
-  const url = `${AGMARKNET_BASE_URL}?api-key=${encodeURIComponent(apiKey)}&format=json&limit=${limit}&filters[state]=${encodeURIComponent(state)}`;
+  const url = `${AGMARKNET_BASE_URL}?api-key=${encodeURIComponent(apiKey)}&format=json&limit=${limit}&filters[State]=${encodeURIComponent(state)}&sort[Arrival_Date]=desc`;
 
   try {
     const res = await fetch(url, {

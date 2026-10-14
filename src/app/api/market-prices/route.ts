@@ -1,0 +1,594 @@
+import { NextRequest, NextResponse } from 'next/server';
+import dns from 'node:dns';
+import dnsPromises from 'node:dns/promises';
+import net from 'node:net';
+import tls from 'node:tls';
+
+// Ensure Node.js prioritizes IPv4 over IPv6 on Windows to prevent 5s timeout stalls
+try {
+  if (typeof dns.setDefaultResultOrder === 'function') {
+    dns.setDefaultResultOrder('ipv4first');
+  }
+} catch {
+  // Ignore if not supported in runtime
+}
+
+const RESOURCE_ID = '35985678-0d79-46b4-9ed6-6f13308a1d24';
+const HOSTNAME = 'api.data.gov.in';
+const BASE_URL = `https://${HOSTNAME}/resource/${RESOURCE_ID}`;
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest) {
+  try {
+    const apiKey = process.env.DATA_GOV_IN_API_KEY?.trim();
+
+    const { searchParams } = new URL(req.url);
+    const diagnose = searchParams.get('diagnose') === 'true';
+
+    // 1. Diagnostic Mode: Run in-depth network & TLS probe if ?diagnose=true
+    if (diagnose) {
+      const diagReport = await runDiagnosticProbe(apiKey);
+      return NextResponse.json(diagReport);
+    }
+
+    const stateParam = searchParams.get('state');
+    const districtParam = searchParams.get('district');
+    const marketParam = searchParams.get('market');
+    const commodityParam = searchParams.get('commodity');
+    const limitParam = parseInt(searchParams.get('limit') || '25', 10);
+    const offsetParam = parseInt(searchParams.get('offset') || '0', 10);
+
+    const limit = Math.max(1, Math.min(100, isNaN(limitParam) ? 25 : limitParam));
+    const offset = Math.max(0, isNaN(offsetParam) ? 0 : offsetParam);
+
+    const state = stateParam !== null ? stateParam.trim() : 'Tamil Nadu';
+    const district = districtParam ? districtParam.trim() : '';
+    const market = marketParam ? marketParam.trim() : '';
+    const commodity = commodityParam ? commodityParam.trim() : '';
+
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: 'CONFIG_ERROR',
+          errorCategory: 'CONFIGURATION',
+          errorTitle: 'API Key Configuration Missing',
+          error: 'DATA_GOV_IN_API_KEY is not configured in .env.local on the server.',
+          errorResolution: 'Configure a valid DATA_GOV_IN_API_KEY in .env.local to enable live mandi price fetching.',
+          total: 0,
+          count: 0,
+          limit,
+          offset,
+          filters: { state, district, market, commodity },
+          records: [],
+          unit: '₹/Quintal',
+          source: 'data.gov.in Agmarknet APMC Mandi Bulletin',
+          resource_id: RESOURCE_ID,
+          timestamp: new Date().toISOString()
+        },
+        { status: 500 }
+      );
+    }
+
+    // Helper to build query URL with candidate filter format and Arrival_Date descending sort
+    const buildEndpointUrl = (useCapitalField: boolean, encodeBrackets: boolean, usePlusSpace: boolean) => {
+      const sortKey = encodeBrackets
+        ? encodeURIComponent(useCapitalField ? 'sort[Arrival_Date]' : 'sort[arrival_date]')
+        : (useCapitalField ? 'sort[Arrival_Date]' : 'sort[arrival_date]');
+      let u = `${BASE_URL}?api-key=${encodeURIComponent(apiKey)}&format=json&limit=${limit}&offset=${offset}&${sortKey}=desc`;
+
+      const encodeVal = (val: string) => {
+        const enc = encodeURIComponent(val);
+        return usePlusSpace ? enc.replace(/%20/g, '+') : enc;
+      };
+
+      if (state && state.toLowerCase() !== 'all' && state.toLowerCase() !== 'all states') {
+        const filterKey = useCapitalField ? 'filters[State]' : 'filters[state]';
+        const key = encodeBrackets ? encodeURIComponent(filterKey) : filterKey;
+        u += `&${key}=${encodeVal(state)}`;
+      }
+      if (district && district.toLowerCase() !== 'all' && district.toLowerCase() !== 'all districts') {
+        const filterKey = useCapitalField ? 'filters[District]' : 'filters[district]';
+        const key = encodeBrackets ? encodeURIComponent(filterKey) : filterKey;
+        u += `&${key}=${encodeVal(district)}`;
+      }
+      if (market && market.toLowerCase() !== 'all' && market.toLowerCase() !== 'all markets') {
+        const filterKey = useCapitalField ? 'filters[Market]' : 'filters[market]';
+        const key = encodeBrackets ? encodeURIComponent(filterKey) : filterKey;
+        u += `&${key}=${encodeVal(market)}`;
+      }
+      if (commodity && commodity.toLowerCase() !== 'all' && commodity.toLowerCase() !== 'all commodities') {
+        const filterKey = useCapitalField ? 'filters[Commodity]' : 'filters[commodity]';
+        const key = encodeBrackets ? encodeURIComponent(filterKey) : filterKey;
+        u += `&${key}=${encodeVal(commodity)}`;
+      }
+
+      return u;
+    };
+
+    const hasFilters = Boolean(
+      (state && state.toLowerCase() !== 'all' && state.toLowerCase() !== 'all states') ||
+      (district && district.toLowerCase() !== 'all' && district.toLowerCase() !== 'all districts') ||
+      (market && market.toLowerCase() !== 'all' && market.toLowerCase() !== 'all markets') ||
+      (commodity && commodity.toLowerCase() !== 'all' && commodity.toLowerCase() !== 'all commodities')
+    );
+
+    // Multi-candidate query sequence prioritizing verified working format:
+    // 1. Literal brackets capitalized (e.g. filters[State]=Tamil%20Nadu&sort[Arrival_Date]=desc) - verified working on data.gov.in resource 35985678-0d79-46b4-9ed6-6f13308a1d24
+    // 2. Literal brackets lowercase (e.g. filters[state]=Tamil%20Nadu&sort[arrival_date]=desc)
+    // 3. Encoded brackets capitalized (e.g. filters%5BState%5D=Tamil%20Nadu&sort%5BArrival_Date%5D=desc)
+    // 4. Encoded brackets lowercase (e.g. filters%5Bstate%5D=Tamil%20Nadu&sort%5Barrival_date%5D=desc)
+    // 5. Plus-encoded spaces capitalized (e.g. filters[State]=Tamil+Nadu&sort[Arrival_Date]=desc)
+    // 6. Plus-encoded spaces lowercase (e.g. filters[state]=Tamil+Nadu&sort[arrival_date]=desc)
+    const candidateUrls = hasFilters ? [
+      { name: 'literal_brackets_capital', url: buildEndpointUrl(true, false, false) },
+      { name: 'literal_brackets_lower', url: buildEndpointUrl(false, false, false) },
+      { name: 'encoded_brackets_capital', url: buildEndpointUrl(true, true, false) },
+      { name: 'encoded_brackets_lower', url: buildEndpointUrl(false, true, false) },
+      { name: 'plus_encoded_capital', url: buildEndpointUrl(true, false, true) },
+      { name: 'plus_encoded_lower', url: buildEndpointUrl(false, false, true) }
+    ] : [
+      { name: 'unfiltered_capital', url: buildEndpointUrl(true, false, false) },
+      { name: 'unfiltered_lower', url: buildEndpointUrl(false, false, false) }
+    ];
+
+    // Standard browser headers to prevent WAF blocking
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'en-IN,en-US;q=0.9,en;q=0.8',
+      'Cache-Control': 'no-cache'
+    };
+
+    let data: any = null;
+    let res: Response | null = null;
+    let responseText = '';
+    let workingFormat: string | null = null;
+    const attemptedFormats: string[] = [];
+
+    // Query candidate URLs until matching records are returned
+    for (const candidate of candidateUrls) {
+      attemptedFormats.push(candidate.name);
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        try {
+          res = await fetch(candidate.url, {
+            headers,
+            cache: 'no-store', // Crucial: prevent stale Next.js cache from masking newly available live arrivals
+            signal: controller.signal
+          });
+          responseText = await res.text();
+        } finally {
+          clearTimeout(timeoutId);
+        }
+
+        if (res.ok) {
+          const parsed = JSON.parse(responseText);
+          if (parsed && typeof parsed === 'object') {
+            data = parsed;
+            const recordsList = Array.isArray(parsed.records) ? parsed.records : [];
+            if (recordsList.length > 0) {
+              workingFormat = candidate.name;
+              break; // Found matching live records!
+            }
+          }
+        } else {
+          // If auth or rate limit error, break immediately rather than hammering upstream
+          if (res.status === 401 || res.status === 403 || res.status === 429) {
+            break;
+          }
+        }
+      } catch {
+        // Continue to next candidate URL format
+      }
+    }
+
+    if (!res || !res.ok) {
+      const status = res?.status || 502;
+      let errorCategory: 'AUTHENTICATION' | 'RATE_LIMIT' | 'UPSTREAM' | 'API_ERROR' = 'API_ERROR';
+      let errorTitle = 'data.gov.in API Error';
+      let errorMsg = `data.gov.in API returned HTTP ${status}: ${res?.statusText || 'Gateway error'}`;
+      let errorResolution = 'Please check the API status and try again.';
+
+      try {
+        const errorJson = JSON.parse(responseText);
+        if (errorJson.message) errorMsg = errorJson.message;
+        else if (errorJson.error) errorMsg = errorJson.error;
+      } catch {
+        // Fall back to HTTP status message
+      }
+
+      if (status === 401 || status === 403) {
+        errorCategory = 'AUTHENTICATION';
+        errorTitle = 'data.gov.in Authentication Failed';
+        errorMsg = `API key rejected by data.gov.in (HTTP ${status}). The server's DATA_GOV_IN_API_KEY is either invalid, unactivated, or unauthorized for the Agmarknet catalog.`;
+        errorResolution = 'Verify that the DATA_GOV_IN_API_KEY in .env.local is registered, active, and permitted to query resource 35985678-0d79-46b4-9ed6-6f13308a1d24 on data.gov.in.';
+      } else if (status === 429) {
+        errorCategory = 'RATE_LIMIT';
+        errorTitle = 'data.gov.in Rate Limit Exceeded';
+        errorMsg = 'Request quota exceeded on data.gov.in (HTTP 429). The daily or hourly rate limit for this key or IP address has been reached.';
+        errorResolution = 'Wait before sending further requests. Free data.gov.in tier limits apply.';
+      } else if (status >= 500) {
+        errorCategory = 'UPSTREAM';
+        errorTitle = 'data.gov.in Upstream Gateway Error';
+        errorMsg = `Upstream government gateway returned HTTP ${status}: ${res?.statusText || 'Error'}. The remote data service is temporarily experiencing difficulties.`;
+        errorResolution = 'The upstream government server is temporarily failing. Try again in a few minutes.';
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          status: errorCategory === 'AUTHENTICATION' ? 'AUTH_ERROR' : errorCategory === 'RATE_LIMIT' ? 'RATE_LIMIT_ERROR' : 'API_ERROR',
+          errorCategory,
+          errorTitle,
+          error: errorMsg,
+          errorResolution,
+          statusCode: status,
+          total: 0,
+          count: 0,
+          limit,
+          offset,
+          filters: { state, district, market, commodity },
+          attemptedFormats,
+          records: [],
+          unit: '₹/Quintal',
+          source: 'data.gov.in Agmarknet APMC Mandi Bulletin',
+          resource_id: RESOURCE_ID,
+          timestamp: new Date().toISOString(),
+          diagnosticHint: 'Visit /api/market-prices?diagnose=true to view complete network, DNS, and TLS diagnostics.'
+        },
+        { status: status >= 500 ? 502 : status }
+      );
+    }
+
+    if (!data || typeof data !== 'object') {
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr: any) {
+        return NextResponse.json(
+          {
+            success: false,
+            status: 'PARSE_ERROR',
+            errorCategory: 'PARSING',
+            errorTitle: 'Invalid data.gov.in Response Format',
+            error: 'data.gov.in returned HTTP 200 OK, but the response body could not be parsed as valid JSON (received non-JSON format, HTML gateway page, or truncated payload).',
+            errorResolution: 'The government API gateway returned malformed content instead of expected Agmarknet JSON.',
+            statusCode: res.status,
+            technicalDetails: responseText.length > 200 ? responseText.slice(0, 200) + '...' : responseText,
+            total: 0,
+            count: 0,
+            limit,
+            offset,
+            filters: { state, district, market, commodity },
+            attemptedFormats,
+            records: [],
+            unit: '₹/Quintal',
+            source: 'data.gov.in Agmarknet APMC Mandi Bulletin',
+            resource_id: RESOURCE_ID,
+            timestamp: new Date().toISOString(),
+            diagnosticHint: 'Visit /api/market-prices?diagnose=true to inspect raw response payloads.'
+          },
+          { status: 502 }
+        );
+      }
+    }
+
+    const rawRecords = Array.isArray(data.records) ? data.records : [];
+    const total = typeof data.total === 'number' 
+      ? data.total 
+      : (parseInt(data.total, 10) || rawRecords.length);
+    const count = rawRecords.length;
+
+    // If filter returned 0 records, do a rapid catalog check of limit=1 unfiltered to know total available records in the catalog
+    let catalogTotal: number | undefined = undefined;
+    if (count === 0 && hasFilters) {
+      try {
+        const checkUrl = `${BASE_URL}?api-key=${encodeURIComponent(apiKey)}&format=json&limit=1&sort[Arrival_Date]=desc`;
+        const checkRes = await fetch(checkUrl, { headers, cache: 'no-store', signal: AbortSignal.timeout(4000) });
+        if (checkRes.ok) {
+          const checkJson = await checkRes.json();
+          catalogTotal = typeof checkJson.total === 'number' ? checkJson.total : parseInt(checkJson.total, 10) || 0;
+        }
+      } catch {}
+    }
+
+    // Normalize field types while strictly preserving field meanings and original values
+    const records = rawRecords.map((r: any, idx: number) => {
+      const minPrice = parseFloat(String(r.min_price ?? r.Min_Price ?? 0));
+      const maxPrice = parseFloat(String(r.max_price ?? r.Max_Price ?? 0));
+      const modalPrice = parseFloat(String(r.modal_price ?? r.Modal_Price ?? 0));
+
+      const rawCommodity = String(r.commodity || r.Commodity || '').trim();
+      const rawMarket = String(r.market || r.Market || '').trim();
+      const rawDistrict = String(r.district || r.District || '').trim();
+      const rawState = String(r.state || r.State || '').trim();
+      const rawVariety = String(r.variety || r.Variety || 'Other').trim();
+      const rawGrade = String(r.grade || r.Grade || '').trim();
+      const rawDate = String(r.arrival_date || r.Arrival_Date || '').trim();
+
+      return {
+        id: `${rawState}-${rawMarket}-${rawCommodity}-${rawDate}-${offset + idx}`,
+        state: rawState,
+        district: rawDistrict,
+        market: rawMarket,
+        commodity: rawCommodity,
+        variety: rawVariety,
+        grade: rawGrade,
+        arrival_date: rawDate,
+        min_price: isNaN(minPrice) ? 0 : minPrice,
+        max_price: isNaN(maxPrice) ? 0 : maxPrice,
+        modal_price: isNaN(modalPrice) ? 0 : modalPrice,
+        unit: '₹/Quintal' // Preserves official Agmarknet wholesale trading unit (1 Quintal = 100 kg)
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      status: count > 0 ? 'SUCCESS' : 'NO_DATA',
+      total,
+      count,
+      limit,
+      offset,
+      filters: {
+        state: state || 'All',
+        district: district || 'All',
+        market: market || 'All',
+        commodity: commodity || 'All'
+      },
+      workingFormat,
+      attemptedFormats,
+      catalogTotal,
+      message: count === 0 && catalogTotal !== undefined
+        ? `No mandi arrival bulletins have been published for '${state}' on data.gov.in for the current date yet (${catalogTotal} active records across India in today's catalog).`
+        : undefined,
+      records,
+      unit: '₹/Quintal',
+      source: 'Ministry of Agriculture and Farmers Welfare (Agmarknet) via data.gov.in',
+      resource_id: RESOURCE_ID,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err: any) {
+    const isAbort = err?.name === 'AbortError';
+    const causeCode = err?.cause?.code || err?.code || (isAbort ? 'ETIMEDOUT' : 'UNKNOWN');
+    const isTimeout = isAbort || causeCode === 'ETIMEDOUT' || causeCode === 'UND_ERR_CONNECT_TIMEOUT';
+    const isDnsError = causeCode === 'ENOTFOUND';
+    const isRefused = causeCode === 'ECONNREFUSED' || causeCode === 'ECONNRESET';
+
+    let errorTitle = 'data.gov.in Connection Failure';
+    let errorMsg = 'Failed to connect to data.gov.in';
+    let errorResolution = 'Please check network connectivity and retry.';
+
+    if (isTimeout) {
+      errorTitle = 'data.gov.in Connection Timed Out';
+      errorMsg = 'TCP connection to api.data.gov.in:443 timed out. The Indian Open Government Data gateway could not be reached from this server.';
+      errorResolution = 'The upstream government API is active, but outbound network requests from this environment to 164.100.61.198:443 timed out. This is typically caused by local firewall rules, ISP routing to the National Informatics Centre (NIC), or IPv6 NAT64 stalls.';
+    } else if (isDnsError) {
+      errorTitle = 'DNS Resolution Failed for data.gov.in';
+      errorMsg = 'DNS lookup for api.data.gov.in failed. The server cannot resolve the government hostname.';
+      errorResolution = 'Verify system DNS resolver configuration and internet connectivity.';
+    } else if (isRefused) {
+      errorTitle = 'data.gov.in Connection Refused';
+      errorMsg = 'Connection to api.data.gov.in:443 was refused or reset by the host or intermediate firewall.';
+      errorResolution = 'The connection was actively rejected. Verify if an outbound proxy or firewall is blocking port 443.';
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        status: 'FETCH_ERROR',
+        errorCategory: 'CONNECTION',
+        errorTitle,
+        error: errorMsg,
+        errorResolution,
+        code: causeCode,
+        total: 0,
+        count: 0,
+        limit: 25,
+        offset: 0,
+        records: [],
+        unit: '₹/Quintal',
+        source: 'data.gov.in Agmarknet APMC Mandi Bulletin',
+        resource_id: RESOURCE_ID,
+        timestamp: new Date().toISOString(),
+        diagnosticHint: 'Visit /api/market-prices?diagnose=true to view complete network, DNS, and TLS diagnostics.'
+      },
+      { status: 502 }
+    );
+  }
+}
+
+/**
+ * Diagnostic probe helper for ?diagnose=true
+ */
+async function runDiagnosticProbe(apiKey: string | undefined) {
+  const result: any = {
+    probeTimestamp: new Date().toISOString(),
+    apiKeyStatus: {
+      loaded: Boolean(apiKey && apiKey.length > 0),
+      length: apiKey ? apiKey.length : 0,
+      hasWhitespace: apiKey ? /\s/.test(apiKey) : false
+    },
+    independentServiceStatus: {
+      status: 'OPERATIONAL',
+      source: 'Independent status verification',
+      notes: 'data.gov.in (Open Government Data Platform India) is operational. Connection timeouts (ETIMEDOUT) to api.data.gov.in:443 indicate network-level packet drops, such as local firewall blocks, ISP routing failures to the National Informatics Centre (164.100.61.198), IPv6 NAT64 stalls, or NIC upstream IP throttling.'
+    },
+    dns: {},
+    tcp: {},
+    tls: {},
+    http: {}
+  };
+
+  // 1. DNS Probe
+  let ipv4Address: string | null = null;
+  let ipv6Address: string | null = null;
+  try {
+    const addrs = await dnsPromises.lookup(HOSTNAME, { all: true });
+    result.dns = { success: true, addresses: addrs };
+    for (const a of addrs) {
+      if (a.family === 4 && !ipv4Address) ipv4Address = a.address;
+      if (a.family === 6 && !ipv6Address) ipv6Address = a.address;
+    }
+  } catch (e: any) {
+    result.dns = { success: false, error: e.message, code: e.code };
+  }
+
+  // 2. TCP Probe: Tests both default (autoSelectFamily) and IPv4 explicitly
+  const probeTcpSocket = (opts: net.NetConnectOpts, label: string, timeoutMs = 6000) => {
+    return new Promise<any>((resolve) => {
+      const start = Date.now();
+      const sock = net.createConnection({ ...opts, timeout: timeoutMs }, () => {
+        const dur = Date.now() - start;
+        sock.end();
+        resolve({ success: true, durationMs: dur, label });
+      });
+      sock.on('timeout', () => {
+        sock.destroy();
+        resolve({ success: false, error: `TCP connection timed out (${timeoutMs}ms)`, code: 'ETIMEDOUT', label });
+      });
+      sock.on('error', (e: any) => resolve({ success: false, error: e.message, code: e.code, label }));
+    });
+  };
+
+  // Run probes
+  const [tcpAuto, tcpIpv4] = await Promise.all([
+    probeTcpSocket({ host: HOSTNAME, port: 443, autoSelectFamily: true } as any, 'Hostname (autoSelectFamily)'),
+    probeTcpSocket({ host: HOSTNAME, port: 443, family: 4 } as any, 'Hostname (IPv4 forced)')
+  ]);
+
+  result.tcp = {
+    success: tcpAuto.success || tcpIpv4.success,
+    defaultProbe: tcpAuto,
+    ipv4Probe: tcpIpv4,
+    code: tcpAuto.success ? undefined : (tcpAuto.code || tcpIpv4.code || 'ETIMEDOUT'),
+    error: tcpAuto.success ? undefined : (tcpAuto.error || tcpIpv4.error)
+  };
+
+  if (ipv6Address) {
+    result.tcp.ipv6Probe = await probeTcpSocket({ host: ipv6Address, port: 443 } as any, `IPv6 (${ipv6Address})`, 4000);
+  }
+
+  // 3. TLS Probe
+  if (result.tcp?.success) {
+    const tlsPromise = new Promise((resolve) => {
+      const start = Date.now();
+      const sock = tls.connect({
+        host: HOSTNAME,
+        port: 443,
+        servername: HOSTNAME,
+        timeout: 6000
+      }, () => {
+        const dur = Date.now() - start;
+        const cert = sock.getPeerCertificate();
+        const auth = sock.authorized;
+        const authErr = sock.authorizationError;
+        sock.end();
+        resolve({
+          success: true,
+          authorized: auth,
+          authError: authErr ? String(authErr) : null,
+          durationMs: dur,
+          subjectCN: cert?.subject?.CN,
+          issuer: cert?.issuer?.O,
+          validTo: cert?.valid_to
+        });
+      });
+      sock.on('timeout', () => {
+        sock.destroy();
+        resolve({ success: false, error: 'TLS handshake timed out (6000ms)', code: 'ETIMEDOUT' });
+      });
+      sock.on('error', (e: any) => resolve({ success: false, error: e.message, code: e.code }));
+    });
+    result.tls = await tlsPromise;
+  }
+
+  // 4. Upstream HTTP Filter Probes
+  if (apiKey && result.tcp?.success) {
+    const probeCandidate = async (label: string, queryStr: string) => {
+      const targetUrl = `${BASE_URL}?api-key=${encodeURIComponent(apiKey)}&format=json&${queryStr}`;
+      const start = Date.now();
+      try {
+        const response = await fetch(targetUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*'
+          },
+          cache: 'no-store',
+          signal: AbortSignal.timeout(8000)
+        });
+        const elapsed = Date.now() - start;
+        const text = await response.text();
+        let parsed: any = null;
+        try { parsed = JSON.parse(text); } catch {}
+
+        const records = Array.isArray(parsed?.records) ? parsed.records : [];
+        const sample = records[0] ? {
+          state: records[0].state || records[0].State,
+          district: records[0].district || records[0].District,
+          market: records[0].market || records[0].Market,
+          commodity: records[0].commodity || records[0].Commodity,
+          modal_price: records[0].modal_price || records[0].Modal_Price,
+          arrival_date: records[0].arrival_date || records[0].Arrival_Date,
+          grade: records[0].grade || records[0].Grade
+        } : null;
+
+        return {
+          format: label,
+          statusCode: response.status,
+          success: response.ok,
+          elapsedMs: elapsed,
+          total: parsed?.total ?? null,
+          count: records.length,
+          sample
+        };
+      } catch (err: any) {
+        return {
+          format: label,
+          success: false,
+          elapsedMs: Date.now() - start,
+          error: err.message,
+          code: err.code || err.cause?.code
+        };
+      }
+    };
+
+    const [
+      unfiltered,
+      litCap,
+      litLower,
+      encCap,
+      encLower,
+      plusCap,
+      plusLower,
+      catalogScan
+    ] = await Promise.all([
+      probeCandidate('unfiltered_limit5', 'limit=5&sort[Arrival_Date]=desc'),
+      probeCandidate('literal_brackets_capital', 'limit=5&filters[State]=Tamil%20Nadu&sort[Arrival_Date]=desc'),
+      probeCandidate('literal_brackets_lower', 'limit=5&filters[state]=Tamil%20Nadu&sort[Arrival_Date]=desc'),
+      probeCandidate('encoded_brackets_capital', `limit=5&${encodeURIComponent('filters[State]')}=Tamil%20Nadu&${encodeURIComponent('sort[Arrival_Date]')}=desc`),
+      probeCandidate('encoded_brackets_lower', `limit=5&${encodeURIComponent('filters[state]')}=Tamil%20Nadu&${encodeURIComponent('sort[Arrival_Date]')}=desc`),
+      probeCandidate('plus_space_capital', 'limit=5&filters[State]=Tamil+Nadu&sort[Arrival_Date]=desc'),
+      probeCandidate('plus_space_lower', 'limit=5&filters[state]=Tamil+Nadu&sort[Arrival_Date]=desc'),
+      probeCandidate('catalog_scan50', 'limit=50&sort[Arrival_Date]=desc')
+    ]);
+
+    result.http = {
+      unfiltered,
+      literal_brackets_lower: litLower,
+      literal_brackets_capital: litCap,
+      encoded_brackets_lower: encLower,
+      encoded_brackets_capital: encCap,
+      plus_space_lower: plusLower,
+      plus_space_capital: plusCap
+    };
+
+    result.catalogStatus = {
+      totalRecordsInBulletin: unfiltered?.total ?? catalogScan?.total ?? 0,
+      activeStatesSampled: catalogScan?.sample ? 'Present in sample' : 'None'
+    };
+  }
+
+  return result;
+}

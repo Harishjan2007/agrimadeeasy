@@ -139,11 +139,7 @@ export default function SchemesPageClient() {
         icon={Landmark}
         iconColor="text-emerald-700"
         iconBg="bg-emerald-50 border-emerald-200"
-        stats={[
-          { label: isTa ? 'மொத்த திட்டங்கள்' : 'Total Schemes', value: schemes.length },
-          { label: isTa ? 'மத்திய அரசு' : 'Central Govt', value: schemes.filter((s) => s.government_level === 'central').length },
-          { label: isTa ? 'மாநில அரசு' : 'State Govt', value: schemes.filter((s) => s.government_level === 'state').length }
-        ]}
+
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <button

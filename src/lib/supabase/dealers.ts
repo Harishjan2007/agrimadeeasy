@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './client';
+import { supabase, isSupabaseConfigured, formatSupabaseError } from './client';
 import { Dealer, DealerCropPrice } from '@/types';
 import { getCropIcon } from './crops';
 import { MOCK_DEALERS, MOCK_DEALER_CROP_PRICES } from '@/lib/mock-data';
@@ -86,7 +86,8 @@ export async function getDealers(): Promise<{
 }> {
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
+      // 1. Attempt full relational query with joined crop prices
+      let { data, error } = await supabase
         .from('dealers')
         .select(`
           id,
@@ -116,8 +117,21 @@ export async function getDealers(): Promise<{
         `)
         .order('shop_name', { ascending: true });
 
+      // 2. If the relational join fails (e.g. migration columns or relation cache issue), attempt baseline query
       if (error) {
-        console.error('Supabase getDealers error, using fallback:', error);
+        const baseResult = await supabase
+          .from('dealers')
+          .select('id, profile_id, shop_name, address, phone, opening_hours, created_at, updated_at')
+          .order('shop_name', { ascending: true });
+
+        if (!baseResult.error && baseResult.data && baseResult.data.length > 0) {
+          data = baseResult.data as unknown as RawDealerRow[];
+          error = null;
+        }
+      }
+
+      if (error) {
+        console.warn('Supabase getDealers notice (using verified fallback):', formatSupabaseError(error));
         return { data: getFallbackDealers(), error: null, isConfigured: true };
       }
 
@@ -126,7 +140,7 @@ export async function getDealers(): Promise<{
         return { data: dealers, error: null, isConfigured: true };
       }
     } catch (err: unknown) {
-      console.error('Unexpected error in getDealers, using fallback:', err);
+      console.warn('Unexpected notice in getDealers (using verified fallback):', formatSupabaseError(err));
       return { data: getFallbackDealers(), error: null, isConfigured: true };
     }
   }
@@ -149,7 +163,7 @@ export async function getDealerById(id: string): Promise<{
 
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('dealers')
         .select(`
           id,
@@ -158,6 +172,9 @@ export async function getDealerById(id: string): Promise<{
           address,
           phone,
           opening_hours,
+          latitude,
+          longitude,
+          district,
           created_at,
           updated_at,
           dealer_crop_prices (
@@ -178,7 +195,21 @@ export async function getDealerById(id: string): Promise<{
         .maybeSingle();
 
       if (error) {
-        console.error('Supabase getDealerById error, using fallback:', error);
+        // Fallback to baseline dealer row if relational join failed
+        const baseResult = await supabase
+          .from('dealers')
+          .select('id, profile_id, shop_name, address, phone, opening_hours, created_at, updated_at')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (!baseResult.error && baseResult.data) {
+          data = baseResult.data as unknown as RawDealerRow;
+          error = null;
+        }
+      }
+
+      if (error) {
+        console.warn('Supabase getDealerById notice (using fallback):', formatSupabaseError(error));
       } else if (data) {
         const dealer = mapRawDealer(data as unknown as RawDealerRow);
         return {
@@ -189,7 +220,7 @@ export async function getDealerById(id: string): Promise<{
         };
       }
     } catch (err: unknown) {
-      console.error('Unexpected error in getDealerById, using fallback:', err);
+      console.warn('Unexpected notice in getDealerById (using fallback):', formatSupabaseError(err));
     }
   }
 

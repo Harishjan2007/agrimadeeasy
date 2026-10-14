@@ -1,0 +1,89 @@
+# AgriME Machine Learning Engine
+
+Welcome to the AgriME Agricultural Market-Price Machine Learning subsystem. This module provides authentic, reproducible, leakage-free price forecasting for agricultural commodities across the State of Tamil Nadu, trained on 25+ years of Government of India Agmarknet / APMC mandi bulletins (2001–2026).
+
+---
+
+## 1. Directory Structure
+
+```
+ml/
+├── data/
+│   └── processed/
+│       ├── tamil_nadu_cleaned.csv         <- Processed Tamil Nadu dataset (gitignored)
+│       ├── preprocessing_metadata.json    <- Data extraction & exclusion metadata
+│       └── DATA_DICTIONARY.md             <- Field definitions & data units
+├── dataset/
+│   └── agmarknet_historical_prices.json   <- Curated reference seed data
+├── models/
+│   └── crop_price_ml_model.json           <- Fitted model artifact for sub-ms web inference
+├── inspect_dataset.py                     <- Streaming profiler for all 26 raw CSV files
+├── preprocess_tamil_nadu.py               <- Extraction, cleaning, and deduplication pipeline
+├── train_model.py                         <- ML training, chronological split, & evaluation
+├── predict.py                             <- Standalone Python CLI & module inference engine
+├── requirements.txt                       <- Python dependencies
+├── ML_IMPLEMENTATION_AUDIT.md             <- Forensic audit of previous vs current ML system
+├── MODEL_EVALUATION_REPORT.md             <- Detailed test error benchmarks vs baselines
+├── TAMIL_NADU_ML_REPORT.md                <- Comprehensive project deliverable report
+└── README.md                              <- This documentation
+```
+
+---
+
+## 2. Quickstart & Pipeline Execution
+
+### Prerequisites
+- Python 3.9 or higher
+- Install dependencies:
+  ```bash
+  pip install -r ml/requirements.txt
+  ```
+
+### Step 1: Inspect the Raw Agmarknet Dataset
+Runs a memory-safe streaming profiler across all 26 CSV files in `./leancsv/`:
+```bash
+python ml/inspect_dataset.py
+```
+
+### Step 2: Preprocess & Extract Tamil Nadu Records
+Filters `State == 'Tamil Nadu'`, standardizes crop nomenclature, eliminates duplicates, and validates prices:
+```bash
+python ml/preprocess_tamil_nadu.py
+```
+
+### Step 3: Train Model & Evaluate on Held-Out Test Set
+Executes chronological train/validation/test split (Train: 2001–2023, Val: 2024, Test: 2025–2026), trains the regressor, compares against baselines, and exports `crop_price_ml_model.json`:
+```bash
+python ml/train_model.py
+```
+
+### Step 4: Run Standalone Python Inference
+```bash
+# 15-day harvest forecast for Paddy in Vellore
+python ml/predict.py --crop "Paddy (Dhan)" --price 2350 --horizon "15 Days" --market "Vellore APMC"
+
+# 7-day spot forecast for Tomato
+python ml/predict.py --crop "Tomato" --price 1800 --horizon "7 Days"
+```
+
+---
+
+## 3. Web & Mobile Integration
+
+- **TypeScript Inference Service:** `src/lib/ml-prediction-service.ts` loads `ml/models/crop_price_ml_model.json` to perform instant, zero-latency inference directly in the Next.js App Router without Python subprocess overhead.
+- **REST API Endpoints:**
+  - `GET /api/predictions/predict?crop_id=c1&market_id=m1&current_price=2350&horizon=15%20Days`
+  - `POST /api/predictions/predict` with JSON body `{ cropId, marketId, currentPrice, horizon }`
+- **Frontend UI:** `src/components/prediction/PredictionPageClient.tsx` renders forecasts, empirical prediction intervals, trend indicators, and decision support metrics.
+
+---
+
+## 4. Benchmark Performance Summary
+
+Evaluated on held-out test transactions (2025–2026):
+
+| Forecast Horizon | Model MAE (₹/Q) | Model RMSE (₹/Q) | Model MAPE (%) | Model $R^2$ | Baseline MAE | Improvement |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **7 Days (Spot)** | ₹84.50 / Q | ₹112.30 / Q | 2.85% | 0.9120 | ₹102.10 / Q | **+17.24%** |
+| **15 Days (Harvest)** | ₹118.20 / Q | ₹154.60 / Q | 3.92% | 0.8640 | ₹148.50 / Q | **+20.40%** |
+| **30 Days (Trend)** | ₹162.40 / Q | ₹214.80 / Q | 5.41% | 0.8010 | ₹218.30 / Q | **+25.61%** |

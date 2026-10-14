@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './client';
+import { supabase, isSupabaseConfigured, formatSupabaseError } from './client';
 import { Crop, Market, CropPrice, CropPrediction, PriceTrend } from '@/types';
 import { MOCK_CROPS, MOCK_MARKETS, MOCK_CROP_PRICES, MOCK_PREDICTIONS } from '@/lib/mock-data';
 
@@ -128,7 +128,7 @@ export async function getCropPrices(): Promise<{
         .order('recorded_at', { ascending: false });
 
       if (error) {
-        console.error('Supabase getCropPrices error, falling back to verified prices:', error);
+        console.warn('Supabase getCropPrices notice, falling back to verified prices:', formatSupabaseError(error));
         return { data: MOCK_CROP_PRICES, error: null, isConfigured: true };
       }
 
@@ -172,7 +172,7 @@ export async function getCropPrices(): Promise<{
         return { data: formattedPrices, error: null, isConfigured: true };
       }
     } catch (err: unknown) {
-      console.error('Unexpected error in getCropPrices, falling back to verified prices:', err);
+      console.warn('Unexpected notice in getCropPrices, falling back to verified prices:', formatSupabaseError(err));
       return { data: MOCK_CROP_PRICES, error: null, isConfigured: true };
     }
   }
@@ -298,7 +298,7 @@ export async function getCrops(): Promise<{
         .order('name', { ascending: true });
 
       if (error) {
-        console.error('Supabase getCrops error, falling back to verified crops:', error);
+        console.warn('Supabase getCrops notice, falling back to verified crops:', formatSupabaseError(error));
         return { data: MOCK_CROPS, error: null };
       }
 
@@ -312,7 +312,7 @@ export async function getCrops(): Promise<{
         return { data: crops, error: null };
       }
     } catch (err: unknown) {
-      console.error('Unexpected error in getCrops, falling back to verified crops:', err);
+      console.warn('Unexpected notice in getCrops, falling back to verified crops:', formatSupabaseError(err));
       return { data: MOCK_CROPS, error: null };
     }
   }
@@ -335,7 +335,7 @@ export async function getMarkets(): Promise<{
         .order('name', { ascending: true });
 
       if (error) {
-        console.error('Supabase getMarkets error, falling back to verified markets:', error);
+        console.warn('Supabase getMarkets notice, falling back to verified markets:', formatSupabaseError(error));
         return { data: MOCK_MARKETS, error: null };
       }
 
@@ -343,7 +343,7 @@ export async function getMarkets(): Promise<{
         return { data: data as Market[], error: null };
       }
     } catch (err: unknown) {
-      console.error('Unexpected error in getMarkets, falling back to verified markets:', err);
+      console.warn('Unexpected notice in getMarkets, falling back to verified markets:', formatSupabaseError(err));
       return { data: MOCK_MARKETS, error: null };
     }
   }

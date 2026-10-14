@@ -1,36 +1,145 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { predictCropPrice } from '@/lib/ml-prediction-service';
-import { MOCK_CROPS, MOCK_MARKETS } from '@/lib/mock-data';
+import { queryHistoricalPrices, slugify, getHistoricalFilterOptions } from '@/lib/historical-data';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const cropId = searchParams.get('crop_id') || 'c1';
-    const marketId = searchParams.get('market_id') || 'm1';
-    const currentPrice = parseFloat(searchParams.get('current_price') || '3450');
+    const cropParam = searchParams.get('crop') || searchParams.get('crop_id') || 'tomato';
+    const districtParam = searchParams.get('district') || undefined;
+    const marketParam = searchParams.get('market') || searchParams.get('market_id') || undefined;
     const horizonParam = searchParams.get('horizon') || '15 Days';
+    let currentPrice = parseFloat(searchParams.get('current_price') || '0');
 
-    const horizon = (['7 Days', '15 Days', '30 Days'].includes(horizonParam) 
-      ? horizonParam 
+    const horizon = (['7 Days', '15 Days', '30 Days'].includes(horizonParam)
+      ? horizonParam
       : '15 Days') as '7 Days' | '15 Days' | '30 Days';
 
-    const crop = MOCK_CROPS.find((c) => c.id === cropId);
-    const market = MOCK_MARKETS.find((m) => m.id === marketId);
+    const cropSlug = slugify(cropParam);
 
-    const result = predictCropPrice({
-      cropId,
-      marketId,
+    // Fetch genuine historical context from the 10-year dataset
+    const histResult = queryHistoricalPrices({
+      crop: cropSlug,
+      district: districtParam && districtParam !== 'all' ? districtParam : undefined,
+      market: marketParam && marketParam !== 'all' ? marketParam : undefined,
+      pageSize: 30,
+      sortBy: 'date',
+      sortOrder: 'desc'
+    });
+
+    if (histResult.summaryCards.matchingRecords === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Insufficient historical observations for ${cropParam} in the selected market to generate an authentic ML forecast. Please select a supported crop or broader mandi.`
+        },
+        { status: 400 }
+      );
+    }
+
+    // If current price was not explicitly provided or is 0, use latest historical modal price
+    if (!currentPrice || currentPrice <= 0) {
+      currentPrice =
+        histResult.priceSummary.latestRecord?.modal_price ||
+        histResult.priceSummary.modalPrice ||
+        histResult.priceSummary.avgPrice;
+    }
+
+    const cropName = histResult.priceSummary.latestRecord?.crop || cropParam;
+    const districtName = districtParam || histResult.priceSummary.latestRecord?.district || 'Tamil Nadu';
+    const marketName = marketParam || histResult.priceSummary.latestRecord?.market || 'All Mandis';
+    const latestDate = histResult.priceSummary.latestDate || new Date().toISOString().split('T')[0];
+
+    // Compute main forecast
+    const mainForecast = predictCropPrice({
+      cropId: cropSlug,
+      marketId: slugify(marketName),
       currentPrice,
       horizon,
-      crop,
-      market
+      crop: {
+        id: cropSlug,
+        name: cropName,
+        category: 'Vegetables',
+        icon: '🌾'
+      },
+      market: {
+        id: slugify(marketName),
+        name: marketName,
+        location: districtName,
+        district: districtName,
+        latitude: 11.0,
+        longitude: 77.0
+      },
+      date: latestDate
     });
+
+    // Compute multi-horizon projections (7, 15, 30 days)
+    const horizonsList: ('7 Days' | '15 Days' | '30 Days')[] = ['7 Days', '15 Days', '30 Days'];
+    const baseDate = new Date(latestDate);
+
+    const multiHorizonProjections = horizonsList.map((h) => {
+      const days = h === '7 Days' ? 7 : h === '15 Days' ? 15 : 30;
+      const targetDate = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0];
+
+      const res = predictCropPrice({
+        cropId: cropSlug,
+        marketId: slugify(marketName),
+        currentPrice,
+        horizon: h,
+        date: latestDate
+      });
+
+      return {
+        horizon: h,
+        days,
+        targetDate,
+        predictedPrice: res.predictedPrice,
+        predictedMin: res.predictedMin,
+        predictedMax: res.predictedMax,
+        trend: res.trend
+      };
+    });
+
+    // Format chronological historical context points (oldest to newest)
+    const historicalPoints = histResult.records
+      .slice(0, 20)
+      .reverse()
+      .map((r) => ({
+        date: r.arrival_date,
+        modal_price: r.modal_price,
+        min_price: r.min_price,
+        max_price: r.max_price,
+        market: r.market
+      }));
 
     return NextResponse.json({
       success: true,
-      data: result
+      data: {
+        selectedCrop: {
+          slug: cropSlug,
+          name: cropName
+        },
+        selectedDistrict: districtName,
+        selectedMarket: marketName,
+        currentPrice,
+        currentPriceDate: latestDate,
+        horizon,
+        forecastDate: multiHorizonProjections.find((p) => p.horizon === horizon)?.targetDate || latestDate,
+        predictedPrice: mainForecast.predictedPrice,
+        predictedMin: mainForecast.predictedMin,
+        predictedMax: mainForecast.predictedMax,
+        trend: mainForecast.trend,
+        confidenceIntervalPct: mainForecast.confidenceIntervalPct,
+        unit: '₹ / Quintal',
+        mlMetrics: mainForecast.mlMetrics,
+        historicalContext: historicalPoints,
+        multiHorizonProjections
+      }
     });
   } catch (err: any) {
+    console.error('Prediction API GET error:', err);
     return NextResponse.json(
       {
         success: false,
@@ -44,32 +153,122 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { cropId, marketId, currentPrice, horizon = '15 Days' } = body;
+    const { crop, district, market, horizon = '15 Days', currentPrice: reqPrice } = body;
 
-    if (!cropId || !marketId || currentPrice == null) {
+    if (!crop) {
       return NextResponse.json(
-        { success: false, error: 'Missing required parameters: cropId, marketId, currentPrice' },
+        { success: false, error: 'Crop selection is required.' },
         { status: 400 }
       );
     }
 
-    const crop = MOCK_CROPS.find((c) => c.id === cropId);
-    const market = MOCK_MARKETS.find((m) => m.id === marketId);
+    const cropSlug = slugify(crop);
 
-    const result = predictCropPrice({
-      cropId,
-      marketId,
-      currentPrice: Number(currentPrice),
-      horizon,
-      crop,
-      market
+    const histResult = queryHistoricalPrices({
+      crop: cropSlug,
+      district: district && district !== 'all' ? district : undefined,
+      market: market && market !== 'all' ? market : undefined,
+      pageSize: 30,
+      sortBy: 'date',
+      sortOrder: 'desc'
     });
+
+    if (histResult.summaryCards.matchingRecords === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Insufficient historical observations for ${crop} in the selected market to generate an authentic ML forecast.`
+        },
+        { status: 400 }
+      );
+    }
+
+    let currentPrice = Number(reqPrice);
+    if (!currentPrice || currentPrice <= 0) {
+      currentPrice =
+        histResult.priceSummary.latestRecord?.modal_price ||
+        histResult.priceSummary.modalPrice ||
+        histResult.priceSummary.avgPrice;
+    }
+
+    const cropName = histResult.priceSummary.latestRecord?.crop || crop;
+    const districtName = district || histResult.priceSummary.latestRecord?.district || 'Tamil Nadu';
+    const marketName = market || histResult.priceSummary.latestRecord?.market || 'All Mandis';
+    const latestDate = histResult.priceSummary.latestDate || new Date().toISOString().split('T')[0];
+
+    const mainForecast = predictCropPrice({
+      cropId: cropSlug,
+      marketId: slugify(marketName),
+      currentPrice,
+      horizon: horizon as any,
+      date: latestDate
+    });
+
+    const horizonsList: ('7 Days' | '15 Days' | '30 Days')[] = ['7 Days', '15 Days', '30 Days'];
+    const baseDate = new Date(latestDate);
+
+    const multiHorizonProjections = horizonsList.map((h) => {
+      const days = h === '7 Days' ? 7 : h === '15 Days' ? 15 : 30;
+      const targetDate = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0];
+
+      const res = predictCropPrice({
+        cropId: cropSlug,
+        marketId: slugify(marketName),
+        currentPrice,
+        horizon: h,
+        date: latestDate
+      });
+
+      return {
+        horizon: h,
+        days,
+        targetDate,
+        predictedPrice: res.predictedPrice,
+        predictedMin: res.predictedMin,
+        predictedMax: res.predictedMax,
+        trend: res.trend
+      };
+    });
+
+    const historicalPoints = histResult.records
+      .slice(0, 20)
+      .reverse()
+      .map((r) => ({
+        date: r.arrival_date,
+        modal_price: r.modal_price,
+        min_price: r.min_price,
+        max_price: r.max_price,
+        market: r.market
+      }));
 
     return NextResponse.json({
       success: true,
-      data: result
+      data: {
+        selectedCrop: {
+          slug: cropSlug,
+          name: cropName
+        },
+        selectedDistrict: districtName,
+        selectedMarket: marketName,
+        currentPrice,
+        currentPriceDate: latestDate,
+        horizon,
+        forecastDate: multiHorizonProjections.find((p) => p.horizon === horizon)?.targetDate || latestDate,
+        predictedPrice: mainForecast.predictedPrice,
+        predictedMin: mainForecast.predictedMin,
+        predictedMax: mainForecast.predictedMax,
+        trend: mainForecast.trend,
+        confidenceIntervalPct: mainForecast.confidenceIntervalPct,
+        unit: '₹ / Quintal',
+        mlMetrics: mainForecast.mlMetrics,
+        historicalContext: historicalPoints,
+        multiHorizonProjections
+      }
     });
   } catch (err: any) {
+    console.error('Prediction API POST error:', err);
     return NextResponse.json(
       {
         success: false,

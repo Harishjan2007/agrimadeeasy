@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './client';
+import { supabase, isSupabaseConfigured, formatSupabaseError } from './client';
 import { GovernmentScheme } from '@/types';
 import { MOCK_SCHEMES } from '@/lib/mock-data';
 
@@ -38,7 +38,7 @@ export async function getSchemes(): Promise<{
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Supabase getSchemes error, falling back to verified schemes:', error);
+        console.warn('Supabase getSchemes notice, falling back to verified schemes:', formatSupabaseError(error));
         return { data: MOCK_SCHEMES, error: null, isConfigured: true };
       }
 
@@ -74,7 +74,7 @@ export async function getSchemes(): Promise<{
         return { data: schemes, error: null, isConfigured: true };
       }
     } catch (err: unknown) {
-      console.error('Unexpected error in getSchemes, falling back to verified schemes:', err);
+      console.warn('Unexpected notice in getSchemes, falling back to verified schemes:', formatSupabaseError(err));
       return { data: MOCK_SCHEMES, error: null, isConfigured: true };
     }
   }

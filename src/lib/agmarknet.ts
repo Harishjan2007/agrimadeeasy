@@ -6,8 +6,8 @@
 
 import { CropPrice, PriceSourceStatus, HistoricalPricePoint } from '@/types';
 
-// Official data.gov.in resource ID for "Current Daily Price of Various Commodities from Various Markets (Mandi)"
-export const AGMARKNET_RESOURCE_ID = '9ef84268-d588-465a-a308-a864a43d0070';
+// Official data.gov.in resource ID for Mandi APMC Market Prices
+export const AGMARKNET_RESOURCE_ID = '35985678-0d79-46b4-9ed6-6f13308a1d24';
 export const AGMARKNET_BASE_URL = `https://api.data.gov.in/resource/${AGMARKNET_RESOURCE_ID}`;
 
 export interface AgmarknetApiRecord {
@@ -16,6 +16,7 @@ export interface AgmarknetApiRecord {
   market: string;
   commodity: string;
   variety: string;
+  grade?: string;
   arrival_date: string;
   min_price: string | number;
   max_price: string | number;
@@ -113,7 +114,7 @@ export async function fetchLiveAgmarknetPrices(options?: {
   sourceNote: string;
 } | null> {
   // Credentials must remain server-side only (never in NEXT_PUBLIC_*)
-  const apiKey = process.env.DATA_GOV_IN_API_KEY;
+  const apiKey = process.env.DATA_GOV_IN_API_KEY?.trim();
 
   if (!apiKey) {
     return null;

@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-10-11T13:19:47.257Z",
+  "apiKey": {
+    "loaded": true,
+    "source": ".env.local file",
+    "length": 56,
+    "validFormat": true
+  },
+  "dns": {
+    "success": true,
+    "addresses": [
+      {
+        "address": "64:ff9b::a464:3dc6",
+        "family": 6
+      },
+      {
+        "address": "164.100.61.198",
+        "family": 4
+      }
+    ]
+  },
+  "tcp": {
+    "success": false,
+    "autoSelectFamily": {
+      "success": false,
+      "error": "",
+      "code": "ETIMEDOUT",
+      "label": "Hostname (autoSelectFamily)"
+    },
+    "ipv4Forced": {
+      "success": false,
+      "error": "connect ECONNREFUSED 164.100.61.198:443",
+      "code": "ECONNREFUSED",
+      "label": "Hostname (IPv4 forced)"
+    },
+    "error": "",
+    "code": "ETIMEDOUT"
+  },
+  "tls": {
+    "success": false,
+    "error": "",
+    "code": "ETIMEDOUT"
+  },
+  "http": {}
+}

@@ -34,3 +34,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ML & Datasets
+/leancsv/
+/ml/data/
+/ml/models/*.pkl
+/ml/models/*.joblib
+/ml/models/*.bin
+*.pyc
+__pycache__/
+.venv/
+

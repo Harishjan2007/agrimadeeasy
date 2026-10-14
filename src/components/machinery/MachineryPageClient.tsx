@@ -71,11 +71,7 @@ export default function MachineryPageClient() {
         icon={Tractor}
         iconColor="text-amber-700"
         iconBg="bg-amber-50 border-amber-200"
-        stats={[
-          { label: isTa ? 'மொத்த இயந்திரங்கள்' : 'Listed Units', value: machinery.length },
-          { label: isTa ? 'வாடகைக்கு தயார்' : 'Available', value: machinery.filter((m) => m.available).length },
-          { label: isTa ? 'என் முன்பதிவுகள்' : 'My Bookings', value: activeBookingsCount }
-        ]}
+
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
             <Link

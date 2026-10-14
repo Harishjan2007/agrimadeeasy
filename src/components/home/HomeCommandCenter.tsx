@@ -13,22 +13,16 @@ import {
   ShoppingBag,
   ArrowRight,
   Sparkles,
-  Phone,
-  Navigation,
-  CheckCircle2,
-  Clock,
   Compass
 } from 'lucide-react';
 import { useAgri } from '@/context/AgriContext';
 import { useLanguage } from '@/i18n';
 import GlobalSearch from '@/components/home/GlobalSearch';
 import { SectionHeader } from '@/components/ui';
-import { calculateDistanceKm, formatDistance } from '@/lib/location';
-import { getMachineryImageUrl, getMachineryAltText } from '@/lib/machinery-images';
 
 export default function HomeCommandCenter() {
-  const { crops, cropPrices, machinery, dealers, markets, schemes } = useAgri();
-  const { language, translations, translateCrop, translateMachineryType, translateCategory } = useLanguage();
+  const { cropPrices } = useAgri();
+  const { language, translations, translateCrop, translateCategory } = useLanguage();
   const isTa = language === 'ta';
 
   // Dynamic Time Greeting
@@ -39,7 +33,7 @@ export default function HomeCommandCenter() {
     return isTa ? 'இனிய மாலை வணக்கம் 👋' : 'Good Evening 👋';
   }, [isTa]);
 
-  // Quick Services Grid configuration
+  // Quick Services Grid configuration (Original 8 category cards)
   const quickServices = [
     {
       id: 'crop-prices',
@@ -107,20 +101,10 @@ export default function HomeCommandCenter() {
     }
   ];
 
-  // Top Crop Prices for Preview (First 3-4)
+  // Top Crop Prices for Preview (First 4)
   const topPrices = useMemo(() => {
     return cropPrices.slice(0, 4);
   }, [cropPrices]);
-
-  // Top Machinery for Preview (Available ones first)
-  const topMachinery = useMemo(() => {
-    return machinery.slice(0, 3);
-  }, [machinery]);
-
-  // Top Schemes for Preview
-  const topSchemes = useMemo(() => {
-    return schemes.slice(0, 3);
-  }, [schemes]);
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -290,176 +274,6 @@ export default function HomeCommandCenter() {
                 </div>
               );
             })}
-          </div>
-        </section>
-
-        {/* Section 3: Available Machinery Rentals */}
-        <section>
-          <SectionHeader
-            title={translations.nav.machinery}
-            subtitle={
-              isTa
-                ? 'உழவு, நிலம் சமன்படுத்துதல் மற்றும் நெல் அறுவடைக்கு தேவையான இயந்திரங்கள்.'
-                : 'Tractors, combine harvesters, and tillers available for hourly farm hire.'
-            }
-            icon="🚜"
-            actionHref="/machinery"
-            actionLabel={isTa ? 'அனைத்து இயந்திரங்களையும் காண்க' : 'View All Machinery'}
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {topMachinery.map((machine) => {
-              const imageUrl = getMachineryImageUrl(machine);
-              const altText = getMachineryAltText(machine);
-
-              return (
-                <div
-                  key={machine.id}
-                  className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-card hover:border-amber-300 transition-all overflow-hidden flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
-                      <img
-                        src={imageUrl}
-                        alt={altText}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                      />
-                      <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase bg-white/95 text-slate-800 border border-slate-200 shadow-2xs">
-                        {translateMachineryType(machine.type)}
-                      </span>
-                      <span
-                        className={`absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                          machine.available
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-slate-800 text-white'
-                        }`}
-                      >
-                        {machine.available
-                          ? (isTa ? 'கிடைக்கும்' : 'Available')
-                          : (isTa ? 'முன்பதிவு செய்யப்பட்டுள்ளது' : 'Busy')}
-                      </span>
-                    </div>
-
-                    <div className="p-4 space-y-1">
-                      <h3 className="font-extrabold text-slate-900 text-sm line-clamp-1">
-                        {machine.name}
-                      </h3>
-                      <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
-                        {machine.description}
-                      </p>
-                      <div className="pt-2 flex items-center justify-between text-xs text-slate-600">
-                        <span className="flex items-center gap-1 truncate">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate">{machine.location}</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 pt-0 flex items-center justify-between border-t border-slate-100 gap-2">
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-medium">
-                        {translations.machinery.rentalRate}
-                      </span>
-                      <span className="text-base font-black text-slate-900">
-                        ₹{machine.price_per_hour.toLocaleString('en-IN')}
-                        <span className="text-[11px] font-semibold text-slate-500">
-                          /{isTa ? 'மணி' : 'hr'}
-                        </span>
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <Link
-                        href={`/map?category=machinery&id=${machine.id}`}
-                        className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
-                        title={translations.map?.viewOnMap || 'View on Map'}
-                      >
-                        <MapPin className="w-3.5 h-3.5" />
-                      </Link>
-                      <Link
-                        href={`/machinery?id=${machine.id}`}
-                        className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs"
-                      >
-                        {isTa ? 'வாடகைக்கு எடு' : 'Book Now'}
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Section 4: Government Schemes Discovery */}
-        <section>
-          <SectionHeader
-            title={translations.nav.schemes}
-            subtitle={
-              isTa
-                ? 'விவசாயிகளுக்கான மத்திய மற்றும் தமிழ்நாடு அரசு நலத்திட்டங்கள் மற்றும் மானிய வழிகாட்டிகள்.'
-                : 'Verified Central & Tamil Nadu agricultural subsidies, PM-Kisan, and crop insurance.'
-            }
-            icon="📋"
-            actionHref="/schemes"
-            actionLabel={isTa ? 'அனைத்து திட்டங்களையும் காண்க' : 'Browse All Schemes'}
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {topSchemes.map((scheme) => (
-              <div
-                key={scheme.id}
-                className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs hover:shadow-card transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
-                        scheme.government_level === 'central'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-emerald-100 text-emerald-800'
-                      }`}
-                    >
-                      {scheme.government_level === 'central'
-                        ? (isTa ? 'மத்திய அரசு' : 'Central Govt')
-                        : (isTa ? 'மாநில அரசு' : 'State Govt')}
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">
-                      {scheme.category}
-                    </span>
-                  </div>
-
-                  <h3 className="font-extrabold text-slate-900 text-sm leading-snug line-clamp-2">
-                    {scheme.name}
-                  </h3>
-
-                  <p className="text-xs text-slate-600 mt-2 line-clamp-3 leading-relaxed">
-                    {scheme.benefits}
-                  </p>
-                </div>
-
-                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
-                  <Link
-                    href={`/schemes?id=${scheme.id}`}
-                    className="text-xs font-bold text-agri-700 hover:text-agri-800 transition-colors inline-flex items-center gap-1"
-                  >
-                    <span>{isTa ? 'விவரங்கள்' : 'Check Details'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-
-                  {scheme.official_url && (
-                    <a
-                      href={scheme.official_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-semibold text-slate-400 hover:text-slate-700"
-                    >
-                      {isTa ? 'அரசு தளம்' : 'Official Portal'}
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
           </div>
         </section>
       </div>

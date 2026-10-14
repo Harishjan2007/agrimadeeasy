@@ -1,5 +1,5 @@
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured } from './client';
+import { supabase, isSupabaseConfigured, formatSupabaseError } from './client';
 import { Machinery, MachineryBooking, BookingStatus, MachineryType, MachineryTracking } from '@/types';
 import { MOCK_MACHINERY, MOCK_BOOKINGS } from '@/lib/mock-data';
 
@@ -105,7 +105,7 @@ export async function getMachinery(): Promise<{
         .order('name', { ascending: true });
 
       if (error) {
-        console.error('Supabase getMachinery error, using fallback:', error);
+        console.warn('Supabase getMachinery notice, using fallback:', formatSupabaseError(error));
         return { data: MOCK_MACHINERY, error: null, isConfigured: true };
       }
 
@@ -137,7 +137,7 @@ export async function getMachinery(): Promise<{
         return { data: mapped, error: null, isConfigured: true };
       }
     } catch (err) {
-      console.error('Unexpected error in getMachinery, using fallback:', err);
+      console.warn('Unexpected notice in getMachinery, using fallback:', formatSupabaseError(err));
       return { data: MOCK_MACHINERY, error: null, isConfigured: true };
     }
   }

@@ -17,7 +17,7 @@ AgriME consists of a unified full-stack ecosystem:
 
 ## 📊 1. Crop Prices & Real Data Strategy
 
-- **Real Agmarknet / APMC Mandi Feed**: Integrated with the official Ministry of Agriculture API (`resource/9ef84268-d588-465a-a308-a864a43d0070`).
+- **Real Agmarknet / APMC Mandi Feed**: Integrated with the official Ministry of Agriculture API (`resource/35985678-0d79-46b4-9ed6-6f13308a1d24`).
 - **Server-Side Ingestion Engine** (`src/lib/crop-ingestion.ts`):
   - Normalizes commodity names, varieties, and dates into uniform records.
   - Sanitizes price bounds and automatically repairs inverted min/max values.

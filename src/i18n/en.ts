@@ -134,6 +134,7 @@ export const en: Translations = {
     mandiLocation: 'Mandi Location',
 
     // Phase 3: Market Comparison & Selling Decision Support
+    liveMandiTab: 'Live Mandi Bulletin (data.gov.in)',
     compareTab: 'Compare Market Prices',
     directoryTab: 'All Market Prices Directory',
     compareBadge: 'Decision Support • Market Comparison',
@@ -175,6 +176,7 @@ export const en: Translations = {
     subtitle: 'Data-driven 15-30 day price projections and trend insights to plan harvest sales.',
     searchPlaceholder: 'Search forecasted crop or mandi...',
     currentPrice: 'Current Price',
+    predictedPrice: 'Forecasted Price',
     predictedRange: 'Forecasted Price Range',
     predictedMin: 'Minimum Expected',
     predictedMax: 'Maximum Expected',

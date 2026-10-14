@@ -35,6 +35,40 @@ export default function PageHeader({
   const { language } = useLanguage();
   const isTa = language === 'ta';
 
+  // Safeguard: Ensure statistics boxes for schemes, forecasts, and dealers are never rendered
+  const isExcludedHeader =
+    title?.toLowerCase().includes('dealer') ||
+    title?.toLowerCase().includes('buyer') ||
+    title?.toLowerCase().includes('வியாபாரி') ||
+    title?.toLowerCase().includes('scheme') ||
+    title?.toLowerCase().includes('திட்டம்') ||
+    title?.toLowerCase().includes('forecast') ||
+    title?.toLowerCase().includes('prediction') ||
+    title?.toLowerCase().includes('கணிப்பு');
+
+  const isExcludedStat = (statLabel: string) => {
+    const l = statLabel.toLowerCase();
+    return (
+      l.includes('scheme') ||
+      l.includes('திட்டம்') ||
+      l.includes('forecast') ||
+      l.includes('கணிப்பு') ||
+      l.includes('buyer') ||
+      l.includes('வியாபாரி') ||
+      l.includes('rising') ||
+      l.includes('stable') ||
+      l.includes('central') ||
+      l.includes('state') ||
+      l.includes('district') ||
+      l.includes('crop') ||
+      l.includes('bought') ||
+      l.includes('கொள்முதல்') ||
+      l.includes('பயிர்')
+    );
+  };
+
+  const visibleStats = isExcludedHeader ? [] : stats?.filter((s) => !isExcludedStat(s.label));
+
   return (
     <div className={`bg-white border-b border-slate-200/80 ${className}`}>
       {/* Top back link if provided */}
@@ -81,9 +115,9 @@ export default function PageHeader({
 
           {/* Right: Actions or Quick Stats */}
           <div className="flex items-center gap-3 self-start md:self-center shrink-0 flex-wrap">
-            {stats && stats.length > 0 && (
+            {visibleStats && visibleStats.length > 0 && (
               <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 sm:p-3">
-                {stats.map((stat, idx) => (
+                {visibleStats.map((stat, idx) => (
                   <div
                     key={idx}
                     className={`px-3 text-center ${

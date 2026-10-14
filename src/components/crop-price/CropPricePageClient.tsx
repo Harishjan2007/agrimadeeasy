@@ -14,12 +14,16 @@ import {
   AlertCircle,
   RefreshCw,
   Scale,
-  ListFilter
+  ListFilter,
+  Database,
+  History
 } from 'lucide-react';
 import { CropPrice, Crop, Market } from '@/types';
 import { getCropPrices, getCrops, getMarkets } from '@/lib/supabase/crops';
 import CropPriceCard from '@/components/crop-price/CropPriceCard';
 import CropPriceComparison from '@/components/crop-price/CropPriceComparison';
+import DailyMandiPricesSection from '@/components/crop-price/DailyMandiPricesSection';
+import HistoricalDatasetSection from '@/components/crop-price/HistoricalDatasetSection';
 import { useLanguage } from '@/i18n';
 import { PageHeader, EmptyState, LoadingState } from '@/components/ui';
 
@@ -33,8 +37,8 @@ export default function CropPricePageClient() {
 
   const isTa = language === 'ta';
 
-  // Navigation tab: 'compare' (Compare Market Prices) | 'directory' (All Market Prices Directory)
-  const [activeTab, setActiveTab] = useState<'compare' | 'directory'>('compare');
+  // Navigation tab: 'live' (Daily Mandi Prices from data.gov.in) | 'historical' (10-Year Historical Dataset) | 'compare' (Compare Market Prices) | 'directory' (All Market Prices Directory)
+  const [activeTab, setActiveTab] = useState<'live' | 'historical' | 'compare' | 'directory'>('live');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -45,15 +49,19 @@ export default function CropPricePageClient() {
   const [calcCropId, setCalcCropId] = useState<string>('');
   const [calcQuantity, setCalcQuantity] = useState<number>(25); // Quintals
 
-  // Sync tab with URL query parameter (?tab=directory or ?tab=compare)
+  // Sync tab with URL query parameter (?tab=live or ?tab=historical or ?tab=compare or ?tab=directory)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
-      if (tabParam === 'directory' || tabParam === 'browse') {
+      if (tabParam === 'historical' || tabParam === 'history' || tabParam === 'dataset') {
+        setActiveTab('historical');
+      } else if (tabParam === 'directory' || tabParam === 'browse') {
         setActiveTab('directory');
       } else if (tabParam === 'compare') {
         setActiveTab('compare');
+      } else if (tabParam === 'live' || tabParam === 'mandi' || tabParam === 'daily') {
+        setActiveTab('live');
       }
     }
   }, []);
@@ -191,11 +199,6 @@ export default function CropPricePageClient() {
         badge={isTa ? 'அரசு ஒழுங்குமுறை மண்டி' : 'APMC Mandi Directory'}
         icon={Scale}
         iconBg="bg-emerald-50 border-emerald-200 text-emerald-700"
-        stats={[
-          { label: isTa ? 'பயிர்கள்' : 'Crops', value: crops.length },
-          { label: isTa ? 'மண்டிகள்' : 'Mandis', value: markets.length },
-          { label: isTa ? 'விலைகள்' : 'Rates', value: cropPrices.length }
-        ]}
         actions={
           <div className="flex items-center gap-2">
             <Link
@@ -231,28 +234,61 @@ export default function CropPricePageClient() {
           </div>
         )}
 
-        {/* Top View Selector Tabs */}
+        {/* Top View Selector Tabs: Two Main Tabs (Live Price & Historical Dataset) */}
         <div className="flex items-center gap-2.5 mb-6 overflow-x-auto pb-1 scrollbar-none">
+          {/* Main Tab 1: Live Price */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('live')}
+            className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2.5 transition-all whitespace-nowrap shadow-xs ${
+              activeTab === 'live'
+                ? 'bg-emerald-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-400'
+                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>{isTa ? 'நேரலை சந்தை விலை' : 'Live Price'}</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-400 text-slate-950 font-black">
+              LIVE
+            </span>
+          </button>
+
+          {/* Main Tab 2: Historical Dataset */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('historical')}
+            className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2.5 transition-all whitespace-nowrap shadow-xs ${
+              activeTab === 'historical'
+                ? 'bg-slate-900 text-white shadow-slate-900/30 ring-2 ring-emerald-500'
+                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <Database className="w-4 h-4 text-emerald-400" />
+            <span>{isTa ? '10 ஆண்டு வரலாற்று தரவு' : 'Historical Dataset'}</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500 text-slate-950 font-black">
+              37.8L ROWS
+            </span>
+          </button>
+
+          {/* Secondary Tab: Compare Mandis */}
           <button
             type="button"
             onClick={() => setActiveTab('compare')}
-            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all whitespace-nowrap shadow-xs ${
+            className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap shadow-xs ${
               activeTab === 'compare'
                 ? 'bg-emerald-600 text-white shadow-emerald-600/20 ring-2 ring-emerald-400'
                 : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
             }`}
           >
-            <Scale className="w-4 h-4 text-emerald-100" />
+            <Scale className="w-4 h-4 text-emerald-500" />
             <span>{translations.cropPrices.compareTab}</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-400 text-slate-950 font-black">
-              {isTa ? 'புதியது' : 'NEW'}
-            </span>
           </button>
 
+          {/* Secondary Tab: Mandi Directory */}
           <button
             type="button"
             onClick={() => setActiveTab('directory')}
-            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all whitespace-nowrap shadow-xs ${
+            className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap shadow-xs ${
               activeTab === 'directory'
                 ? 'bg-slate-900 text-white shadow-slate-900/20 ring-2 ring-slate-700'
                 : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
@@ -268,7 +304,11 @@ export default function CropPricePageClient() {
           </button>
         </div>
 
-        {activeTab === 'compare' ? (
+        {activeTab === 'live' ? (
+          <DailyMandiPricesSection />
+        ) : activeTab === 'historical' ? (
+          <HistoricalDatasetSection />
+        ) : activeTab === 'compare' ? (
           <CropPriceComparison
             cropPrices={cropPrices}
             crops={crops}

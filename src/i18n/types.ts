@@ -138,6 +138,7 @@ export interface Translations {
     mandiLocation: string;
 
     // Phase 3: Market Comparison & Selling Decision Support
+    liveMandiTab: string;
     compareTab: string;
     directoryTab: string;
     compareBadge: string;
@@ -180,6 +181,7 @@ export interface Translations {
     subtitle: string;
     searchPlaceholder: string;
     currentPrice: string;
+    predictedPrice: string;
     predictedRange: string;
     predictedMin: string;
     predictedMax: string;

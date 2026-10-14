@@ -1,0 +1,49 @@
+{
+  "timestamp": "2026-10-14T03:15:31.302Z",
+  "workingFormat": "literal_brackets_capital",
+  "httpStatus": 200,
+  "totalReported": 6955311,
+  "returnedCount": 10,
+  "stateFilterActive": true,
+  "sampleRecords": [
+    {
+      "commodity": "Ginger(Green)",
+      "variety": "Green Ginger",
+      "grade": "Local",
+      "market": "Kambam(Uzhavar Sandhai )",
+      "district": "Theni",
+      "state": "Tamil Nadu",
+      "arrival_date": "13/10/2026",
+      "modal_price": 7000,
+      "min_price": 7000,
+      "max_price": 7000,
+      "unit": "₹/Quintal"
+    },
+    {
+      "commodity": "Ginger(Green)",
+      "variety": "Green Ginger",
+      "grade": "Local",
+      "market": "Sivagangai (Uzhavar Sandhai )",
+      "district": "Sivagangai",
+      "state": "Tamil Nadu",
+      "arrival_date": "13/10/2026",
+      "modal_price": 16000,
+      "min_price": 12000,
+      "max_price": 20000,
+      "unit": "₹/Quintal"
+    },
+    {
+      "commodity": "Ginger(Green)",
+      "variety": "Green Ginger",
+      "grade": "Local",
+      "market": "Palanganatham(Uzhavar Sandhai )",
+      "district": "Madurai",
+      "state": "Tamil Nadu",
+      "arrival_date": "13/10/2026",
+      "modal_price": 19500,
+      "min_price": 19000,
+      "max_price": 20000,
+      "unit": "₹/Quintal"
+    }
+  ]
+}

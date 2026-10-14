@@ -17,7 +17,7 @@ import {
 import { Crop, Market, CropPrediction } from '@/types';
 import { getCropPredictions, getCrops, getMarkets } from '@/lib/supabase/crops';
 import PredictionCard from '@/components/prediction/PredictionCard';
-import PredictionDecisionSupport from '@/components/prediction/PredictionDecisionSupport';
+import InteractivePredictionSection from '@/components/prediction/InteractivePredictionSection';
 import { PageHeader } from '@/components/ui';
 import { useLanguage } from '@/i18n';
 
@@ -25,7 +25,6 @@ export default function PredictionPageClient() {
   const [predictions, setPredictions] = useState<CropPrediction[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
   const [markets, setMarkets] = useState<Market[]>([]);
-  const [selectedCropId, setSelectedCropId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { language, translations } = useLanguage();
@@ -89,11 +88,12 @@ export default function PredictionPageClient() {
   const stableCount = predictions.filter((p) => p.trend === 'stable').length;
   const downCount = predictions.filter((p) => p.trend === 'down' || (p.trend as string) === 'decreasing').length;
 
-  const handleCardSelect = (pred: CropPrediction) => {
-    setSelectedCropId(pred.crop_id);
-    const element = document.getElementById('decision-support-section');
+  const handleCardSelect = (_pred: CropPrediction) => {
+    const element = document.getElementById('interactive-prediction-section');
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -107,11 +107,7 @@ export default function PredictionPageClient() {
         icon={TrendingUp}
         iconColor="text-blue-700"
         iconBg="bg-blue-50 border-blue-200"
-        stats={[
-          { label: isTa ? 'கணிப்புகள்' : 'Total Forecasts', value: predictions.length },
-          { label: isTa ? 'ஏறும் போக்கு' : 'Rising', value: upCount },
-          { label: isTa ? 'நிலையானது' : 'Stable', value: stableCount },
-        ]}
+
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
             <Link
@@ -154,15 +150,9 @@ export default function PredictionPageClient() {
           </div>
         )}
 
-        {/* Interactive Crop Price Prediction & Decision-Support Section */}
-        <div id="decision-support-section">
-          <PredictionDecisionSupport
-            predictions={predictions}
-            crops={crops}
-            markets={markets}
-            externalSelectedCropId={selectedCropId}
-            onCropChange={(id) => setSelectedCropId(id)}
-          />
+        {/* Live Interactive ML Prediction Engine Section */}
+        <div className="mb-10">
+          <InteractivePredictionSection />
         </div>
 
         {/* Section Heading & Filter Bar for All Available Market Projections */}
