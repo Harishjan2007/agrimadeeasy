@@ -1,6 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { predictCropPriceWithTreeEnsemble } from '@/lib/tree-inference-engine';
 import { predictCropPrice } from '@/lib/ml-prediction-service';
-import { queryHistoricalPrices, slugify, getHistoricalFilterOptions } from '@/lib/historical-data';
+import { queryHistoricalPrices, slugify } from '@/lib/historical-data';
+
+function computeForecast(params: {
+  cropSlug: string;
+  cropName: string;
+  marketName: string;
+  districtName: string;
+  currentPrice: number;
+  horizon: '7 Days' | '15 Days' | '30 Days';
+  date: string;
+  minPrice: number;
+  maxPrice: number;
+  rollMean7d: number;
+  rollMean30d: number;
+  rollStd30d: number;
+}) {
+  try {
+    return predictCropPriceWithTreeEnsemble({
+      cropId: params.cropSlug,
+      marketId: slugify(params.marketName),
+      currentPrice: params.currentPrice,
+      horizon: params.horizon,
+      crop: {
+        id: params.cropSlug,
+        name: params.cropName,
+        category: 'Vegetables',
+        icon: '🌾'
+      },
+      market: {
+        id: slugify(params.marketName),
+        name: params.marketName,
+        location: params.districtName,
+        district: params.districtName,
+        latitude: 11.0,
+        longitude: 77.0
+      },
+      district: params.districtName,
+      minPrice: params.minPrice,
+      maxPrice: params.maxPrice,
+      rollMean7d: params.rollMean7d,
+      rollMean30d: params.rollMean30d,
+      rollStd30d: params.rollStd30d,
+      date: params.date
+    });
+  } catch (err) {
+    console.warn('Tree ensemble prediction fallback to parametric service:', err);
+    return predictCropPrice({
+      cropId: params.cropSlug,
+      marketId: slugify(params.marketName),
+      currentPrice: params.currentPrice,
+      horizon: params.horizon,
+      crop: {
+        id: params.cropSlug,
+        name: params.cropName,
+        category: 'Vegetables',
+        icon: '🌾'
+      },
+      market: {
+        id: slugify(params.marketName),
+        name: params.marketName,
+        location: params.districtName,
+        district: params.districtName,
+        latitude: 11.0,
+        longitude: 77.0
+      },
+      date: params.date
+    });
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -50,27 +119,35 @@ export async function GET(req: NextRequest) {
     const marketName = marketParam || histResult.priceSummary.latestRecord?.market || 'All Mandis';
     const latestDate = histResult.priceSummary.latestDate || new Date().toISOString().split('T')[0];
 
-    // Compute main forecast
-    const mainForecast = predictCropPrice({
-      cropId: cropSlug,
-      marketId: slugify(marketName),
+    // Compute genuine rolling statistics from historical observations
+    const recentPrices = histResult.records.map((r) => r.modal_price).filter((p) => p > 0);
+    const minPrice = histResult.priceSummary.latestRecord?.min_price || currentPrice * 0.94;
+    const maxPrice = histResult.priceSummary.latestRecord?.max_price || currentPrice * 1.06;
+    const p7 = recentPrices.slice(0, 7);
+    const rollMean7d = p7.length > 0 ? p7.reduce((a, b) => a + b, 0) / p7.length : currentPrice;
+    const p30 = recentPrices.slice(0, 30);
+    const rollMean30d = p30.length > 0 ? p30.reduce((a, b) => a + b, 0) / p30.length : currentPrice;
+    let rollStd30d = (maxPrice - minPrice) / 4.0;
+    if (p30.length >= 2) {
+      const mean = rollMean30d;
+      const variance = p30.reduce((acc, p) => acc + (p - mean) * (p - mean), 0) / (p30.length - 1);
+      rollStd30d = Math.sqrt(variance);
+    }
+
+    // Compute main forecast using authentic Scikit-Learn tree ensemble
+    const mainForecast = computeForecast({
+      cropSlug,
+      cropName,
+      marketName,
+      districtName,
       currentPrice,
       horizon,
-      crop: {
-        id: cropSlug,
-        name: cropName,
-        category: 'Vegetables',
-        icon: '🌾'
-      },
-      market: {
-        id: slugify(marketName),
-        name: marketName,
-        location: districtName,
-        district: districtName,
-        latitude: 11.0,
-        longitude: 77.0
-      },
-      date: latestDate
+      date: latestDate,
+      minPrice,
+      maxPrice,
+      rollMean7d,
+      rollMean30d,
+      rollStd30d
     });
 
     // Compute multi-horizon projections (7, 15, 30 days)
@@ -83,12 +160,19 @@ export async function GET(req: NextRequest) {
         .toISOString()
         .split('T')[0];
 
-      const res = predictCropPrice({
-        cropId: cropSlug,
-        marketId: slugify(marketName),
+      const res = computeForecast({
+        cropSlug,
+        cropName,
+        marketName,
+        districtName,
         currentPrice,
         horizon: h,
-        date: latestDate
+        date: latestDate,
+        minPrice,
+        maxPrice,
+        rollMean7d,
+        rollMean30d,
+        rollStd30d
       });
 
       return {
@@ -196,12 +280,34 @@ export async function POST(req: NextRequest) {
     const marketName = market || histResult.priceSummary.latestRecord?.market || 'All Mandis';
     const latestDate = histResult.priceSummary.latestDate || new Date().toISOString().split('T')[0];
 
-    const mainForecast = predictCropPrice({
-      cropId: cropSlug,
-      marketId: slugify(marketName),
+    // Compute genuine rolling statistics from historical observations
+    const recentPrices = histResult.records.map((r) => r.modal_price).filter((p) => p > 0);
+    const minPrice = histResult.priceSummary.latestRecord?.min_price || currentPrice * 0.94;
+    const maxPrice = histResult.priceSummary.latestRecord?.max_price || currentPrice * 1.06;
+    const p7 = recentPrices.slice(0, 7);
+    const rollMean7d = p7.length > 0 ? p7.reduce((a, b) => a + b, 0) / p7.length : currentPrice;
+    const p30 = recentPrices.slice(0, 30);
+    const rollMean30d = p30.length > 0 ? p30.reduce((a, b) => a + b, 0) / p30.length : currentPrice;
+    let rollStd30d = (maxPrice - minPrice) / 4.0;
+    if (p30.length >= 2) {
+      const mean = rollMean30d;
+      const variance = p30.reduce((acc, p) => acc + (p - mean) * (p - mean), 0) / (p30.length - 1);
+      rollStd30d = Math.sqrt(variance);
+    }
+
+    const mainForecast = computeForecast({
+      cropSlug,
+      cropName,
+      marketName,
+      districtName,
       currentPrice,
-      horizon: horizon as any,
-      date: latestDate
+      horizon: (['7 Days', '15 Days', '30 Days'].includes(horizon) ? horizon : '15 Days') as any,
+      date: latestDate,
+      minPrice,
+      maxPrice,
+      rollMean7d,
+      rollMean30d,
+      rollStd30d
     });
 
     const horizonsList: ('7 Days' | '15 Days' | '30 Days')[] = ['7 Days', '15 Days', '30 Days'];
@@ -213,12 +319,19 @@ export async function POST(req: NextRequest) {
         .toISOString()
         .split('T')[0];
 
-      const res = predictCropPrice({
-        cropId: cropSlug,
-        marketId: slugify(marketName),
+      const res = computeForecast({
+        cropSlug,
+        cropName,
+        marketName,
+        districtName,
         currentPrice,
         horizon: h,
-        date: latestDate
+        date: latestDate,
+        minPrice,
+        maxPrice,
+        rollMean7d,
+        rollMean30d,
+        rollStd30d
       });
 
       return {

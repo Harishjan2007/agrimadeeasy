@@ -1,0 +1,14 @@
+{
+  "val_raw": -0.7717727365467836,
+  "val_prep": -0.7717727422714233,
+  "val_prep_dtype": "float64",
+  "th_52": -0.7731383442878723,
+  "th_53": -0.7717727422714233,
+  "th_54": -0.7607200741767883,
+  "val_less_equal_th53_float64": false,
+  "val_less_equal_th53_float32": true,
+  "searchsorted_th32_float32": 54,
+  "searchsorted_th32_float64": 54,
+  "searchsorted_thlist_float64": 54,
+  "searchsorted_thlist_float32": 54
+}

@@ -242,6 +242,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       case 'Organic/Natural Farming': return 'இயற்கை விவசாயம்';
       case 'Infrastructure': return 'கட்டமைப்பு வசதிகள்';
       case 'Seeds & Planting Material': return 'விதைகள் & நடவு';
+      case 'Seeds': return 'விதைகள்';
+      case 'Simple, low-budget equipment': return 'எளிய, குறைந்த விலை உபகரணங்கள்';
+      case 'Fertilizers': return 'உரங்கள்';
+      case 'Organic foods': return 'இயற்கை உணவுப் பொருட்கள்';
+      case 'Other agricultural products': return 'பிற விவசாய பொருட்கள்';
+      case 'Equipment': return 'உபகரணங்கள்';
+      case 'Pesticides': return 'பூச்சிக்கொல்லிகள்';
+      case 'Other': return 'பிற பொருட்கள்';
       case 'Soil Health': return 'மண் வளம்';
       case 'Horticulture': return 'தோட்டக்கலை';
       case 'Farmer Organizations': return 'உழவர் அமைப்புகள்';

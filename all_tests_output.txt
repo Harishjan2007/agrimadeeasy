@@ -1,0 +1,118 @@
+====================================================
+🌾 AgriME Automated Test Runner
+Running test suites:
+  • location.test.mjs
+  • crop-ingestion.test.mjs
+  • booking-state-machine.test.mjs
+  • prediction.test.mjs
+  • ml-pipeline.test.mjs
+  • ml-model-pipeline.test.mjs
+  • api-compatibility.test.mjs
+  • market-prices-api.test.mjs
+  • market-prices-live.test.mjs
+  • historical-data.test.mjs
+  • pipeline-leakage-and-horizons.test.mjs
+  • tree-parity.test.mjs
+====================================================
+
+▶ Location & Geographic Telemetry Unit Tests
+  ✔ calculateDistanceKm returns 0 for identical coordinates (2.6346ms)
+  ✔ calculateDistanceKm accurately measures Vellore to Katpadi (~6 km) (1.1907ms)
+  ✔ calculateDistanceKm returns null for missing or invalid coordinates (0.5333ms)
+  ✔ calculateMachineryETA computes realistic transit time at 25 km/h (2.5717ms)
+  ✔ calculateMachineryETA returns null for null or non-positive distance (0.4425ms)
+✔ Location & Geographic Telemetry Unit Tests (11.6617ms)
+▶ Crop Price Ingestion & Normalization Unit Tests
+  ✔ normalizeCropName maps messy commodity strings to canonical names (0.955ms)
+  ✔ validateAndNormalizeRecord rejects empty commodity or market (0.2094ms)
+  ✔ validateAndNormalizeRecord rejects unrealistic/corrupt prices (0.1563ms)
+  ✔ validateAndNormalizeRecord automatically repairs inverted min/max prices (0.2882ms)
+  ✔ determineProvenance classifies fresh vs historical dates truthfully (1.17ms)
+✔ Crop Price Ingestion & Normalization Unit Tests (5.0737ms)
+▶ Machinery Booking State Machine Unit Tests
+  ✔ allows legal forward progression: pending -> accepted -> on_the_way -> arrived -> in_progress -> completed (0.8954ms)
+  ✔ allows cancellation from non-terminal states (0.158ms)
+  ✔ strictly rejects illegal transition jumps (0.1803ms)
+  ✔ strictly rejects any transition out of terminal states (completed, cancelled, rejected) (0.9402ms)
+  ✔ idempotent status change (same to same) is permitted (0.1546ms)
+✔ Machinery Booking State Machine Unit Tests (3.8276ms)
+▶ AgriME Crop Price Prediction & Artifact Unit Tests
+  ✔ model artifact file exists and has valid JSON structure (2.1013ms)
+  ✔ horizon configurations contain valid non-fabricated positive metrics (0.4856ms)
+  ✔ prediction intervals scale proportionally with standard error (RMSE) (0.3598ms)
+✔ AgriME Crop Price Prediction & Artifact Unit Tests (4.242ms)
+▶ AgriME Machine Learning Pipeline Integrity Tests
+  ✔ source dataset exists and contains verified Tamil Nadu records from 2001 to 2026 (2.316ms)
+  ✔ CSV schema matches expected 11 Agmarknet columns and valid data types (0.8592ms)
+  ✔ chronological split respects non-overlapping date boundaries (0.1672ms)
+  ✔ feature engineering preserves chronological lookback without lookahead bias (0.2029ms)
+  ✔ deduplication policy identifies duplicate market observations on same day (0.2253ms)
+  ✔ model artifact contains comprehensive metadata and features list (0.4476ms)
+✔ AgriME Machine Learning Pipeline Integrity Tests (5.701ms)
+▶ AgriME ML Model Pipeline & Inference Tests
+  ✔ model artifact contains authentic Tamil Nadu APMC metadata and attribution (2.0468ms)
+  ✔ multi-horizon prediction configurations scale correctly (0.1824ms)
+  ✔ decision-tree ensemble feature sensitivity exhibits crop-specific momentum (0.1649ms)
+  ✔ legacy crop aliases c1 through c10 baselines exist and are positive (0.1544ms)
+  ✔ non-negative price bounds and realistic margins (0.1708ms)
+✔ AgriME ML Model Pipeline & Inference Tests (4.1156ms)
+▶ API Compatibility & Localization Completeness Tests
+  ✔ en.ts and ta.ts contain all essential prediction translation keys (3.1976ms)
+  ✔ prediction service exports adhere to MLPredictionResult contract (0.3778ms)
+  ✔ prediction endpoint route handler exists and imports prediction service (0.394ms)
+  ✔ supabase client and dealers helper support resilient error formatting and fallback (0.5437ms)
+✔ API Compatibility & Localization Completeness Tests (5.9947ms)
+▶ data.gov.in Mandi Market Prices API Route & Client Verification
+  ✔ route.ts exists and adheres to Next.js App Router conventions (2.2093ms)
+  ✔ client helper library exists and exports typed helpers and filter constants (0.3569ms)
+  ✔ preserves official Agmarknet wholesale units and price field semantics (0.4026ms)
+  ✔ never exposes DATA_GOV_IN_API_KEY in returned response JSON (0.3718ms)
+  ✔ normalization logic maps raw strings to numbers and preserves accurate fields (0.2144ms)
+  ✔ DailyMandiPricesSection UI component exists and imports client helper (0.6068ms)
+  ✔ CropPricePageClient integrates DailyMandiPricesSection tab (1.0541ms)
+  ✔ route.ts classifies and distinguishes connection, authentication, and response parsing errors (0.4691ms)
+  ✔ DailyMandiPricesSection UI includes MandiErrorBanner distinguishing failure categories (0.4943ms)
+✔ data.gov.in Mandi Market Prices API Route & Client Verification (7.8448ms)
+▶ data.gov.in Live Mandi API Backend Integration
+  ✔ API key is configured in local environment (1.2352ms)
+  ✔ backend route logic fetches and maps live mandi records from data.gov.in (2375.5303ms)
+  ﹣ live Next.js backend route responds with valid contract and non-cached diagnostic status (15006.1012ms) # Local Next.js dev server not reachable on port 3000: Timeout
+✔ data.gov.in Live Mandi API Backend Integration (17386.6509ms)
+▶ Historical 10-Year Dataset Integrity and Cache Verification
+  ✔ 10-year CSV and metadata files exist and have content (1.3095ms)
+  ✔ Filter options correctly expose structured dataset properties (1.874ms)
+  ✔ Crop partition files exist and are chronologically sorted (86.0016ms)
+  ✔ Historical query engine validates and filters correctly (79.1982ms)
+✔ Historical 10-Year Dataset Integrity and Cache Verification (170.2416ms)
+▶ AgriME Chronological Leakage Prevention & Baseline Verification
+  ✔ date ranges for train, validation, and test are strictly disjoint with zero target overlap (1.6852ms)
+  ✔ all horizons report baseline comparisons on identical test row counts (0.1976ms)
+  ✔ empirical prediction interval coverage and width are honestly documented (0.1756ms)
+  ✔ features list strictly contains past-only time-series lookbacks and seasonal harmonics (0.1609ms)
+✔ AgriME Chronological Leakage Prevention & Baseline Verification (3.5374ms)
+
+--- DIAGNOSTIC: 7 Days Sample 0 (tomato) ---
+TS Delta: -38.87370143827884
+Sklearn Delta: -38.87370143827884
+Diff: 0
+
+--- PARITY SUMMARY ---
+Total fixtures tested: 60
+Max absolute difference: 0.000000e+0
+Failures count: 0
+▶ AgriME Scikit-Learn Tree Ensemble TypeScript Parity Tests
+  ✔ tree ensemble JSON artifact exists and contains all 3 horizons (35.9591ms)
+  ✔ searchSortedLeft implements exact np.searchsorted(side="left") semantics (0.2491ms)
+  ✔ searchSortedRight implements exact np.searchsorted(side="right") semantics (0.2209ms)
+  ✔ TypeScript tree ensemble achieves exact numerical parity (< 1e-4) with Python Scikit-Learn on all horizons (40.2123ms)
+✔ AgriME Scikit-Learn Tree Ensemble TypeScript Parity Tests (78.5742ms)
+ℹ tests 58
+ℹ suites 11
+ℹ pass 57
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 18978.3532
+
+✅ Test execution completed. Passed: 69, Failed: 0

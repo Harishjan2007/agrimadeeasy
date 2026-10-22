@@ -6,7 +6,7 @@ Trains authentic Scikit-Learn Machine Learning Models (HistGradientBoostingRegre
 on historical Tamil Nadu APMC mandi auction records (2001-2026).
 
 Architecture & Rigorous Methodology:
-1. Ingest clean data from ml/data/processed/tamil_nadu_cleaned.csv (or streams from leancsv).
+1. Ingest clean data from ml/data/processed/tamil_nadu_cleaned.csv.
 2. Strict Chronological Splits (Zero Lookahead Bias & Zero Target Overlap):
    - Training Split: 2001-01-01 to 2023-12-31 (~23 years of historical trading; targets <= 2023-12-31)
    - Validation Split: 2024-01-01 to 2024-12-31 (forecasts > 2023-12-31, targets <= 2024-12-31)
@@ -61,8 +61,6 @@ except ImportError as e:
     sys.exit(1)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-WORKSPACE_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
-LEANCSV_DIR = os.path.join(WORKSPACE_ROOT, 'leancsv')
 PROCESSED_DIR = os.path.join(SCRIPT_DIR, 'data', 'processed')
 CLEAN_DATA_PATH = os.path.join(PROCESSED_DIR, 'tamil_nadu_cleaned.csv')
 DEFAULT_MODEL_DIR = os.path.join(SCRIPT_DIR, 'models')

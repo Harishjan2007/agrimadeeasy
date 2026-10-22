@@ -1,5 +1,7 @@
 export type UserRole = 'farmer' | 'dealer' | 'machinery_provider';
 
+export type OnboardingUserType = 'Farmer' | 'Dealer' | 'Buyer' | 'Other';
+
 export interface Profile {
   id: string;
   name: string;
@@ -9,6 +11,32 @@ export interface Profile {
   role: UserRole;
   location: string;
   created_at: string;
+  // Onboarding & Personalization fields
+  user_type?: OnboardingUserType;
+  state?: string;
+  district?: string;
+  primary_crops?: string[];
+  main_interests?: string[];
+  // Dealer specific fields
+  shop_name?: string;
+  business_address?: string;
+  latitude?: number;
+  longitude?: number;
+  bought_crops?: string[];
+  produce_categories?: string[];
+  purchase_conditions?: string;
+  opening_hours?: string;
+  // Machinery provider specific fields
+  provider_name?: string;
+  machinery_types?: string[];
+  price_per_hour?: number;
+  rental_terms?: string;
+  updated_at?: string;
+  // Convenience fields for dealer profile updates
+  dealer_shop_name?: string;
+  dealer_crops_purchased?: string[];
+  dealer_purchase_conditions?: string;
+  address?: string;
 }
 
 export interface Crop {
@@ -22,6 +50,7 @@ export interface Market {
   id: string;
   name: string;
   location: string;
+  district?: string;
   state?: string;
   latitude?: number;
   longitude?: number;
@@ -104,21 +133,43 @@ export interface GovernmentScheme {
   category?: string;
   last_verified_at?: string;
   created_at: string;
+  // Extended fields for Phase 3 verified directory
+  department?: string;
+  supported_crops?: string[];
+  support_type?: string;
+  benefit_type?: 'grant' | 'subsidy' | 'loan' | 'insurance' | 'compensation' | 'training' | 'service';
+  benefit_amount?: string;
+  landholding_criteria?: string;
+  min_land_acres?: number;
+  max_land_acres?: number;
+  districts?: string[];
+  required_documents?: string[];
+  availability_status?: 'open' | 'seasonal' | 'unverified';
+  beneficiaries?: string;
 }
 
 export interface Dealer {
   id: string;
   profile_id: string;
   shop_name: string;
+  name?: string;
   address: string;
   phone: string;
   opening_hours: string;
   created_at: string;
+  updated_at?: string;
   latitude?: number;
   longitude?: number;
   district?: string;
+  state?: string;
+  bought_crops?: string[];
+  produce_categories?: string[];
   profile?: Profile;
   crop_prices?: DealerCropPrice[];
+  isDemo?: boolean;
+  buyer_type?: string;
+  purchase_conditions?: string;
+  verified?: boolean;
 }
 
 export interface DealerCropPrice {
@@ -132,9 +183,22 @@ export interface DealerCropPrice {
   updated_at: string;
   crop?: Crop;
   dealer?: Dealer;
+  min_quantity?: number;
+  max_capacity?: number;
+  quantity_unit?: string;
+  payment_terms?: string;
+  grading_terms?: string;
 }
 
-export type ProductCategory = 'Seeds' | 'Fertilizers' | 'Pesticides' | 'Equipment' | 'Other';
+export type ProductCategory = 
+  | 'Seeds' 
+  | 'Simple, low-budget equipment' 
+  | 'Fertilizers' 
+  | 'Organic foods' 
+  | 'Other agricultural products'
+  | 'Pesticides' 
+  | 'Equipment' 
+  | 'Other';
 
 export interface Product {
   id: string;
@@ -144,6 +208,9 @@ export interface Product {
   description: string;
   price: number;
   stock: number;
+  pack_size?: string;
+  unit?: string;
+  isDemo?: boolean;
   image_url?: string;
   created_at: string;
   updated_at: string;
@@ -166,6 +233,13 @@ export interface Machinery {
   image_url?: string;
   created_at: string;
   updated_at: string;
+  isDemo?: boolean;
+  driver_name?: string;
+  service_type?: string;
+  experience_years?: number;
+  distanceKm?: number;
+  model?: string;
+  rental_terms?: string;
   provider?: Profile;
 }
 
@@ -200,6 +274,20 @@ export interface UserLocation {
   name?: string;
   district?: string;
   state?: string;
+}
+
+export interface ProduceInquiry {
+  id: string;
+  dealerId: string;
+  dealerName: string;
+  farmerName: string;
+  farmerPhone: string;
+  cropName: string;
+  estimatedQuantity: string;
+  expectedPrice: string;
+  message?: string;
+  createdAt: string;
+  status: 'new' | 'contacted' | 'completed';
 }
 
 export interface MachineryBooking {

@@ -12,11 +12,14 @@ import {
   ShieldCheck, 
   CheckCircle2, 
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
 import { Dealer, DealerCropPrice } from '@/types';
 import { getDealerById } from '@/lib/supabase/dealers';
 import { useLanguage } from '@/i18n';
+import { useAgri } from '@/context/AgriContext';
+import { getGoogleMapsUrl } from '@/lib/location';
 
 export default function DealerDetailsPage() {
   const params = useParams();
@@ -67,8 +70,22 @@ export default function DealerDetailsPage() {
     loadDealer();
   }, [loadDealer]);
 
+  const { submitProduceInquiry } = useAgri();
+
   const handleInquirySubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (dealer) {
+      submitProduceInquiry({
+        dealerId: dealer.id,
+        dealerName: dealer.shop_name,
+        farmerName,
+        farmerPhone,
+        cropName,
+        estimatedQuantity: quantity,
+        expectedPrice: expectedPrice ? `₹${expectedPrice}/Quintal` : 'Negotiable',
+        message: `Farmer offer for ${quantity} Qtl of ${cropName}`
+      });
+    }
     setInquirySuccess(true);
     setTimeout(() => {
       setInquirySuccess(false);
@@ -140,6 +157,14 @@ export default function DealerDetailsPage() {
     );
   }
 
+  const mapUrl = dealer
+    ? getGoogleMapsUrl(
+        dealer.latitude,
+        dealer.longitude,
+        dealer.address ? `${dealer.shop_name}, ${dealer.address}${dealer.district ? `, ${dealer.district}` : ''}` : dealer.shop_name
+      )
+    : null;
+
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
       {/* Top Breadcrumb Header */}
@@ -182,23 +207,46 @@ export default function DealerDetailsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    {translations.dealers.directBuyerBadge}
-                  </span>
+                  {dealer.isDemo ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-300">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                      {translations.dealers.demoDealerBadge}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      {translations.dealers.directBuyerBadge}
+                    </span>
+                  )}
+                  {dealer.buyer_type && (
+                    <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                      {dealer.buyer_type}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Quick Action Buttons */}
             <div className="flex flex-wrap items-center gap-3">
-              <a
-                href={`tel:${dealer.phone.replace(/\s+/g, '')}`}
-                className="btn-secondary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-2"
-              >
-                <Phone className="w-4 h-4 text-agri-600" />
-                <span>{translations.dealers.contactDealer}: {dealer.phone}</span>
-              </a>
+              {dealer.isDemo ? (
+                <button
+                  type="button"
+                  onClick={() => alert(translations.dealers.demoNoticeModalDesc)}
+                  className="btn-secondary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-2 border-amber-300 bg-amber-50 text-amber-900"
+                >
+                  <Phone className="w-4 h-4 text-amber-700" />
+                  <span>{translations.dealers.contactDealer} (Demo)</span>
+                </button>
+              ) : (
+                <a
+                  href={`tel:${dealer.phone.replace(/\s+/g, '')}`}
+                  className="btn-secondary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-2"
+                >
+                  <Phone className="w-4 h-4 text-agri-600" />
+                  <span>{translations.dealers.contactDealer}: {dealer.phone}</span>
+                </a>
+              )}
 
               <button
                 onClick={() => setInquiryModalOpen(true)}
@@ -213,14 +261,28 @@ export default function DealerDetailsPage() {
 
           {/* Details Grid: Address, Phone, Hours */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100">
-            <div className="flex items-start gap-3 bg-slate-50 rounded-2xl p-4 border border-slate-100">
-              <MapPin className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                  {translations.dealers.address}
-                </span>
-                <span className="text-xs sm:text-sm text-slate-800 font-medium">{dealer.address}</span>
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+              <div className="flex items-start gap-3 min-w-0">
+                <MapPin className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                    {translations.dealers.address}
+                  </span>
+                  <span className="text-xs sm:text-sm text-slate-800 font-medium break-words">{dealer.address}</span>
+                </div>
               </div>
+              {mapUrl && (
+                <a
+                  href={mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-agri-700 hover:text-agri-800 hover:underline shrink-0 self-start mt-0.5"
+                  title={isTa ? 'கூகுள் வரைபடத்தில் பார்க்க (Google Maps)' : 'Open in Google Maps'}
+                >
+                  <span>Google Maps</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
             </div>
 
             <div className="flex items-start gap-3 bg-slate-50 rounded-2xl p-4 border border-slate-100">

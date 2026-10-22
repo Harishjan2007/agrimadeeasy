@@ -159,7 +159,7 @@ export default function MapPageClient() {
           longitude: lon,
           phone: dealer.phone,
           address: dealer.address,
-          distanceKm: distance,
+          distanceKm: distance != null ? distance : undefined,
           actionUrl: `/dealers?id=${dealer.id}`,
           actionLabel: isTa ? 'விவரங்கள்' : 'View Dealer'
         });
@@ -187,7 +187,7 @@ export default function MapPageClient() {
           price: `₹${machine.price_per_hour}/${isTa ? 'மணி' : 'hr'}`,
           address: machine.location,
           available: machine.available,
-          distanceKm: distance,
+          distanceKm: distance != null ? distance : undefined,
           imageUrl: getMachineryImageUrl(machine),
           actionUrl: `/machinery?id=${machine.id}`,
           actionLabel: machine.available
@@ -216,7 +216,7 @@ export default function MapPageClient() {
           latitude: lat,
           longitude: lon,
           address: market.location,
-          distanceKm: distance,
+          distanceKm: distance != null ? distance : undefined,
           actionUrl: `/crop-price?market=${market.id}`,
           actionLabel: isTa ? 'விலைகள்' : 'Mandi Prices'
         });

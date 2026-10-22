@@ -9,7 +9,7 @@ const modelJsonPath = path.resolve(__dirname, '../../ml/models/crop_price_ml_mod
 const smokeJsonPath = path.resolve(__dirname, '../../ml/models/smoke_test_ml_model.json');
 
 describe('AgriME Chronological Leakage Prevention & Baseline Verification', () => {
-  const targetPath = fs.existsSync(smokeJsonPath) ? smokeJsonPath : modelJsonPath;
+  const targetPath = modelJsonPath;
   const artifact = JSON.parse(fs.readFileSync(targetPath, 'utf-8'));
 
   test('date ranges for train, validation, and test are strictly disjoint with zero target overlap', () => {
@@ -62,5 +62,31 @@ describe('AgriME Chronological Leakage Prevention & Baseline Verification', () =
     assert.ok(features.includes('momentum_7d'), 'Must include 7d momentum');
     assert.ok(features.includes('sin_month'), 'Must include seasonal harmonics');
     assert.ok(features.includes('commodity_enc'), 'Must include categorical commodity encoding');
+  });
+
+  test('prediction interval margins mathematically reconcile with 1.96 * RMSE across calibration bases', () => {
+    for (const h of ['7 Days', '15 Days', '30 Days']) {
+      const cfg = artifact.horizons[h];
+      // Staple/Top-commodity margin reconciliation
+      const expectedStapleMargin = Math.round(1.96 * cfg.rmse * 100) / 100;
+      assert.ok(Math.abs(cfg.prediction_interval_margin - expectedStapleMargin) <= 0.05, `${h} staple margin must equal 1.96 * staple rmse`);
+
+      // Pooled test margin reconciliation (if documented)
+      if (cfg.pooled_test_margin && cfg.pooled_all_commodities_rmse) {
+        const expectedTestMargin = Math.round(1.96 * cfg.pooled_all_commodities_rmse * 100) / 100;
+        assert.ok(Math.abs(cfg.pooled_test_margin - expectedTestMargin) <= 0.05, `${h} pooled test margin must equal 1.96 * pooled test rmse`);
+      }
+
+      // Pooled validation margin reconciliation (if documented)
+      if (cfg.pooled_validation_margin && cfg.pooled_validation_rmse) {
+        const expectedValMargin = Math.round(1.96 * cfg.pooled_validation_rmse * 100) / 100;
+        assert.ok(Math.abs(cfg.pooled_validation_margin - expectedValMargin) <= 0.05, `${h} pooled validation margin must equal 1.96 * pooled val rmse`);
+      }
+
+      // Distinction between pooled and staple results
+      if (cfg.pooled_all_commodities_rmse) {
+        assert.ok(cfg.pooled_all_commodities_rmse > cfg.rmse, `${h} pooled RMSE must be higher than staple RMSE due to spices`);
+      }
+    }
   });
 });

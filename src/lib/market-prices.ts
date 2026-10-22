@@ -21,6 +21,9 @@ export interface MarketPriceRecord {
   max_price: number;
   modal_price: number;
   unit: string;
+  distanceKm?: number | null;
+  isApproximate?: boolean;
+  resolvedLocationName?: string;
 }
 
 export interface MarketPricesFilterOptions {
@@ -28,8 +31,11 @@ export interface MarketPricesFilterOptions {
   district?: string;
   market?: string;
   commodity?: string;
+  q?: string;
   limit?: number;
   offset?: number;
+  lat?: number;
+  lon?: number;
 }
 
 export interface MarketPricesApiResponse {
@@ -65,6 +71,8 @@ export interface MarketPricesApiResponse {
   attemptedFormats?: string[];
   catalogTotal?: number;
   message?: string;
+  isProximitySorted?: boolean;
+  poolTotal?: number;
   records: MarketPriceRecord[];
   unit: string;
   source: string;
@@ -158,12 +166,24 @@ export async function fetchMarketPrices(
     params.set('commodity', options.commodity);
   }
 
+  if (options.q && options.q.trim()) {
+    params.set('q', options.q.trim());
+  }
+
   if (typeof options.limit === 'number') {
     params.set('limit', String(options.limit));
   }
 
   if (typeof options.offset === 'number') {
     params.set('offset', String(options.offset));
+  }
+
+  if (typeof options.lat === 'number' && !isNaN(options.lat)) {
+    params.set('lat', String(options.lat));
+  }
+
+  if (typeof options.lon === 'number' && !isNaN(options.lon)) {
+    params.set('lon', String(options.lon));
   }
 
   const res = await fetch(`/api/market-prices?${params.toString()}`);

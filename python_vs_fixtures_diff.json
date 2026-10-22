@@ -1,0 +1,428 @@
+{
+  "7 Days": [
+    {
+      "idx": 0,
+      "crop": "tomato",
+      "py_pred": -38.87370143827884,
+      "exp_delta": -38.87370143827884,
+      "diff": 0.0
+    },
+    {
+      "idx": 1,
+      "crop": "paddy (dhan)",
+      "py_pred": -12.219874850014838,
+      "exp_delta": -12.219874850014838,
+      "diff": 0.0
+    },
+    {
+      "idx": 2,
+      "crop": "onion",
+      "py_pred": -47.13194640569657,
+      "exp_delta": -47.13194640569657,
+      "diff": 0.0
+    },
+    {
+      "idx": 3,
+      "crop": "groundnut",
+      "py_pred": -38.36123420184078,
+      "exp_delta": -38.36123420184078,
+      "diff": 0.0
+    },
+    {
+      "idx": 4,
+      "crop": "turmeric",
+      "py_pred": -329.8211933917626,
+      "exp_delta": -329.8211933917626,
+      "diff": 0.0
+    },
+    {
+      "idx": 5,
+      "crop": "tomato",
+      "py_pred": 50.5414234997499,
+      "exp_delta": 50.5414234997499,
+      "diff": 0.0
+    },
+    {
+      "idx": 6,
+      "crop": "unknown_crop_xyz",
+      "py_pred": -3.336908621469863,
+      "exp_delta": -3.336908621469863,
+      "diff": 0.0
+    },
+    {
+      "idx": 7,
+      "crop": "paddy (dhan)",
+      "py_pred": -398.9408932204069,
+      "exp_delta": -398.9408932204069,
+      "diff": 0.0
+    },
+    {
+      "idx": 8,
+      "crop": "maize",
+      "py_pred": 69.59894626929123,
+      "exp_delta": 69.59894626929123,
+      "diff": 0.0
+    },
+    {
+      "idx": 9,
+      "crop": "tomato",
+      "py_pred": -636.3631981827281,
+      "exp_delta": -636.3631981827281,
+      "diff": 0.0
+    },
+    {
+      "idx": 10,
+      "crop": "paddy (dhan)",
+      "py_pred": -595.4525998455018,
+      "exp_delta": -595.4525998455018,
+      "diff": 0.0
+    },
+    {
+      "idx": 11,
+      "crop": "onion",
+      "py_pred": -275.91154716616734,
+      "exp_delta": -275.91154716616734,
+      "diff": 0.0
+    },
+    {
+      "idx": 12,
+      "crop": "coconut",
+      "py_pred": -1061.735974399009,
+      "exp_delta": -1061.735974399009,
+      "diff": 0.0
+    },
+    {
+      "idx": 13,
+      "crop": "groundnut",
+      "py_pred": 57.32901728780974,
+      "exp_delta": 57.32901728780974,
+      "diff": 0.0
+    },
+    {
+      "idx": 14,
+      "crop": "onion",
+      "py_pred": -49.47809888655149,
+      "exp_delta": -49.47809888655149,
+      "diff": 0.0
+    },
+    {
+      "idx": 15,
+      "crop": "brinjal",
+      "py_pred": -330.3158544191834,
+      "exp_delta": -330.3158544191834,
+      "diff": 0.0
+    },
+    {
+      "idx": 16,
+      "crop": "onion",
+      "py_pred": -518.4485639749726,
+      "exp_delta": -518.4485639749726,
+      "diff": 0.0
+    },
+    {
+      "idx": 17,
+      "crop": "coconut",
+      "py_pred": 31.430774685014804,
+      "exp_delta": 31.430774685014804,
+      "diff": 0.0
+    },
+    {
+      "idx": 18,
+      "crop": "maize",
+      "py_pred": -2195.8223584841594,
+      "exp_delta": -2195.8223584841594,
+      "diff": 0.0
+    },
+    {
+      "idx": 19,
+      "crop": "coconut",
+      "py_pred": -157.80072943994873,
+      "exp_delta": -157.80072943994873,
+      "diff": 0.0
+    }
+  ],
+  "15 Days": [
+    {
+      "idx": 0,
+      "crop": "tomato",
+      "py_pred": -150.90416634469076,
+      "exp_delta": -150.90416634469076,
+      "diff": 0.0
+    },
+    {
+      "idx": 1,
+      "crop": "paddy (dhan)",
+      "py_pred": -7.86062889893709,
+      "exp_delta": -7.86062889893709,
+      "diff": 0.0
+    },
+    {
+      "idx": 2,
+      "crop": "onion",
+      "py_pred": -72.78325358449219,
+      "exp_delta": -72.78325358449219,
+      "diff": 0.0
+    },
+    {
+      "idx": 3,
+      "crop": "groundnut",
+      "py_pred": -29.578823918838243,
+      "exp_delta": -29.578823918838243,
+      "diff": 0.0
+    },
+    {
+      "idx": 4,
+      "crop": "turmeric",
+      "py_pred": -497.3340097936636,
+      "exp_delta": -497.3340097936636,
+      "diff": 0.0
+    },
+    {
+      "idx": 5,
+      "crop": "tomato",
+      "py_pred": 41.75190663437772,
+      "exp_delta": 41.75190663437772,
+      "diff": 0.0
+    },
+    {
+      "idx": 6,
+      "crop": "unknown_crop_xyz",
+      "py_pred": -11.031835724539437,
+      "exp_delta": -11.031835724539437,
+      "diff": 0.0
+    },
+    {
+      "idx": 7,
+      "crop": "paddy (dhan)",
+      "py_pred": -929.9267749960086,
+      "exp_delta": -929.9267749960086,
+      "diff": 0.0
+    },
+    {
+      "idx": 8,
+      "crop": "maize",
+      "py_pred": 30.279257032908056,
+      "exp_delta": 30.279257032908056,
+      "diff": 0.0
+    },
+    {
+      "idx": 9,
+      "crop": "tomato",
+      "py_pred": -1877.6454942986147,
+      "exp_delta": -1877.6454942986147,
+      "diff": 0.0
+    },
+    {
+      "idx": 10,
+      "crop": "paddy (dhan)",
+      "py_pred": -2207.5048648232446,
+      "exp_delta": -2207.5048648232446,
+      "diff": 0.0
+    },
+    {
+      "idx": 11,
+      "crop": "onion",
+      "py_pred": -1393.7245052101553,
+      "exp_delta": -1393.7245052101553,
+      "diff": 0.0
+    },
+    {
+      "idx": 12,
+      "crop": "coconut",
+      "py_pred": -6192.480472276621,
+      "exp_delta": -6192.480472276621,
+      "diff": 0.0
+    },
+    {
+      "idx": 13,
+      "crop": "groundnut",
+      "py_pred": 83.95195885546964,
+      "exp_delta": 83.95195885546964,
+      "diff": 0.0
+    },
+    {
+      "idx": 14,
+      "crop": "onion",
+      "py_pred": -563.3223464801276,
+      "exp_delta": -563.3223464801276,
+      "diff": 0.0
+    },
+    {
+      "idx": 15,
+      "crop": "brinjal",
+      "py_pred": -1447.945966754385,
+      "exp_delta": -1447.945966754385,
+      "diff": 0.0
+    },
+    {
+      "idx": 16,
+      "crop": "onion",
+      "py_pred": -2046.9346729093368,
+      "exp_delta": -2046.9346729093368,
+      "diff": 0.0
+    },
+    {
+      "idx": 17,
+      "crop": "coconut",
+      "py_pred": 28.237047282149526,
+      "exp_delta": 28.237047282149526,
+      "diff": 0.0
+    },
+    {
+      "idx": 18,
+      "crop": "maize",
+      "py_pred": -3010.5023052260813,
+      "exp_delta": -3010.5023052260813,
+      "diff": 0.0
+    },
+    {
+      "idx": 19,
+      "crop": "coconut",
+      "py_pred": -560.4486677961698,
+      "exp_delta": -560.4486677961698,
+      "diff": 0.0
+    }
+  ],
+  "30 Days": [
+    {
+      "idx": 0,
+      "crop": "tomato",
+      "py_pred": -421.56745799991864,
+      "exp_delta": -421.56745799991864,
+      "diff": 0.0
+    },
+    {
+      "idx": 1,
+      "crop": "paddy (dhan)",
+      "py_pred": -13.172514204833496,
+      "exp_delta": -13.172514204833496,
+      "diff": 0.0
+    },
+    {
+      "idx": 2,
+      "crop": "onion",
+      "py_pred": -20.45785959057469,
+      "exp_delta": -20.45785959057469,
+      "diff": 0.0
+    },
+    {
+      "idx": 3,
+      "crop": "groundnut",
+      "py_pred": 28.14634352636493,
+      "exp_delta": 28.14634352636493,
+      "diff": 0.0
+    },
+    {
+      "idx": 4,
+      "crop": "turmeric",
+      "py_pred": -929.4322571437189,
+      "exp_delta": -929.4322571437189,
+      "diff": 0.0
+    },
+    {
+      "idx": 5,
+      "crop": "tomato",
+      "py_pred": 391.2222292243336,
+      "exp_delta": 391.2222292243336,
+      "diff": 0.0
+    },
+    {
+      "idx": 6,
+      "crop": "unknown_crop_xyz",
+      "py_pred": -15.974349666220427,
+      "exp_delta": -15.974349666220427,
+      "diff": 0.0
+    },
+    {
+      "idx": 7,
+      "crop": "paddy (dhan)",
+      "py_pred": -1519.29117932714,
+      "exp_delta": -1519.29117932714,
+      "diff": 0.0
+    },
+    {
+      "idx": 8,
+      "crop": "maize",
+      "py_pred": -9.20626294266453,
+      "exp_delta": -9.20626294266453,
+      "diff": 0.0
+    },
+    {
+      "idx": 9,
+      "crop": "tomato",
+      "py_pred": -3028.384205962251,
+      "exp_delta": -3028.384205962251,
+      "diff": 0.0
+    },
+    {
+      "idx": 10,
+      "crop": "paddy (dhan)",
+      "py_pred": -2711.30135503749,
+      "exp_delta": -2711.30135503749,
+      "diff": 0.0
+    },
+    {
+      "idx": 11,
+      "crop": "onion",
+      "py_pred": -1832.5443867527042,
+      "exp_delta": -1832.5443867527042,
+      "diff": 0.0
+    },
+    {
+      "idx": 12,
+      "crop": "coconut",
+      "py_pred": -6168.8661820049,
+      "exp_delta": -6168.8661820049,
+      "diff": 0.0
+    },
+    {
+      "idx": 13,
+      "crop": "groundnut",
+      "py_pred": 86.84006409632062,
+      "exp_delta": 86.84006409632062,
+      "diff": 0.0
+    },
+    {
+      "idx": 14,
+      "crop": "onion",
+      "py_pred": -952.2588593070066,
+      "exp_delta": -952.2588593070066,
+      "diff": 0.0
+    },
+    {
+      "idx": 15,
+      "crop": "brinjal",
+      "py_pred": -2684.7179868229996,
+      "exp_delta": -2684.7179868229996,
+      "diff": 0.0
+    },
+    {
+      "idx": 16,
+      "crop": "onion",
+      "py_pred": -2715.803511669708,
+      "exp_delta": -2715.803511669708,
+      "diff": 0.0
+    },
+    {
+      "idx": 17,
+      "crop": "coconut",
+      "py_pred": 66.92321508908354,
+      "exp_delta": 66.92321508908354,
+      "diff": 0.0
+    },
+    {
+      "idx": 18,
+      "crop": "maize",
+      "py_pred": -2153.0612029498234,
+      "exp_delta": -2153.0612029498234,
+      "diff": 0.0
+    },
+    {
+      "idx": 19,
+      "crop": "coconut",
+      "py_pred": -892.8168622725095,
+      "exp_delta": -892.8168622725095,
+      "diff": 0.0
+    }
+  ]
+}

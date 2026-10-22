@@ -3,6 +3,8 @@ import dns from 'node:dns';
 import dnsPromises from 'node:dns/promises';
 import net from 'node:net';
 import tls from 'node:tls';
+import { resolveMarketCoordinates } from '@/lib/mandi-locations';
+import { calculateDistanceKm } from '@/lib/location';
 
 // Ensure Node.js prioritizes IPv4 over IPv6 on Windows to prevent 5s timeout stalls
 try {
@@ -16,6 +18,20 @@ try {
 const RESOURCE_ID = '35985678-0d79-46b4-9ed6-6f13308a1d24';
 const HOSTNAME = 'api.data.gov.in';
 const BASE_URL = `https://${HOSTNAME}/resource/${RESOURCE_ID}`;
+
+// In-memory candidate pool cache to allow complete nearest-first ranking across full dataset
+// without making repeated slow upstream network requests on every pagination page switch.
+interface PoolCacheEntry {
+  rawRecords: any[];
+  total: number;
+  timestamp: number;
+  workingFormat: string | null;
+  catalogTotal?: number;
+}
+
+const poolCache = new Map<string, PoolCacheEntry>();
+const POOL_CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
+const POOL_FETCH_LIMIT = 500; // Complete active daily arrivals pool across Tamil Nadu
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +52,14 @@ export async function GET(req: NextRequest) {
     const districtParam = searchParams.get('district');
     const marketParam = searchParams.get('market');
     const commodityParam = searchParams.get('commodity');
+    const qParam = (searchParams.get('q') || searchParams.get('search') || '').trim();
+    const latParam = searchParams.get('lat') || searchParams.get('latitude');
+    const lonParam = searchParams.get('lon') || searchParams.get('longitude');
+
+    const userLat = latParam ? parseFloat(latParam) : null;
+    const userLon = lonParam ? parseFloat(lonParam) : null;
+    const hasUserLocation = userLat !== null && !isNaN(userLat) && userLon !== null && !isNaN(userLon);
+
     const limitParam = parseInt(searchParams.get('limit') || '25', 10);
     const offsetParam = parseInt(searchParams.get('offset') || '0', 10);
 
@@ -71,12 +95,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // When location is provided, fetch a comprehensive candidate pool (up to 500 records)
+    // from data.gov.in so proximity ranking considers the complete relevant arrivals set.
+    const fetchLimit = hasUserLocation ? POOL_FETCH_LIMIT : limit;
+    const fetchOffset = hasUserLocation ? 0 : offset;
+
     // Helper to build query URL with candidate filter format and Arrival_Date descending sort
     const buildEndpointUrl = (useCapitalField: boolean, encodeBrackets: boolean, usePlusSpace: boolean) => {
       const sortKey = encodeBrackets
         ? encodeURIComponent(useCapitalField ? 'sort[Arrival_Date]' : 'sort[arrival_date]')
         : (useCapitalField ? 'sort[Arrival_Date]' : 'sort[arrival_date]');
-      let u = `${BASE_URL}?api-key=${encodeURIComponent(apiKey)}&format=json&limit=${limit}&offset=${offset}&${sortKey}=desc`;
+      let u = `${BASE_URL}?api-key=${encodeURIComponent(apiKey)}&format=json&limit=${fetchLimit}&offset=${fetchOffset}&${sortKey}=desc`;
 
       const encodeVal = (val: string) => {
         const enc = encodeURIComponent(val);
@@ -114,6 +143,25 @@ export async function GET(req: NextRequest) {
       (commodity && commodity.toLowerCase() !== 'all' && commodity.toLowerCase() !== 'all commodities')
     );
 
+    // Check in-memory pool cache for fast, duplicate-free pagination when location is active
+    const cacheKey = `${state.toLowerCase()}:${district.toLowerCase()}:${market.toLowerCase()}:${commodity.toLowerCase()}`;
+    let data: any = null;
+    let res: Response | null = null;
+    let responseText = '';
+    let workingFormat: string | null = null;
+    const attemptedFormats: string[] = [];
+    let fromCache = false;
+
+    if (hasUserLocation && poolCache.has(cacheKey)) {
+      const cached = poolCache.get(cacheKey)!;
+      if (Date.now() - cached.timestamp < POOL_CACHE_TTL_MS) {
+        data = { records: cached.rawRecords, total: cached.total };
+        workingFormat = cached.workingFormat;
+        attemptedFormats.push(cached.workingFormat || 'cache_hit');
+        fromCache = true;
+      }
+    }
+
     // Multi-candidate query sequence prioritizing verified working format:
     // 1. Literal brackets capitalized (e.g. filters[State]=Tamil%20Nadu&sort[Arrival_Date]=desc) - verified working on data.gov.in resource 35985678-0d79-46b4-9ed6-6f13308a1d24
     // 2. Literal brackets lowercase (e.g. filters[state]=Tamil%20Nadu&sort[arrival_date]=desc)
@@ -141,14 +189,9 @@ export async function GET(req: NextRequest) {
       'Cache-Control': 'no-cache'
     };
 
-    let data: any = null;
-    let res: Response | null = null;
-    let responseText = '';
-    let workingFormat: string | null = null;
-    const attemptedFormats: string[] = [];
-
-    // Query candidate URLs until matching records are returned
-    for (const candidate of candidateUrls) {
+    // Query candidate URLs until matching records are returned (skipped if cached)
+    if (!fromCache) {
+      for (const candidate of candidateUrls) {
       attemptedFormats.push(candidate.name);
       try {
         const controller = new AbortController();
@@ -184,8 +227,9 @@ export async function GET(req: NextRequest) {
         // Continue to next candidate URL format
       }
     }
+  }
 
-    if (!res || !res.ok) {
+  if (!fromCache && (!res || !res.ok)) {
       const status = res?.status || 502;
       let errorCategory: 'AUTHENTICATION' | 'RATE_LIMIT' | 'UPSTREAM' | 'API_ERROR' = 'API_ERROR';
       let errorTitle = 'data.gov.in API Error';
@@ -255,7 +299,7 @@ export async function GET(req: NextRequest) {
             errorTitle: 'Invalid data.gov.in Response Format',
             error: 'data.gov.in returned HTTP 200 OK, but the response body could not be parsed as valid JSON (received non-JSON format, HTML gateway page, or truncated payload).',
             errorResolution: 'The government API gateway returned malformed content instead of expected Agmarknet JSON.',
-            statusCode: res.status,
+            statusCode: res?.status || 502,
             technicalDetails: responseText.length > 200 ? responseText.slice(0, 200) + '...' : responseText,
             total: 0,
             count: 0,
@@ -276,14 +320,13 @@ export async function GET(req: NextRequest) {
     }
 
     const rawRecords = Array.isArray(data.records) ? data.records : [];
-    const total = typeof data.total === 'number' 
+    const rawTotal = typeof data.total === 'number' 
       ? data.total 
       : (parseInt(data.total, 10) || rawRecords.length);
-    const count = rawRecords.length;
 
     // If filter returned 0 records, do a rapid catalog check of limit=1 unfiltered to know total available records in the catalog
     let catalogTotal: number | undefined = undefined;
-    if (count === 0 && hasFilters) {
+    if (rawRecords.length === 0 && hasFilters) {
       try {
         const checkUrl = `${BASE_URL}?api-key=${encodeURIComponent(apiKey)}&format=json&limit=1&sort[Arrival_Date]=desc`;
         const checkRes = await fetch(checkUrl, { headers, cache: 'no-store', signal: AbortSignal.timeout(4000) });
@@ -294,8 +337,46 @@ export async function GET(req: NextRequest) {
       } catch {}
     }
 
+    // Cache the raw arrivals candidate pool when freshly retrieved
+    if (!fromCache && rawRecords.length > 0 && hasUserLocation) {
+      if (poolCache.size > 50) {
+        const now = Date.now();
+        for (const [k, v] of poolCache.entries()) {
+          if (now - v.timestamp > POOL_CACHE_TTL_MS) {
+            poolCache.delete(k);
+          }
+        }
+      }
+      poolCache.set(cacheKey, {
+        rawRecords,
+        total: rawTotal,
+        timestamp: Date.now(),
+        workingFormat,
+        catalogTotal
+      });
+    }
+
+    // Deduplicate raw records from data.gov.in to prevent identical duplicate rows across pages
+    const seenKeys = new Set<string>();
+    const deduplicatedRaw: any[] = [];
+    for (const r of rawRecords) {
+      const s = String(r.state || r.State || '').trim();
+      const d = String(r.district || r.District || '').trim();
+      const m = String(r.market || r.Market || '').trim();
+      const c = String(r.commodity || r.Commodity || '').trim();
+      const v = String(r.variety || r.Variety || '').trim();
+      const g = String(r.grade || r.Grade || '').trim();
+      const dt = String(r.arrival_date || r.Arrival_Date || '').trim();
+      const mp = String(r.modal_price ?? r.Modal_Price ?? '');
+      const key = `${s}|${d}|${m}|${c}|${v}|${g}|${dt}|${mp}`.toLowerCase();
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        deduplicatedRaw.push(r);
+      }
+    }
+
     // Normalize field types while strictly preserving field meanings and original values
-    const records = rawRecords.map((r: any, idx: number) => {
+    let records = deduplicatedRaw.map((r: any, idx: number) => {
       const minPrice = parseFloat(String(r.min_price ?? r.Min_Price ?? 0));
       const maxPrice = parseFloat(String(r.max_price ?? r.Max_Price ?? 0));
       const modalPrice = parseFloat(String(r.modal_price ?? r.Modal_Price ?? 0));
@@ -309,7 +390,7 @@ export async function GET(req: NextRequest) {
       const rawDate = String(r.arrival_date || r.Arrival_Date || '').trim();
 
       return {
-        id: `${rawState}-${rawMarket}-${rawCommodity}-${rawDate}-${offset + idx}`,
+        id: `${rawState}-${rawMarket}-${rawCommodity}-${rawVariety}-${rawDate}-${offset + idx}`,
         state: rawState,
         district: rawDistrict,
         market: rawMarket,
@@ -323,6 +404,83 @@ export async function GET(req: NextRequest) {
         unit: '₹/Quintal' // Preserves official Agmarknet wholesale trading unit (1 Quintal = 100 kg)
       };
     });
+
+    // Optional free keyword search across commodity, market, district, and variety
+    if (qParam) {
+      const q = qParam.toLowerCase();
+      records = records.filter(
+        (r) =>
+          r.commodity.toLowerCase().includes(q) ||
+          r.market.toLowerCase().includes(q) ||
+          r.variety.toLowerCase().includes(q) ||
+          r.district.toLowerCase().includes(q)
+      );
+    }
+
+    // 2. Proximity Prioritization across the Complete Relevant Result Set:
+    // When farmer location is provided, rank the entire pool by distance (nearest first)
+    // without any fixed radius cutoff, then apply pagination slicing.
+    if (hasUserLocation) {
+      const enriched = records.map((r) => {
+        const loc = resolveMarketCoordinates(r.market, r.district);
+        const distanceKm = loc
+          ? calculateDistanceKm(userLat, userLon, loc.latitude, loc.longitude)
+          : null;
+        return {
+          ...r,
+          distanceKm,
+          isApproximate: loc?.isApproximate ?? false,
+          resolvedLocationName: loc?.resolvedName
+        };
+      });
+
+      // Sort full candidate pool ascending by distance
+      // Records without coordinates are placed at the end with distanceKm = null
+      enriched.sort((a, b) => {
+        if (a.distanceKm !== null && b.distanceKm !== null) {
+          return a.distanceKm - b.distanceKm;
+        }
+        if (a.distanceKm !== null && b.distanceKm === null) return -1;
+        if (a.distanceKm === null && b.distanceKm !== null) return 1;
+        return 0;
+      });
+
+      const poolTotal = enriched.length;
+      const pagedRecords = enriched.slice(offset, offset + limit);
+
+      return NextResponse.json({
+        success: true,
+        status: pagedRecords.length > 0 ? 'SUCCESS' : 'NO_DATA',
+        total: poolTotal,
+        count: pagedRecords.length,
+        limit,
+        offset,
+        filters: {
+          state: state || 'All',
+          district: district || 'All',
+          market: market || 'All',
+          commodity: commodity || 'All'
+        },
+        workingFormat,
+        attemptedFormats,
+        catalogTotal,
+        isProximitySorted: true,
+        poolTotal,
+        message: pagedRecords.length === 0 && catalogTotal !== undefined
+          ? `No matching records found for '${state}' with the applied criteria (${catalogTotal} active records across India in today's catalog).`
+          : undefined,
+        records: pagedRecords,
+        unit: '₹/Quintal',
+        source: 'Ministry of Agriculture and Farmers Welfare (Agmarknet) via data.gov.in',
+        resource_id: RESOURCE_ID,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const total = typeof data.total === 'number' 
+      ? data.total 
+      : (parseInt(data.total, 10) || rawRecords.length);
+    const count = records.length;
 
     return NextResponse.json({
       success: true,
@@ -340,6 +498,7 @@ export async function GET(req: NextRequest) {
       workingFormat,
       attemptedFormats,
       catalogTotal,
+      isProximitySorted: false,
       message: count === 0 && catalogTotal !== undefined
         ? `No mandi arrival bulletins have been published for '${state}' on data.gov.in for the current date yet (${catalogTotal} active records across India in today's catalog).`
         : undefined,

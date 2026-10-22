@@ -72,14 +72,14 @@ export default function EcommercePageClient() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
-  // Categories list for inputs
+  // Categories list for inputs (50 demonstration products across 5 categories of 10 items each)
   const categories: (string | ProductCategory)[] = [
     'All',
     'Seeds',
+    'Simple, low-budget equipment',
     'Fertilizers',
-    'Pesticides',
-    'Equipment',
-    'Other'
+    'Organic foods',
+    'Other agricultural products'
   ];
 
   const filteredProducts = useMemo(() => {

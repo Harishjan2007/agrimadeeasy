@@ -102,8 +102,13 @@ def export_tree_ensemble():
 
                     # Bitset for categorical splits if present
                     bitset_list = None
-                    if is_cat_split and 'bitset' in node.dtype.names:
-                        bitset_list = [int(b) for b in node['bitset']]
+                    if is_cat_split:
+                        if hasattr(tree_obj, 'binned_left_cat_bitsets') and tree_obj.binned_left_cat_bitsets is not None:
+                            b_idx = int(node['bitset_idx']) if 'bitset_idx' in node.dtype.names else int(node['bin_threshold'])
+                            if b_idx < len(tree_obj.binned_left_cat_bitsets):
+                                bitset_list = [int(b) for b in tree_obj.binned_left_cat_bitsets[b_idx]]
+                        elif 'bitset' in node.dtype.names:
+                            bitset_list = [int(b) for b in node['bitset']]
 
                     node_dict = {
                         'is_leaf': False,
@@ -225,29 +230,57 @@ def export_tree_ensemble():
 
         fixtures[h_name] = test_samples
 
-    # Write model trees JSON
-    with open(OUTPUT_JSON_PATH, 'w', encoding='utf-8') as f:
+    # Safe model export: write to candidate files first
+    candidate_json_path = OUTPUT_JSON_PATH + '.candidate'
+    candidate_fixtures_path = TEST_FIXTURES_PATH + '.candidate'
+
+    with open(candidate_json_path, 'w', encoding='utf-8') as f:
         json.dump(exported_horizons, f, indent=2)
-    print(f"\n[OK] Exported tree ensemble model to: {OUTPUT_JSON_PATH} ({os.path.getsize(OUTPUT_JSON_PATH):,d} bytes)")
 
-    # Write golden fixtures
-    with open(TEST_FIXTURES_PATH, 'w', encoding='utf-8') as f:
+    with open(candidate_fixtures_path, 'w', encoding='utf-8') as f:
         json.dump(fixtures, f, indent=2)
-    print(f"[OK] Exported {len(HORIZONS)*20} test parity fixtures to: {TEST_FIXTURES_PATH}")
 
-    # Verify standalone python tree inference against sklearn on all fixtures
+    # Verify standalone python tree inference against sklearn on all candidate fixtures
     max_abs_diff = 0.0
+    failures = []
+    total_checked = 0
     for h_name, samples in fixtures.items():
         h_model = exported_horizons[h_name]
-        for s in samples:
+        for s_idx, s in enumerate(samples):
             standalone_delta = evaluate_tree_ensemble_standalone(s['feature_vector'], h_model)
             diff = abs(standalone_delta - s['expected_delta'])
             if diff > max_abs_diff:
                 max_abs_diff = diff
+            if diff >= 1e-4:
+                failures.append({
+                    'horizon': h_name,
+                    'index': s_idx,
+                    'crop': s['crop'],
+                    'standalone': standalone_delta,
+                    'sklearn': s['expected_delta'],
+                    'diff': diff
+                })
+            total_checked += 1
 
-    print(f"[OK] Standalone Tree Evaluator vs Scikit-Learn max absolute difference: {max_abs_diff:.8e}")
-    assert max_abs_diff < 1e-4, f"Parity mismatch! Max diff: {max_abs_diff}"
-    print("[PASS] 100% Exact Numerical Parity verified between standalone tree evaluator and Scikit-Learn!")
+    print(f"\n[EVAL] Standalone Tree Evaluator vs Scikit-Learn max absolute difference: {max_abs_diff:.8e}")
+    print(f"[EVAL] Tested {total_checked} fixtures across {len(HORIZONS)} horizons. Failures (< 1e-4): {len(failures)}")
+
+    if max_abs_diff >= 1e-4 or len(failures) > 0:
+        # Preserve active artifacts and clean up candidate files
+        if os.path.exists(candidate_json_path):
+            os.remove(candidate_json_path)
+        if os.path.exists(candidate_fixtures_path):
+            os.remove(candidate_fixtures_path)
+        fail_details = "\n".join([f"  [{f['horizon']} #{f['index']} {f['crop']}]: standalone={f['standalone']}, sklearn={f['sklearn']}, diff={f['diff']}" for f in failures[:5]])
+        raise AssertionError(f"Safe model export halted: Parity mismatch! Max diff: {max_abs_diff}\n{fail_details}")
+
+    # Parity verified: atomically promote candidate artifacts to active paths
+    os.replace(candidate_json_path, OUTPUT_JSON_PATH)
+    os.replace(candidate_fixtures_path, TEST_FIXTURES_PATH)
+
+    print(f"[OK] Atomically promoted verified tree model to: {OUTPUT_JSON_PATH} ({os.path.getsize(OUTPUT_JSON_PATH):,d} bytes)")
+    print(f"[OK] Atomically promoted verified fixtures to: {TEST_FIXTURES_PATH}")
+    print("[PASS] 100% Exact Numerical Parity verified between standalone tree evaluator and Scikit-Learn across all fixtures!")
 
 
 def evaluate_tree_ensemble_standalone(features, h_model):
@@ -259,21 +292,39 @@ def evaluate_tree_ensemble_standalone(features, h_model):
     is_categorical = h_model['is_categorical']
     trees = h_model['trees']
 
+    # In crop_price_trees.json, categorical features (commodity, district, market)
+    # are internal indices 0, 1, 2, while the 12 continuous features are indices 3..14.
+    # Input feature_vector has continuous features at 0..11 and categoricals at 12..14.
+    if len(features) == 15 and is_categorical[0] and not is_categorical[12]:
+        reordered_features = [features[12], features[13], features[14]] + list(features[:12])
+    else:
+        reordered_features = list(features)
+
     # 1. Map features to integer bins
     binned_features = []
-    for j, val in enumerate(features):
+    for j, val in enumerate(reordered_features):
         if is_categorical[j]:
-            # Categorical bin is the integer category code if >= 0, else 0/missing
-            b = int(val) if val >= 0 else 0
+            th = bin_thresholds[j]
+            if val is None or np.isnan(val) or val < 0:
+                b = 255  # missing/unknown category in scikit-learn
+            else:
+                int_val = int(val)
+                if int_val < len(th) and th[int_val] == val:
+                    b = int_val
+                else:
+                    idx = int(np.searchsorted(th, val))
+                    if idx < len(th) and th[idx] == val:
+                        b = idx
+                    else:
+                        b = 255
             binned_features.append(b)
         else:
             th = bin_thresholds[j]
-            # np.searchsorted(th, val, side='right')
-            # If val is NaN -> missing bin (0)
-            if np.isnan(val):
-                b = len(th)
+            if val is None or np.isnan(val):
+                b = 255  # missing continuous value in scikit-learn
             else:
-                b = int(np.searchsorted(th, val, side='right'))
+                th_arr_32 = np.array(th, dtype=np.float32)
+                b = int(np.searchsorted(th_arr_32, np.float32(val), side='left'))
             binned_features.append(b)
 
     # 2. Sum leaf values across all trees
@@ -285,18 +336,19 @@ def evaluate_tree_ensemble_standalone(features, h_model):
             feat_idx = node['feature_idx']
             bin_val = binned_features[feat_idx]
 
-            if node.get('is_categorical', False):
+            if bin_val == 255:
+                # Missing categorical or continuous values route via missing_go_to_left
+                node = nodes[node['left']] if node.get('missing_go_to_left', True) else nodes[node['right']]
+            elif node.get('is_categorical', False):
                 bitset = node.get('bitset')
-                if bitset and bin_val < 256:
-                    # check (bitset[bin_val >> 5] >> (bin_val & 31)) & 1
-                    word = bitset[bin_val >> 5]
+                if bitset and 0 <= bin_val < 256:
+                    word = np.uint32(bitset[bin_val >> 5])
                     in_set = bool((word >> (bin_val & 31)) & 1)
                     node = nodes[node['left']] if in_set else nodes[node['right']]
                 else:
-                    node = nodes[node['right']]
+                    node = nodes[node['left']] if bin_val <= node['bin_threshold'] else nodes[node['right']]
             else:
-                bin_thresh = node['bin_threshold']
-                if bin_val <= bin_thresh:
+                if bin_val <= node['bin_threshold']:
                     node = nodes[node['left']]
                 else:
                     node = nodes[node['right']]

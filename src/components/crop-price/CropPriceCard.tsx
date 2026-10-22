@@ -18,6 +18,7 @@ import {
 import { CropPrice } from '@/types';
 import { useLanguage } from '@/i18n';
 import { getProvenanceBadgeConfig } from '@/lib/agmarknet';
+import { getGoogleMapsUrl } from '@/lib/location';
 
 interface CropPriceCardProps {
   item: CropPrice;
@@ -70,6 +71,12 @@ export default function CropPriceCard({
     if (last < first - 20) return 'down';
     return 'stable';
   })();
+
+  const marketMapUrl = getGoogleMapsUrl(
+    item.market?.latitude,
+    item.market?.longitude,
+    item.market?.name ? `${item.market.name}, ${item.market.location || ''}, Tamil Nadu` : item.market?.location
+  );
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs hover:shadow-card hover:border-emerald-300 transition-all duration-200 flex flex-col justify-between group">
@@ -246,13 +253,26 @@ export default function CropPriceCard({
         </Link>
 
         {item.market_id && (
-          <Link
-            href={`/map?category=markets&id=${item.market_id}`}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors shrink-0"
-            title={translations.map?.viewOnMap || 'View on Map'}
-          >
-            <MapPin className="w-4 h-4 text-slate-600" />
-          </Link>
+          marketMapUrl ? (
+            <a
+              href={marketMapUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors shrink-0"
+              title={isTa ? 'மண்டியை கூகுள் வரைபடத்தில் பார்க்க (Google Maps)' : 'View Mandi on Google Maps'}
+            >
+              <MapPin className="w-4 h-4 text-slate-600" />
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="p-2 bg-slate-50 text-slate-300 rounded-xl cursor-not-allowed opacity-60 shrink-0"
+              title={isTa ? 'மண்டி இட விவரங்கள் கிடைக்கவில்லை' : 'Mandi location unavailable'}
+            >
+              <MapPin className="w-4 h-4 text-slate-300" />
+            </button>
+          )
         )}
       </div>
     </div>

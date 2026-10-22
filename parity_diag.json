@@ -1,0 +1,204 @@
+{
+  "m145Fixtures": [
+    {
+      "horizon": "7 Days",
+      "index": 3,
+      "crop": "groundnut",
+      "district": "salem",
+      "market": "salem"
+    },
+    {
+      "horizon": "7 Days",
+      "index": 8,
+      "crop": "maize",
+      "district": "dindigul",
+      "market": "salem"
+    },
+    {
+      "horizon": "15 Days",
+      "index": 3,
+      "crop": "groundnut",
+      "district": "salem",
+      "market": "salem"
+    },
+    {
+      "horizon": "15 Days",
+      "index": 8,
+      "crop": "maize",
+      "district": "dindigul",
+      "market": "salem"
+    }
+  ],
+  "testRouteMissingFirst": {
+    "maxDiff": 16.537801046640652,
+    "failsCount": 8,
+    "fails": [
+      {
+        "horizon": "7 Days",
+        "index": 6,
+        "crop": "unknown_crop_xyz",
+        "predicted": -7.125274110203315,
+        "expected": -3.336908621469863,
+        "diff": 3.788365488733452
+      },
+      {
+        "horizon": "7 Days",
+        "index": 8,
+        "crop": "maize",
+        "predicted": 75.21986775980265,
+        "expected": 69.59894626929123,
+        "diff": 5.620921490511421
+      },
+      {
+        "horizon": "15 Days",
+        "index": 6,
+        "crop": "unknown_crop_xyz",
+        "predicted": -17.81544279799745,
+        "expected": -11.031835724539437,
+        "diff": 6.783607073458011
+      },
+      {
+        "horizon": "15 Days",
+        "index": 14,
+        "crop": "onion",
+        "predicted": -563.888596219997,
+        "expected": -563.3223464801276,
+        "diff": 0.5662497398693631
+      },
+      {
+        "horizon": "30 Days",
+        "index": 3,
+        "crop": "groundnut",
+        "predicted": 28.35030774304469,
+        "expected": 28.14634352636493,
+        "diff": 0.20396421667976128
+      },
+      {
+        "horizon": "30 Days",
+        "index": 6,
+        "crop": "unknown_crop_xyz",
+        "predicted": -24.86407625349606,
+        "expected": -15.974349666220427,
+        "diff": 8.889726587275632
+      },
+      {
+        "horizon": "30 Days",
+        "index": 11,
+        "crop": "onion",
+        "predicted": -1848.7751170769066,
+        "expected": -1832.5443867527042,
+        "diff": 16.23073032420234
+      },
+      {
+        "horizon": "30 Days",
+        "index": 14,
+        "crop": "onion",
+        "predicted": -968.7966603536472,
+        "expected": -952.2588593070066,
+        "diff": 16.537801046640652
+      }
+    ]
+  },
+  "testRouteBitsetFirst": {
+    "maxDiff": 490.1912298943191,
+    "failsCount": 12,
+    "fails": [
+      {
+        "horizon": "7 Days",
+        "index": 6,
+        "crop": "unknown_crop_xyz",
+        "predicted": -1.663868750289581,
+        "expected": -3.336908621469863,
+        "diff": 1.6730398711802819
+      },
+      {
+        "horizon": "7 Days",
+        "index": 7,
+        "crop": "paddy (dhan)",
+        "predicted": -386.9199363412388,
+        "expected": -398.9408932204069,
+        "diff": 12.020956879168125
+      },
+      {
+        "horizon": "7 Days",
+        "index": 8,
+        "crop": "maize",
+        "predicted": 75.21986775980265,
+        "expected": 69.59894626929123,
+        "diff": 5.620921490511421
+      },
+      {
+        "horizon": "7 Days",
+        "index": 14,
+        "crop": "onion",
+        "predicted": -47.95657903957239,
+        "expected": -49.47809888655149,
+        "diff": 1.5215198469791034
+      },
+      {
+        "horizon": "15 Days",
+        "index": 6,
+        "crop": "unknown_crop_xyz",
+        "predicted": -11.98313317940845,
+        "expected": -11.031835724539437,
+        "diff": 0.9512974548690121
+      },
+      {
+        "horizon": "15 Days",
+        "index": 7,
+        "crop": "paddy (dhan)",
+        "predicted": -1141.5421290716015,
+        "expected": -929.9267749960086,
+        "diff": 211.6153540755929
+      },
+      {
+        "horizon": "15 Days",
+        "index": 14,
+        "crop": "onion",
+        "predicted": -563.3894023980904,
+        "expected": -563.3223464801276,
+        "diff": 0.06705591796276167
+      },
+      {
+        "horizon": "30 Days",
+        "index": 3,
+        "crop": "groundnut",
+        "predicted": 28.35030774304469,
+        "expected": 28.14634352636493,
+        "diff": 0.20396421667976128
+      },
+      {
+        "horizon": "30 Days",
+        "index": 6,
+        "crop": "unknown_crop_xyz",
+        "predicted": -22.90369276397117,
+        "expected": -15.974349666220427,
+        "diff": 6.929343097750742
+      },
+      {
+        "horizon": "30 Days",
+        "index": 7,
+        "crop": "paddy (dhan)",
+        "predicted": -2009.4824092214592,
+        "expected": -1519.29117932714,
+        "diff": 490.1912298943191
+      },
+      {
+        "horizon": "30 Days",
+        "index": 11,
+        "crop": "onion",
+        "predicted": -1848.7751170769066,
+        "expected": -1832.5443867527042,
+        "diff": 16.23073032420234
+      },
+      {
+        "horizon": "30 Days",
+        "index": 14,
+        "crop": "onion",
+        "predicted": -1072.0300885958804,
+        "expected": -952.2588593070066,
+        "diff": 119.77122928887388
+      }
+    ]
+  }
+}

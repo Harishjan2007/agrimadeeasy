@@ -1,0 +1,16 @@
+{
+  "x32_binned_13": 53,
+  "x64_binned_13": 54,
+  "x32_prep_13": -0.7717727422714233,
+  "x64_prep_13": -0.7717727365467836,
+  "th_53": -0.7717727422714233,
+  "th_53_repr": "np.float64(-0.7717727422714233)",
+  "x32_prep_13_repr": "np.float64(-0.7717727422714233)",
+  "x64_prep_13_repr": "np.float64(-0.7717727365467836)",
+  "x32_is_equal": true,
+  "x64_is_equal": false,
+  "x32_less": false,
+  "x64_less": false,
+  "x32_greater": false,
+  "x64_greater": true
+}

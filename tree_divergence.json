@@ -1,0 +1,390 @@
+{
+  "bin_comparison": [
+    {
+      "col": 0,
+      "feat_name": "commodity_enc",
+      "sklearn_bin": 86,
+      "our_bin": 86,
+      "match": true
+    },
+    {
+      "col": 1,
+      "feat_name": "district_enc",
+      "sklearn_bin": 5,
+      "our_bin": 5,
+      "match": true
+    },
+    {
+      "col": 2,
+      "feat_name": "market_enc",
+      "sklearn_bin": 145,
+      "our_bin": 145,
+      "match": true
+    },
+    {
+      "col": 3,
+      "feat_name": "current_price",
+      "sklearn_bin": 134,
+      "our_bin": 134,
+      "match": true
+    },
+    {
+      "col": 4,
+      "feat_name": "min_price",
+      "sklearn_bin": 125,
+      "our_bin": 125,
+      "match": true
+    },
+    {
+      "col": 5,
+      "feat_name": "max_price",
+      "sklearn_bin": 133,
+      "our_bin": 133,
+      "match": true
+    },
+    {
+      "col": 6,
+      "feat_name": "spread",
+      "sklearn_bin": 141,
+      "our_bin": 141,
+      "match": true
+    },
+    {
+      "col": 7,
+      "feat_name": "roll_mean_7d",
+      "sklearn_bin": 164,
+      "our_bin": 164,
+      "match": true
+    },
+    {
+      "col": 8,
+      "feat_name": "roll_mean_30d",
+      "sklearn_bin": 157,
+      "our_bin": 157,
+      "match": true
+    },
+    {
+      "col": 9,
+      "feat_name": "roll_std_30d",
+      "sklearn_bin": 161,
+      "our_bin": 161,
+      "match": true
+    },
+    {
+      "col": 10,
+      "feat_name": "momentum_7d",
+      "sklearn_bin": 52,
+      "our_bin": 52,
+      "match": true
+    },
+    {
+      "col": 11,
+      "feat_name": "sin_month",
+      "sklearn_bin": 5,
+      "our_bin": 5,
+      "match": true
+    },
+    {
+      "col": 12,
+      "feat_name": "cos_month",
+      "sklearn_bin": 6,
+      "our_bin": 6,
+      "match": true
+    },
+    {
+      "col": 13,
+      "feat_name": "sin_doy",
+      "sklearn_bin": 53,
+      "our_bin": 54,
+      "match": false
+    },
+    {
+      "col": 14,
+      "feat_name": "cos_doy",
+      "sklearn_bin": 184,
+      "our_bin": 185,
+      "match": false
+    }
+  ],
+  "first_divergences": [
+    {
+      "tree": 78,
+      "sk_leaf": -0.01106730779302281,
+      "j_leaf": -0.6322142911429159,
+      "sk_path": [
+        {
+          "node": 0,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 2,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 6,
+          "f_idx": 13,
+          "bv": 53,
+          "go_l": true
+        },
+        {
+          "node": 7,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 19,
+          "f_idx": 2,
+          "bv": 145,
+          "go_l": false
+        },
+        {
+          "node": 27,
+          "f_idx": 4,
+          "bv": 125,
+          "go_l": true
+        },
+        {
+          "node": 28,
+          "f_idx": 4,
+          "bv": 125,
+          "go_l": true
+        }
+      ],
+      "j_path": [
+        {
+          "node": 0,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 2,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 6,
+          "f_idx": 13,
+          "bv": 54,
+          "go_l": false
+        },
+        {
+          "node": 34,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 48,
+          "f_idx": 3,
+          "bv": 134,
+          "go_l": false
+        },
+        {
+          "node": 56,
+          "f_idx": 8,
+          "bv": 157,
+          "go_l": false
+        },
+        {
+          "node": 58,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        }
+      ]
+    },
+    {
+      "tree": 84,
+      "sk_leaf": -2.0044883396556887,
+      "j_leaf": -0.641854750207855,
+      "sk_path": [
+        {
+          "node": 0,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 2,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 6,
+          "f_idx": 13,
+          "bv": 53,
+          "go_l": true
+        },
+        {
+          "node": 7,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": true
+        },
+        {
+          "node": 8,
+          "f_idx": 2,
+          "bv": 145,
+          "go_l": true
+        },
+        {
+          "node": 9,
+          "f_idx": 3,
+          "bv": 134,
+          "go_l": true
+        },
+        {
+          "node": 10,
+          "f_idx": 3,
+          "bv": 134,
+          "go_l": true
+        }
+      ],
+      "j_path": [
+        {
+          "node": 0,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 2,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 6,
+          "f_idx": 13,
+          "bv": 54,
+          "go_l": false
+        },
+        {
+          "node": 32,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 48,
+          "f_idx": 3,
+          "bv": 134,
+          "go_l": false
+        },
+        {
+          "node": 56,
+          "f_idx": 8,
+          "bv": 157,
+          "go_l": false
+        },
+        {
+          "node": 58,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        }
+      ]
+    },
+    {
+      "tree": 88,
+      "sk_leaf": -3.5324754169336803,
+      "j_leaf": -0.1778822934620862,
+      "sk_path": [
+        {
+          "node": 0,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 2,
+          "f_idx": 6,
+          "bv": 141,
+          "go_l": true
+        },
+        {
+          "node": 3,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 17,
+          "f_idx": 13,
+          "bv": 53,
+          "go_l": true
+        },
+        {
+          "node": 18,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": true
+        },
+        {
+          "node": 19,
+          "f_idx": 2,
+          "bv": 145,
+          "go_l": true
+        },
+        {
+          "node": 20,
+          "f_idx": 7,
+          "bv": 164,
+          "go_l": true
+        }
+      ],
+      "j_path": [
+        {
+          "node": 0,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 2,
+          "f_idx": 6,
+          "bv": 141,
+          "go_l": true
+        },
+        {
+          "node": 3,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 17,
+          "f_idx": 13,
+          "bv": 54,
+          "go_l": false
+        },
+        {
+          "node": 31,
+          "f_idx": 0,
+          "bv": 86,
+          "go_l": false
+        },
+        {
+          "node": 39,
+          "f_idx": 2,
+          "bv": 145,
+          "go_l": false
+        },
+        {
+          "node": 43,
+          "f_idx": 3,
+          "bv": 134,
+          "go_l": true
+        }
+      ]
+    }
+  ]
+}

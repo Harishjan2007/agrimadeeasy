@@ -90,6 +90,86 @@ export const TAMIL_NADU_DISTRICTS: DistrictPreset[] = [
     longitude: 78.1198
   },
   {
+    id: 'dist-trichy',
+    name: 'Tiruchirappalli',
+    nameTa: 'திருச்சிராப்பள்ளி',
+    state: 'Tamil Nadu',
+    latitude: 10.7905,
+    longitude: 78.7047
+  },
+  {
+    id: 'dist-erode',
+    name: 'Erode',
+    nameTa: 'ஈரோடு',
+    state: 'Tamil Nadu',
+    latitude: 11.3410,
+    longitude: 77.7172
+  },
+  {
+    id: 'dist-dindigul',
+    name: 'Dindigul',
+    nameTa: 'திண்டுக்கல்',
+    state: 'Tamil Nadu',
+    latitude: 10.3673,
+    longitude: 77.9803
+  },
+  {
+    id: 'dist-namakkal',
+    name: 'Namakkal',
+    nameTa: 'நாமக்கல்',
+    state: 'Tamil Nadu',
+    latitude: 11.2189,
+    longitude: 78.1674
+  },
+  {
+    id: 'dist-cuddalore',
+    name: 'Cuddalore',
+    nameTa: 'கடலூர்',
+    state: 'Tamil Nadu',
+    latitude: 11.7753,
+    longitude: 79.5537
+  },
+  {
+    id: 'dist-dharmapuri',
+    name: 'Dharmapuri',
+    nameTa: 'தர்மபுரி',
+    state: 'Tamil Nadu',
+    latitude: 12.1211,
+    longitude: 78.1582
+  },
+  {
+    id: 'dist-tirunelveli',
+    name: 'Tirunelveli',
+    nameTa: 'திருநெல்வேலி',
+    state: 'Tamil Nadu',
+    latitude: 8.7139,
+    longitude: 77.7567
+  },
+  {
+    id: 'dist-tiruppur',
+    name: 'Tiruppur',
+    nameTa: 'திருப்பூர்',
+    state: 'Tamil Nadu',
+    latitude: 11.1085,
+    longitude: 77.3411
+  },
+  {
+    id: 'dist-villupuram',
+    name: 'Villupuram',
+    nameTa: 'விழுப்புரம்',
+    state: 'Tamil Nadu',
+    latitude: 11.9401,
+    longitude: 79.4861
+  },
+  {
+    id: 'dist-chennai',
+    name: 'Chennai',
+    nameTa: 'சென்னை',
+    state: 'Tamil Nadu',
+    latitude: 13.0827,
+    longitude: 80.2707
+  },
+  {
     id: 'dist-guntur',
     name: 'Guntur',
     nameTa: 'குண்டூர்',
@@ -221,6 +301,37 @@ export function getDirectionsUrl(
   }
 
   return 'https://www.google.com/maps';
+}
+
+/**
+ * Generates universal Google Maps Search URL.
+ * Prefers exact latitude and longitude; falls back to formatted address or place name.
+ * Uses Google's standard Maps search format: https://www.google.com/maps/search/?api=1&query=...
+ * Returns null if location information is missing or invalid.
+ */
+export function getGoogleMapsUrl(
+  latitude?: number | null,
+  longitude?: number | null,
+  addressOrName?: string | null
+): string | null {
+  if (
+    latitude !== undefined &&
+    latitude !== null &&
+    !isNaN(latitude) &&
+    longitude !== undefined &&
+    longitude !== null &&
+    !isNaN(longitude) &&
+    latitude !== 0 &&
+    longitude !== 0
+  ) {
+    return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+  }
+
+  if (addressOrName && addressOrName.trim()) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressOrName.trim())}`;
+  }
+
+  return null;
 }
 
 /**

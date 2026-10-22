@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured, formatSupabaseError } from './client';
 import { GovernmentScheme } from '@/types';
-import { MOCK_SCHEMES } from '@/lib/mock-data';
+import { VERIFIED_GOVERNMENT_SCHEMES } from '@/lib/schemes-data';
 
 /**
  * Raw relational shape from Supabase schemes query
@@ -23,7 +23,7 @@ interface RawSchemeRow {
 
 /**
  * Fetch all government schemes from Supabase
- * Falls back to the curated 18 verified schemes if Supabase returns 0 records or is unconfigured
+ * Falls back to the curated 45 verified schemes if Supabase returns 0 records or is unconfigured
  */
 export async function getSchemes(): Promise<{
   data: GovernmentScheme[];
@@ -39,48 +39,57 @@ export async function getSchemes(): Promise<{
 
       if (error) {
         console.warn('Supabase getSchemes notice, falling back to verified schemes:', formatSupabaseError(error));
-        return { data: MOCK_SCHEMES, error: null, isConfigured: true };
+        return { data: VERIFIED_GOVERNMENT_SCHEMES, error: null, isConfigured: true };
       }
 
-      if (data && data.length > 0) {
-        const schemes: GovernmentScheme[] = (data as unknown as RawSchemeRow[]).map((row) => {
-          const govLevel = (row.government_level === 'state' || row.name.toLowerCase().includes('tamil nadu') || row.name.toLowerCase().includes('kalaignar') || row.name.toLowerCase().includes('kuruvai') || row.name.toLowerCase().includes('uzhavar') || row.name.toLowerCase().includes('tanhoda'))
+      if (data && data.length >= VERIFIED_GOVERNMENT_SCHEMES.length) {
+        const verifiedMap = new Map(VERIFIED_GOVERNMENT_SCHEMES.map((s) => [s.id, s]));
+        const schemes: GovernmentScheme[] = (data as unknown as any[]).map((row) => {
+          const verified = verifiedMap.get(row.id);
+          const govLevel = (row.government_level === 'state' || row.name?.toLowerCase().includes('tamil nadu') || row.name?.toLowerCase().includes('kalaignar') || row.name?.toLowerCase().includes('kuruvai') || row.name?.toLowerCase().includes('uzhavar') || row.name?.toLowerCase().includes('tanhoda'))
             ? ('state' as const)
             : ('central' as const);
 
-          const stateVal = row.state || (govLevel === 'state' ? 'Tamil Nadu' : null);
-          const categoryVal = row.category || categorizeScheme(row.name, row.description);
-          const sourceVal = row.source || (govLevel === 'state'
-            ? 'Government of Tamil Nadu - Agriculture & Farmers Welfare Department'
-            : 'Government of India - Ministry of Agriculture & Farmers Welfare');
-
           return {
             id: row.id,
-            name: row.name,
-            description: row.description,
-            eligibility: row.eligibility,
-            benefits: row.benefits,
-            application_info: row.application_info,
-            official_url: row.official_url || undefined,
-            source: sourceVal,
-            government_level: govLevel,
-            state: stateVal,
-            category: categoryVal,
-            last_verified_at: row.last_verified_at || '2026-08-24',
-            created_at: row.created_at
+            name: row.name || verified?.name || '',
+            description: row.description || verified?.description || '',
+            eligibility: row.eligibility || verified?.eligibility || '',
+            benefits: row.benefits || verified?.benefits || '',
+            application_info: row.application_info || verified?.application_info || '',
+            official_url: row.official_url || verified?.official_url || undefined,
+            source: row.source || verified?.source,
+            government_level: row.government_level || verified?.government_level || govLevel,
+            state: row.state !== undefined ? row.state : (verified?.state ?? (govLevel === 'state' ? 'Tamil Nadu' : null)),
+            category: row.category || verified?.category || categorizeScheme(row.name, row.description),
+            department: row.department || verified?.department,
+            support_type: row.support_type || verified?.support_type,
+            supported_crops: row.supported_crops || verified?.supported_crops || ['All Crops & Activities'],
+            landholding_criteria: row.landholding_criteria || verified?.landholding_criteria,
+            min_land_acres: row.min_land_acres ?? verified?.min_land_acres,
+            max_land_acres: row.max_land_acres ?? verified?.max_land_acres,
+            districts: row.districts || verified?.districts || ['All'],
+            required_documents: row.required_documents || verified?.required_documents,
+            benefit_type: row.benefit_type || verified?.benefit_type,
+            benefit_amount: row.benefit_amount || verified?.benefit_amount,
+            availability_status: row.availability_status || verified?.availability_status || 'open',
+            last_verified_at: row.last_verified_at || verified?.last_verified_at || '2026-08-24',
+            created_at: row.created_at || verified?.created_at || new Date().toISOString()
           };
         });
 
         return { data: schemes, error: null, isConfigured: true };
+      } else {
+        return { data: VERIFIED_GOVERNMENT_SCHEMES, error: null, isConfigured: true };
       }
     } catch (err: unknown) {
       console.warn('Unexpected notice in getSchemes, falling back to verified schemes:', formatSupabaseError(err));
-      return { data: MOCK_SCHEMES, error: null, isConfigured: true };
+      return { data: VERIFIED_GOVERNMENT_SCHEMES, error: null, isConfigured: true };
     }
   }
 
-  // Fallback to verified 18 Central & Tamil Nadu government schemes
-  return { data: MOCK_SCHEMES, error: null, isConfigured: isSupabaseConfigured };
+  // Fallback to verified 45 Central & Tamil Nadu government schemes
+  return { data: VERIFIED_GOVERNMENT_SCHEMES, error: null, isConfigured: isSupabaseConfigured };
 }
 
 /**

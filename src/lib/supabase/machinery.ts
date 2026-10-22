@@ -1,6 +1,6 @@
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured, formatSupabaseError } from './client';
-import { Machinery, MachineryBooking, BookingStatus, MachineryType, MachineryTracking } from '@/types';
+import { Machinery, MachineryBooking, BookingStatus, MachineryType, MachineryTracking, Profile } from '@/types';
 import { MOCK_MACHINERY, MOCK_BOOKINGS } from '@/lib/mock-data';
 
 interface RawMachineryRow {
@@ -393,26 +393,32 @@ export async function cancelMachineryBooking(bookingId: string): Promise<{
  * Save / Upsert latest real-time GPS coordinates of active machinery provider
  */
 export async function saveMachineryLocation(payload: {
-  bookingId: string;
-  providerId: string;
+  bookingId?: string;
+  booking_id?: string;
+  providerId?: string;
+  provider_id?: string;
   latitude: number;
   longitude: number;
   speed?: number | null;
   heading?: number | null;
   accuracy?: number | null;
+  recorded_at?: string;
 }): Promise<{
   data: MachineryTracking | null;
   error: Error | null;
 }> {
+  const bookingId = payload.bookingId || payload.booking_id || '';
+  const providerId = payload.providerId || payload.provider_id || '';
+
   const record = {
-    booking_id: payload.bookingId,
-    provider_id: payload.providerId,
+    booking_id: bookingId,
+    provider_id: providerId,
     latitude: payload.latitude,
     longitude: payload.longitude,
     speed: payload.speed ?? null,
     heading: payload.heading ?? null,
     accuracy: payload.accuracy ?? null,
-    recorded_at: new Date().toISOString(),
+    recorded_at: payload.recorded_at || new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
 
@@ -426,16 +432,13 @@ export async function saveMachineryLocation(payload: {
 
       if (error) {
         console.error('Supabase saveMachineryLocation error:', error);
-        const fallback: MachineryTracking = {
-          id: `trk-${Date.now()}`,
-          ...record
-        };
-        return { data: fallback, error: null };
+        return { data: null, error: new Error(error.message || 'Failed to save machinery location to database') };
       }
 
       return { data: data as MachineryTracking, error: null };
     } catch (err) {
-      console.warn('saveMachineryLocation exception, using local state:', err);
+      console.error('saveMachineryLocation exception:', err);
+      return { data: null, error: err instanceof Error ? err : new Error(String(err) || 'Machinery location save exception') };
     }
   }
 
@@ -555,6 +558,150 @@ export function subscribeToMachineryTracking(
       supabase.removeChannel(channel);
       channel = null;
     }
+  };
+}
+
+/**
+ * Update an existing machinery equipment record in Supabase
+ */
+export async function updateMachineryRecord(
+  machineryId: string,
+  updates: Partial<Machinery>
+): Promise<{
+  data: Machinery | null;
+  error: Error | null;
+}> {
+  const payload: Record<string, any> = {
+    updated_at: new Date().toISOString()
+  };
+
+  if (updates.name !== undefined) payload.name = updates.name;
+  if (updates.type !== undefined) payload.type = updates.type;
+  if (updates.description !== undefined) payload.description = updates.description;
+  if (updates.price_per_hour !== undefined) payload.price_per_hour = Number(updates.price_per_hour);
+  if (updates.location !== undefined) payload.location = updates.location;
+  if (updates.latitude !== undefined) payload.latitude = updates.latitude;
+  if (updates.longitude !== undefined) payload.longitude = updates.longitude;
+  if (updates.available !== undefined) payload.available = updates.available;
+  if (updates.image_url !== undefined) payload.image_url = updates.image_url;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('machinery').update(payload)
+        .eq('id', machineryId)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('Supabase updateMachineryRecord error:', error.message);
+        return {
+          data: null,
+          error: new Error(error.message || 'Failed to update machinery record in database')
+        };
+      } else if (data) {
+        return { data: data as Machinery, error: null };
+      }
+    } catch (err: any) {
+      console.error('updateMachineryRecord exception:', err);
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error(String(err) || 'Machinery update exception')
+      };
+    }
+  }
+
+  // Fallback / Offline (Supabase not configured in current environment)
+  return {
+    data: { id: machineryId, ...updates } as Machinery,
+    error: null
+  };
+}
+
+/**
+ * Update machinery provider business profile in Supabase profiles & auth metadata
+ */
+export async function updateProviderProfile(
+  providerId: string,
+  updates: {
+    provider_name?: string;
+    full_name?: string;
+    phone?: string;
+    business_address?: string;
+    state?: string;
+    district?: string;
+    latitude?: number;
+    longitude?: number;
+    machinery_types?: string[];
+    price_per_hour?: number;
+    rental_terms?: string;
+  }
+): Promise<{
+  data: Partial<Profile> | null;
+  error: Error | null;
+}> {
+  const profilePayload: Record<string, any> = {
+    updated_at: new Date().toISOString()
+  };
+
+  if (updates.full_name) profilePayload.name = updates.full_name;
+  if (updates.phone) profilePayload.phone = updates.phone;
+  if (updates.business_address) {
+    profilePayload.location = updates.business_address;
+    profilePayload.business_address = updates.business_address;
+  }
+  if (updates.provider_name) profilePayload.provider_name = updates.provider_name;
+  if (updates.state) profilePayload.state = updates.state;
+  if (updates.district) profilePayload.district = updates.district;
+  if (updates.latitude !== undefined) profilePayload.latitude = updates.latitude;
+  if (updates.longitude !== undefined) profilePayload.longitude = updates.longitude;
+  if (updates.machinery_types) profilePayload.machinery_types = updates.machinery_types;
+  if (updates.price_per_hour !== undefined) profilePayload.price_per_hour = updates.price_per_hour;
+  if (updates.rental_terms) profilePayload.rental_terms = updates.rental_terms;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const targetId = providerId || (await supabase.auth.getUser()).data.user?.id;
+      if (targetId) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .update(profilePayload)
+          .eq('id', targetId)
+          .select()
+          .maybeSingle();
+
+        try {
+          await supabase.auth.updateUser({ data: profilePayload });
+        } catch {}
+
+        if (error) {
+          console.error('Supabase updateProviderProfile error:', error.message);
+          return {
+            data: null,
+            error: new Error(error.message || 'Failed to update provider profile in database')
+          };
+        } else if (data) {
+          return { data: { ...(data as Profile), ...updates }, error: null };
+        }
+      } else {
+        return {
+          data: null,
+          error: new Error('Cannot update provider profile: User is not authenticated')
+        };
+      }
+    } catch (err: any) {
+      console.error('updateProviderProfile caught exception:', err);
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error(String(err) || 'Provider profile update exception')
+      };
+    }
+  }
+
+  // Fallback / Offline (Supabase not configured in current environment)
+  return {
+    data: { id: providerId, ...updates },
+    error: null
   };
 }
 

@@ -1,9 +1,16 @@
 {
-  "started_at": "2026-10-14T03:15:28.771Z",
-  "suites_count": 10,
-  "passed_tests": 59,
+  "started_at": "2026-10-21T14:46:47.200Z",
+  "suites_count": 16,
+  "passed_test_cases": 132,
+  "skipped_tests": 0,
   "failed_tests": 0,
+  "total_test_cases": 132,
+  "passed_suites": 33,
+  "failed_suites": 0,
+  "total_suites": 33,
+  "stream_pass_events": 165,
   "failures": [],
   "completed": true,
-  "completed_at": "2026-10-14T03:15:32.948Z"
+  "completed_at": "2026-10-21T14:46:54.882Z",
+  "passed_tests": 132
 }

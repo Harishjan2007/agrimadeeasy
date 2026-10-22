@@ -1,29 +1,45 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Sprout, 
   User, 
   Lock, 
-  ArrowRight
+  ArrowRight,
+  AlertCircle,
+  ShieldCheck,
+  CheckCircle2,
+  Info
 } from 'lucide-react';
 import { UserRole } from '@/types';
-import { signInUser } from '@/lib/supabase/auth';
+import { signInUser, setAuthCookie } from '@/lib/supabase/auth';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { useLanguage } from '@/i18n';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams ? searchParams.get('redirect') : null;
   const { language, translations, translateRole } = useLanguage();
   const isTa = language === 'ta';
 
-  const [email, setEmail] = useState('farmer@agrime.demo');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('farmer');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Validate and get destination path
+  const getDestinationUrl = (defaultRole: UserRole) => {
+    if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
+      return redirectParam;
+    }
+    if (defaultRole === 'dealer') return '/dealer';
+    if (defaultRole === 'machinery_provider') return '/machinery-provider';
+    return '/';
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,42 +65,50 @@ export default function LoginPage() {
       }
 
       const role = profile?.role || (user.user_metadata?.role as UserRole) || 'farmer';
+      setAuthCookie();
       
       setTimeout(() => {
         setLoading(false);
-        if (role === 'dealer') {
-          router.push('/dealer');
-        } else if (role === 'machinery_provider') {
-          router.push('/machinery-provider');
-        } else {
-          router.push('/');
-        }
-      }, 400);
+        const destination = getDestinationUrl(role);
+        router.push(destination);
+      }, 350);
       return;
     }
 
-    // Demo fallback mode
+    // Supabase unconfigured fallback mode
     setTimeout(() => {
-      setLoading(false);
-      if (selectedRole === 'dealer') {
-        router.push('/dealer');
-      } else if (selectedRole === 'machinery_provider') {
-        router.push('/machinery-provider');
-      } else {
-        router.push('/');
-      }
-    }, 400);
-  };
+      const demoId = `user_${Date.now()}`;
+      const demoUser = {
+        id: demoId,
+        email: email || `user@agrime.in`,
+        user_metadata: {
+          name: email.split('@')[0],
+          role: selectedRole
+        }
+      };
 
-  const handleQuickDemo = (role: UserRole) => {
-    setSelectedRole(role);
-    if (role === 'dealer') {
-      router.push('/dealer');
-    } else if (role === 'machinery_provider') {
-      router.push('/machinery-provider');
-    } else {
-      router.push('/');
-    }
+      const demoProfile = {
+        id: demoId,
+        name: email.split('@')[0],
+        email: demoUser.email,
+        phone: '',
+        role: selectedRole,
+        location: 'Tamil Nadu',
+        created_at: new Date().toISOString()
+      };
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('agrime_demo_session', JSON.stringify({ user: demoUser, profile: demoProfile }));
+          localStorage.setItem(`agrime_profile_${demoId}`, JSON.stringify(demoProfile));
+        } catch {}
+        setAuthCookie();
+      }
+
+      setLoading(false);
+      const destination = getDestinationUrl(selectedRole);
+      router.push(destination);
+    }, 350);
   };
 
   return (
@@ -109,58 +133,32 @@ export default function LoginPage() {
         <p className="mt-1 text-center text-xs text-slate-500">
           {translations.auth.loginSubtitle}
         </p>
+
+        {/* Redirect Notice Banner if redirected from a protected page */}
+        {redirectParam && (
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-center gap-2.5 text-xs text-amber-900 animate-in fade-in duration-200">
+            <Info className="w-4 h-4 text-amber-600 shrink-0" />
+            <div className="leading-tight">
+              <span className="font-bold">
+                {isTa ? 'அணுகல் அனுமதி தேவை:' : 'Authentication Required:'}
+              </span>{' '}
+              <span>
+                {isTa 
+                  ? 'இப்பகுதியை அணுக உங்கள் கணக்கில் உள்நுழையவும். உள்நுழைந்த பிறகு தானாகவே திருப்பிவிடப்படுவீர்கள்.' 
+                  : 'Please sign in to access this tab. You will be returned immediately after signing in.'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-6 sm:px-10 shadow-lg border border-slate-200/90 rounded-3xl space-y-6">
-          
-          {/* Quick 1-Click Demo Login Personas */}
-          <div>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">
-              {isTa ? 'விரைவு 1-கிளிக் மாதிரி உள்நுழைவு:' : 'Quick 1-Click Demo Sign In:'}
-            </span>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('farmer')}
-                className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-center transition-colors"
-              >
-                <span className="text-base block">🌾</span>
-                <span className="text-[11px] font-bold text-emerald-800 block mt-0.5">{translateRole('farmer')}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('dealer')}
-                className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-center transition-colors"
-              >
-                <span className="text-base block">🏪</span>
-                <span className="text-[11px] font-bold text-amber-800 block mt-0.5">{translateRole('dealer')}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('machinery_provider')}
-                className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-center transition-colors"
-              >
-                <span className="text-base block">🚜</span>
-                <span className="text-[11px] font-bold text-blue-800 block mt-0.5">{translateRole('machinery_provider')}</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-slate-400 font-semibold">{isTa ? 'அல்லது வழக்கமான உள்நுழைவு' : 'Or standard login'}</span>
-            </div>
-          </div>
 
           {errorMessage && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium">
-              {errorMessage}
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{errorMessage}</span>
             </div>
           )}
 
@@ -215,7 +213,10 @@ export default function LoginPage() {
 
           <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-100">
             {translations.auth.dontHaveAccount}{' '}
-            <Link href="/signup" className="text-agri-700 font-bold hover:underline">
+            <Link 
+              href={redirectParam ? `/signup?redirect=${encodeURIComponent(redirectParam)}` : '/signup'} 
+              className="text-agri-700 font-bold hover:underline"
+            >
               {translations.auth.signupLink}
             </Link>
           </div>
@@ -224,3 +225,16 @@ export default function LoginPage() {
     </div>
   );
 }
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-agri-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
+  );
+}
+

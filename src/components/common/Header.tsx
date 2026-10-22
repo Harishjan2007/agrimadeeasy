@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Sprout,
   TrendingUp,
@@ -15,9 +15,9 @@ import {
   X,
   ArrowRight,
   LogOut,
-  CalendarCheck,
   LayoutDashboard,
-  MapPin
+  Clock,
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '@/lib/supabase/useAuth';
 import { UserRole } from '@/types';
@@ -26,11 +26,21 @@ import { useLanguage } from '@/i18n';
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const filterParam = searchParams ? searchParams.get('filter') : null;
   const { user, profile, role, isConfigured, signOut } = useAuth();
   const { language, setLanguage, translations, translateRole } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => {
+    if (path.includes('?filter=')) {
+      const [base, query] = path.split('?');
+      const expectedFilter = new URLSearchParams(query).get('filter');
+      return pathname === base && filterParam === expectedFilter;
+    }
+    if (path === '/machinery-provider') {
+      return pathname === '/machinery-provider' && !filterParam;
+    }
     if (path === '/') return pathname === '/';
     return pathname.startsWith(path);
   };
@@ -41,40 +51,55 @@ export default function Header() {
   };
 
   const activeRole: UserRole = role || 'farmer';
-  const isSignedIn = isConfigured ? Boolean(user) : false;
+  const isSignedIn = Boolean(user);
 
-  // Desktop Center Navigation Links (Home + 7 core modules)
+  // Six core protected tabs + specialized portals
+  const PROTECTED_TABS = [
+    '/crop-price',
+    '/prediction',
+    '/dealers',
+    '/dealer',
+    '/machinery',
+    '/bookings',
+    '/machinery-provider',
+    '/ecommerce',
+    '/schemes',
+    '/profile'
+  ];
+
+  const getNavHref = (targetPath: string) => {
+    if (targetPath === '/') return '/';
+    if (!isSignedIn && PROTECTED_TABS.some(p => targetPath === p || targetPath.startsWith(`${p}/`))) {
+      return `/login?redirect=${encodeURIComponent(targetPath)}`;
+    }
+    return targetPath;
+  };
+
+  // Desktop Center Navigation Links (Home + core modules)
   const getNavLinks = () => {
     if (isSignedIn && activeRole === 'dealer') {
       return [
-        { href: '/', label: translations.nav.home, icon: Sprout },
-        { href: '/map', label: translations.nav.map, icon: MapPin },
         { href: '/dealer', label: translations.nav.dealerPortal, icon: LayoutDashboard },
-        { href: '/ecommerce', label: translations.nav.ecommerce, icon: ShoppingBag },
-        { href: '/dealers', label: translations.nav.mandiDirectory, icon: Store },
       ];
     }
 
     if (isSignedIn && activeRole === 'machinery_provider') {
       return [
-        { href: '/', label: translations.nav.home, icon: Sprout },
-        { href: '/map', label: translations.nav.map, icon: MapPin },
-        { href: '/machinery-provider', label: translations.nav.machineryHostPortal, icon: LayoutDashboard },
-        { href: '/machinery', label: translations.nav.fleetCatalog, icon: Tractor },
+        { href: '/machinery-provider', label: translations.nav.machinery, icon: Tractor },
+        { href: '/machinery-provider?filter=pending', label: translations.nav.pending, icon: Clock },
+        { href: '/machinery-provider?filter=completed', label: translations.nav.completed, icon: CheckCircle2 },
       ];
     }
 
-    // Default farmer & guest links: Home + 7 core modules
+    // Default farmer & guest links: Home + core modules
     return [
       { href: '/', label: translations.nav.home, icon: Sprout },
-      { href: '/map', label: translations.nav.map, icon: MapPin },
       { href: '/crop-price', label: translations.nav.cropPrices, icon: TrendingUp },
       { href: '/prediction', label: translations.nav.predictions, icon: TrendingUp },
       { href: '/dealers', label: translations.nav.dealers, icon: Store },
       { href: '/ecommerce', label: translations.nav.ecommerce, icon: ShoppingBag },
       { href: '/machinery', label: translations.nav.machinery, icon: Tractor },
       { href: '/schemes', label: translations.nav.schemes, icon: Landmark },
-      { href: '/bookings', label: translations.nav.myBookings, icon: CalendarCheck },
     ];
   };
 
@@ -106,12 +131,12 @@ export default function Header() {
           {/* Right Area: Portal Shortcuts + Compact Toggle Switcher */}
           <div className="flex items-center gap-2 sm:gap-3.5 text-agri-200 text-xs shrink-0">
             <div className="hidden lg:flex items-center gap-3">
-              <Link href="/dealer" className="hover:text-white transition-colors flex items-center gap-1 text-[11px]">
+              <Link href={getNavHref('/dealer')} className="hover:text-white transition-colors flex items-center gap-1 text-[11px]">
                 <span>{translations.nav.dealerPortal}</span>
                 <ArrowRight className="w-3 h-3" />
               </Link>
               <span className="text-agri-700">|</span>
-              <Link href="/machinery-provider" className="hover:text-white transition-colors flex items-center gap-1 text-[11px]">
+              <Link href={getNavHref('/machinery-provider')} className="hover:text-white transition-colors flex items-center gap-1 text-[11px]">
                 <span>{translations.nav.machineryHostPortal}</span>
                 <ArrowRight className="w-3 h-3" />
               </Link>
@@ -176,10 +201,12 @@ export default function Header() {
             {navLinks.map((link) => {
               const active = isActive(link.href);
               const Icon = link.icon;
+              const targetHref = getNavHref(link.href);
+
               return (
                 <Link
                   key={link.href}
-                  href={link.href}
+                  href={targetHref}
                   className={`flex items-center gap-1 px-1.5 xl:px-2 2xl:px-2.5 py-1.5 rounded-lg text-xs 2xl:text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
                     active
                       ? 'bg-agri-50 text-agri-700 font-semibold shadow-xs'
@@ -194,21 +221,9 @@ export default function Header() {
           </nav>
 
           {/* RIGHT: Dedicated Account Action Group (Profile | Sign In | Sign Up) with clear separation */}
-          <div className="hidden xl:flex items-center gap-2.5 xl:gap-3 2xl:gap-4 shrink-0 ml-2 xl:ml-3 2xl:ml-4 pl-2 xl:pl-3 2xl:pl-4 border-l border-slate-200/80">
+          <div className="hidden xl:flex items-center gap-2.5 xl:gap-3 2xl:gap-4 shrink-0 ml-2 xl:ml-3 2xl:ml-4 pl-2 xl:pl-3 2xl:ml-4 border-l border-slate-200/80">
             {!isSignedIn ? (
               <div className="flex items-center gap-2 xl:gap-2.5 2xl:gap-3 shrink-0">
-                <Link
-                  href="/profile"
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs 2xl:text-sm font-semibold transition-all shrink-0 whitespace-nowrap ${
-                    isActive('/profile')
-                      ? 'bg-agri-50 text-agri-700 font-bold border border-agri-200 shadow-xs'
-                      : 'text-slate-600 hover:text-agri-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <User className="w-4 h-4 shrink-0 text-slate-500" />
-                  <span className="whitespace-nowrap">{translations.nav.profile}</span>
-                </Link>
-
                 <Link
                   href="/login"
                   className="text-xs 2xl:text-sm font-semibold text-slate-700 hover:text-agri-700 px-2 xl:px-2.5 py-1.5 rounded-xl transition-colors shrink-0 whitespace-nowrap"
@@ -250,7 +265,7 @@ export default function Header() {
 
                 <button
                   onClick={handleSignOut}
-                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors shrink-0"
+                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors shrink-0 cursor-pointer"
                   title={translations.nav.signOut}
                 >
                   <LogOut className="w-4 h-4 shrink-0" />
@@ -262,7 +277,7 @@ export default function Header() {
           {/* Mobile / Tablet Menu Trigger (< 1280px) */}
           <div className="flex items-center gap-1.5 xl:hidden shrink-0">
             <Link
-              href="/profile"
+              href={getNavHref('/profile')}
               className="p-2 text-slate-600 hover:text-agri-600 rounded-xl hover:bg-slate-100 shrink-0"
               aria-label="User Profile"
               title={translations.nav.profile}
@@ -290,10 +305,12 @@ export default function Header() {
             {mobileNavLinks.map((link) => {
               const active = isActive(link.href);
               const Icon = link.icon;
+              const targetHref = getNavHref(link.href);
+
               return (
                 <Link
                   key={link.href}
-                  href={link.href}
+                  href={targetHref}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium ${
                     active
@@ -314,7 +331,7 @@ export default function Header() {
               {translations.nav.specializedPortals}
             </p>
             <Link
-              href="/dealer"
+              href={getNavHref('/dealer')}
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-between px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-50"
             >
@@ -322,7 +339,7 @@ export default function Header() {
               <ArrowRight className="w-4 h-4 text-slate-400" />
             </Link>
             <Link
-              href="/machinery-provider"
+              href={getNavHref('/machinery-provider')}
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-between px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-50"
             >

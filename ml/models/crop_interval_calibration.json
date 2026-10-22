@@ -1,0 +1,809 @@
+{
+  "7 Days": {
+    "horizon_days": 7,
+    "val_sample_size": 22932,
+    "test_sample_size": 32520,
+    "test_date_range": "2025-01-01 to 2026-04-14",
+    "global_validation_metrics": {
+      "rmse": 1302.06,
+      "mae": 607.83,
+      "p90_margin_inr": 1504.51,
+      "p95_margin_inr": 2300.8
+    },
+    "current_production_baseline": {
+      "margin_inr": 428.16,
+      "test_covered_count": 22750,
+      "test_total_count": 32520,
+      "test_coverage_pct": 69.96
+    },
+    "proposed_conformal_calibration": {
+      "target_90": {
+        "mean_margin_inr": 1369.4,
+        "test_covered_count": 31048,
+        "test_total_count": 32520,
+        "test_coverage_pct": 95.47
+      },
+      "target_95": {
+        "mean_margin_inr": 2038.61,
+        "test_covered_count": 32085,
+        "test_total_count": 32520,
+        "test_coverage_pct": 98.66
+      }
+    },
+    "commodity_group_evaluation": {
+      "Cereals & Millets": {
+        "test_sample_count": 1618,
+        "current_global_coverage_pct": 93.08,
+        "proposed_90_coverage_pct": 89.99,
+        "proposed_95_coverage_pct": 94.38,
+        "current_margin_inr": 428.16,
+        "proposed_mean_90_margin_inr": 324.68,
+        "test_mae_inr": 100.53
+      },
+      "Commercial Crops": {
+        "test_sample_count": 4527,
+        "current_global_coverage_pct": 83.21,
+        "proposed_90_coverage_pct": 93.2,
+        "proposed_95_coverage_pct": 98.85,
+        "current_margin_inr": 428.16,
+        "proposed_mean_90_margin_inr": 689.79,
+        "test_mae_inr": 225.41
+      },
+      "Fruits": {
+        "test_sample_count": 4498,
+        "current_global_coverage_pct": 89.28,
+        "proposed_90_coverage_pct": 94.33,
+        "proposed_95_coverage_pct": 99.04,
+        "current_margin_inr": 428.16,
+        "proposed_mean_90_margin_inr": 511.96,
+        "test_mae_inr": 147.27
+      },
+      "Oilseeds": {
+        "test_sample_count": 1203,
+        "current_global_coverage_pct": 77.56,
+        "proposed_90_coverage_pct": 93.93,
+        "proposed_95_coverage_pct": 97.26,
+        "current_margin_inr": 428.16,
+        "proposed_mean_90_margin_inr": 926.16,
+        "test_mae_inr": 257.11
+      },
+      "Vegetables": {
+        "test_sample_count": 20674,
+        "current_global_coverage_pct": 60.6,
+        "proposed_90_coverage_pct": 96.74,
+        "proposed_95_coverage_pct": 98.96,
+        "current_margin_inr": 428.16,
+        "proposed_mean_90_margin_inr": 1812.33,
+        "test_mae_inr": 474.82
+      }
+    },
+    "group_fallbacks": {
+      "Cereals & Millets": {
+        "val_samples": 2234,
+        "val_rmse": 283.43,
+        "val_mae": 174.25,
+        "margin_90_inr": 494.58,
+        "margin_95_inr": 637.83,
+        "margin_90_pct": 20.54
+      },
+      "Commercial Crops": {
+        "val_samples": 3152,
+        "val_rmse": 1228.05,
+        "val_mae": 324.54,
+        "margin_90_inr": 690.89,
+        "margin_95_inr": 1280.19,
+        "margin_90_pct": 24.68
+      },
+      "Fruits": {
+        "val_samples": 2610,
+        "val_rmse": 1793.27,
+        "val_mae": 314.14,
+        "margin_90_inr": 511.96,
+        "margin_95_inr": 1025.62,
+        "margin_90_pct": 25.73
+      },
+      "Oilseeds": {
+        "val_samples": 854,
+        "val_rmse": 558.37,
+        "val_mae": 324.0,
+        "margin_90_inr": 926.16,
+        "margin_95_inr": 1062.47,
+        "margin_90_pct": 13.25
+      },
+      "Pulses": {
+        "val_samples": 157,
+        "val_rmse": 782.05,
+        "val_mae": 530.16,
+        "margin_90_inr": 1142.52,
+        "margin_95_inr": 1383.61,
+        "margin_90_pct": 13.47
+      },
+      "Spices & Plantation": {
+        "val_samples": 169,
+        "val_rmse": 1818.76,
+        "val_mae": 1340.01,
+        "margin_90_inr": 2812.07,
+        "margin_95_inr": 3287.58,
+        "margin_90_pct": 19.25
+      },
+      "Vegetables": {
+        "val_samples": 13756,
+        "val_rmse": 1338.1,
+        "val_mae": 808.39,
+        "margin_90_inr": 1874.56,
+        "margin_95_inr": 2761.35,
+        "margin_90_pct": 60.38
+      }
+    },
+    "crop_calibrations": {
+      "banana (green)": {
+        "tier": "crop_specific",
+        "val_samples": 2610,
+        "group": "Fruits",
+        "val_rmse": 1793.27,
+        "val_mae": 314.14,
+        "margin_90_inr": 511.96,
+        "margin_95_inr": 1025.62,
+        "margin_90_pct": 25.73
+      },
+      "black gram (urad)": {
+        "tier": "crop_specific",
+        "val_samples": 157,
+        "group": "Pulses",
+        "val_rmse": 782.05,
+        "val_mae": 530.16,
+        "margin_90_inr": 1142.52,
+        "margin_95_inr": 1383.61,
+        "margin_90_pct": 13.47
+      },
+      "brinjal": {
+        "tier": "crop_specific",
+        "val_samples": 2780,
+        "group": "Vegetables",
+        "val_rmse": 1359.99,
+        "val_mae": 842.56,
+        "margin_90_inr": 1911.41,
+        "margin_95_inr": 2542.4,
+        "margin_90_pct": 57.82
+      },
+      "coconut": {
+        "tier": "crop_specific",
+        "val_samples": 3025,
+        "group": "Commercial Crops",
+        "val_rmse": 1249.73,
+        "val_mae": 325.54,
+        "margin_90_inr": 689.79,
+        "margin_95_inr": 1324.96,
+        "margin_90_pct": 24.76
+      },
+      "cotton": {
+        "tier": "crop_specific",
+        "val_samples": 127,
+        "group": "Commercial Crops",
+        "val_rmse": 478.56,
+        "val_mae": 300.76,
+        "margin_90_inr": 712.43,
+        "margin_95_inr": 934.63,
+        "margin_90_pct": 12.51
+      },
+      "green chilli": {
+        "tier": "crop_specific",
+        "val_samples": 2748,
+        "group": "Vegetables",
+        "val_rmse": 1742.65,
+        "val_mae": 977.91,
+        "margin_90_inr": 2032.42,
+        "margin_95_inr": 3342.74,
+        "margin_90_pct": 51.86
+      },
+      "groundnut": {
+        "tier": "crop_specific",
+        "val_samples": 854,
+        "group": "Oilseeds",
+        "val_rmse": 558.37,
+        "val_mae": 324.0,
+        "margin_90_inr": 926.16,
+        "margin_95_inr": 1062.47,
+        "margin_90_pct": 13.25
+      },
+      "ladies finger (bhendi)": {
+        "tier": "crop_specific",
+        "val_samples": 2771,
+        "group": "Vegetables",
+        "val_rmse": 890.32,
+        "val_mae": 595.06,
+        "margin_90_inr": 1355.55,
+        "margin_95_inr": 1776.12,
+        "margin_90_pct": 62.88
+      },
+      "maize": {
+        "tier": "crop_specific",
+        "val_samples": 946,
+        "group": "Cereals & Millets",
+        "val_rmse": 201.84,
+        "val_mae": 87.16,
+        "margin_90_inr": 247.51,
+        "margin_95_inr": 488.04,
+        "margin_90_pct": 10.31
+      },
+      "onion": {
+        "tier": "crop_specific",
+        "val_samples": 2743,
+        "group": "Vegetables",
+        "val_rmse": 997.38,
+        "val_mae": 549.77,
+        "margin_90_inr": 1270.12,
+        "margin_95_inr": 2003.13,
+        "margin_90_pct": 31.66
+      },
+      "paddy (dhan)": {
+        "tier": "crop_specific",
+        "val_samples": 1288,
+        "group": "Cereals & Millets",
+        "val_rmse": 330.78,
+        "val_mae": 238.22,
+        "margin_90_inr": 561.22,
+        "margin_95_inr": 705.22,
+        "margin_90_pct": 25.78
+      },
+      "tomato": {
+        "tier": "crop_specific",
+        "val_samples": 2714,
+        "group": "Vegetables",
+        "val_rmse": 1513.66,
+        "val_mae": 1080.94,
+        "margin_90_inr": 2602.63,
+        "margin_95_inr": 3341.18,
+        "margin_90_pct": 67.36
+      },
+      "turmeric": {
+        "tier": "crop_specific",
+        "val_samples": 169,
+        "group": "Spices & Plantation",
+        "val_rmse": 1818.76,
+        "val_mae": 1340.01,
+        "margin_90_inr": 2812.07,
+        "margin_95_inr": 3287.58,
+        "margin_90_pct": 19.25
+      }
+    }
+  },
+  "15 Days": {
+    "horizon_days": 15,
+    "val_sample_size": 26557,
+    "test_sample_size": 40389,
+    "test_date_range": "2025-01-01 to 2026-04-06",
+    "global_validation_metrics": {
+      "rmse": 1549.02,
+      "mae": 846.12,
+      "p90_margin_inr": 2134.81,
+      "p95_margin_inr": 3111.63
+    },
+    "current_production_baseline": {
+      "margin_inr": 613.09,
+      "test_covered_count": 28632,
+      "test_total_count": 40389,
+      "test_coverage_pct": 70.89
+    },
+    "proposed_conformal_calibration": {
+      "target_90": {
+        "mean_margin_inr": 1909.42,
+        "test_covered_count": 38781,
+        "test_total_count": 40389,
+        "test_coverage_pct": 96.02
+      },
+      "target_95": {
+        "mean_margin_inr": 3020.29,
+        "test_covered_count": 40031,
+        "test_total_count": 40389,
+        "test_coverage_pct": 99.11
+      }
+    },
+    "commodity_group_evaluation": {
+      "Cereals & Millets": {
+        "test_sample_count": 1976,
+        "current_global_coverage_pct": 96.41,
+        "proposed_90_coverage_pct": 87.7,
+        "proposed_95_coverage_pct": 95.29,
+        "current_margin_inr": 613.09,
+        "proposed_mean_90_margin_inr": 368.69,
+        "test_mae_inr": 125.72
+      },
+      "Commercial Crops": {
+        "test_sample_count": 5682,
+        "current_global_coverage_pct": 65.26,
+        "proposed_90_coverage_pct": 93.54,
+        "proposed_95_coverage_pct": 99.07,
+        "current_margin_inr": 613.09,
+        "proposed_mean_90_margin_inr": 1191.76,
+        "test_mae_inr": 483.43
+      },
+      "Fruits": {
+        "test_sample_count": 5565,
+        "current_global_coverage_pct": 93.76,
+        "proposed_90_coverage_pct": 94.27,
+        "proposed_95_coverage_pct": 99.6,
+        "current_margin_inr": 613.09,
+        "proposed_mean_90_margin_inr": 680.68,
+        "test_mae_inr": 178.88
+      },
+      "Oilseeds": {
+        "test_sample_count": 1470,
+        "current_global_coverage_pct": 84.08,
+        "proposed_90_coverage_pct": 93.88,
+        "proposed_95_coverage_pct": 96.53,
+        "current_margin_inr": 613.09,
+        "proposed_mean_90_margin_inr": 988.46,
+        "test_mae_inr": 322.16
+      },
+      "Vegetables": {
+        "test_sample_count": 25696,
+        "current_global_coverage_pct": 64.47,
+        "proposed_90_coverage_pct": 97.71,
+        "proposed_95_coverage_pct": 99.46,
+        "current_margin_inr": 613.09,
+        "proposed_mean_90_margin_inr": 2505.38,
+        "test_mae_inr": 618.41
+      }
+    },
+    "group_fallbacks": {
+      "Cereals & Millets": {
+        "val_samples": 2550,
+        "val_rmse": 300.79,
+        "val_mae": 187.64,
+        "margin_90_inr": 510.24,
+        "margin_95_inr": 681.01,
+        "margin_90_pct": 22.2
+      },
+      "Commercial Crops": {
+        "val_samples": 3716,
+        "val_rmse": 1548.51,
+        "val_mae": 507.5,
+        "margin_90_inr": 1182.07,
+        "margin_95_inr": 1989.76,
+        "margin_90_pct": 36.32
+      },
+      "Fruits": {
+        "val_samples": 3016,
+        "val_rmse": 1148.93,
+        "val_mae": 326.88,
+        "margin_90_inr": 680.68,
+        "margin_95_inr": 1866.32,
+        "margin_90_pct": 26.8
+      },
+      "Oilseeds": {
+        "val_samples": 980,
+        "val_rmse": 644.02,
+        "val_mae": 410.81,
+        "margin_90_inr": 988.46,
+        "margin_95_inr": 1187.77,
+        "margin_90_pct": 15.92
+      },
+      "Pulses": {
+        "val_samples": 181,
+        "val_rmse": 830.06,
+        "val_mae": 550.46,
+        "margin_90_inr": 1309.77,
+        "margin_95_inr": 1714.36,
+        "margin_90_pct": 16.21
+      },
+      "Spices & Plantation": {
+        "val_samples": 174,
+        "val_rmse": 2253.88,
+        "val_mae": 1703.84,
+        "margin_90_inr": 3797.58,
+        "margin_95_inr": 5165.87,
+        "margin_90_pct": 31.47
+      },
+      "Vegetables": {
+        "val_samples": 15940,
+        "val_rmse": 1756.59,
+        "val_mae": 1149.4,
+        "margin_90_inr": 2665.33,
+        "margin_95_inr": 3794.06,
+        "margin_90_pct": 67.01
+      }
+    },
+    "crop_calibrations": {
+      "banana (green)": {
+        "tier": "crop_specific",
+        "val_samples": 3016,
+        "group": "Fruits",
+        "val_rmse": 1148.93,
+        "val_mae": 326.88,
+        "margin_90_inr": 680.68,
+        "margin_95_inr": 1866.32,
+        "margin_90_pct": 26.8
+      },
+      "black gram (urad)": {
+        "tier": "crop_specific",
+        "val_samples": 181,
+        "group": "Pulses",
+        "val_rmse": 830.06,
+        "val_mae": 550.46,
+        "margin_90_inr": 1309.77,
+        "margin_95_inr": 1714.36,
+        "margin_90_pct": 16.21
+      },
+      "brinjal": {
+        "tier": "crop_specific",
+        "val_samples": 3207,
+        "group": "Vegetables",
+        "val_rmse": 1755.81,
+        "val_mae": 1193.09,
+        "margin_90_inr": 2624.17,
+        "margin_95_inr": 3717.18,
+        "margin_90_pct": 62.37
+      },
+      "coconut": {
+        "tier": "crop_specific",
+        "val_samples": 3552,
+        "group": "Commercial Crops",
+        "val_rmse": 1576.49,
+        "val_mae": 510.55,
+        "margin_90_inr": 1191.76,
+        "margin_95_inr": 1991.46,
+        "margin_90_pct": 37.15
+      },
+      "cotton": {
+        "tier": "crop_specific",
+        "val_samples": 164,
+        "group": "Commercial Crops",
+        "val_rmse": 709.78,
+        "val_mae": 441.44,
+        "margin_90_inr": 930.97,
+        "margin_95_inr": 1169.7,
+        "margin_90_pct": 15.54
+      },
+      "green chilli": {
+        "tier": "crop_specific",
+        "val_samples": 3203,
+        "group": "Vegetables",
+        "val_rmse": 2297.69,
+        "val_mae": 1400.89,
+        "margin_90_inr": 3016.85,
+        "margin_95_inr": 5644.89,
+        "margin_90_pct": 57.34
+      },
+      "groundnut": {
+        "tier": "crop_specific",
+        "val_samples": 980,
+        "group": "Oilseeds",
+        "val_rmse": 644.02,
+        "val_mae": 410.81,
+        "margin_90_inr": 988.46,
+        "margin_95_inr": 1187.77,
+        "margin_90_pct": 15.92
+      },
+      "ladies finger (bhendi)": {
+        "tier": "crop_specific",
+        "val_samples": 3225,
+        "group": "Vegetables",
+        "val_rmse": 1149.27,
+        "val_mae": 806.91,
+        "margin_90_inr": 1666.84,
+        "margin_95_inr": 2488.17,
+        "margin_90_pct": 68.94
+      },
+      "maize": {
+        "tier": "crop_specific",
+        "val_samples": 1136,
+        "group": "Cereals & Millets",
+        "val_rmse": 223.72,
+        "val_mae": 105.31,
+        "margin_90_inr": 293.54,
+        "margin_95_inr": 506.46,
+        "margin_90_pct": 12.56
+      },
+      "onion": {
+        "tier": "crop_specific",
+        "val_samples": 3151,
+        "group": "Vegetables",
+        "val_rmse": 1328.29,
+        "val_mae": 828.87,
+        "margin_90_inr": 2042.54,
+        "margin_95_inr": 3128.76,
+        "margin_90_pct": 33.19
+      },
+      "paddy (dhan)": {
+        "tier": "crop_specific",
+        "val_samples": 1414,
+        "group": "Cereals & Millets",
+        "val_rmse": 350.64,
+        "val_mae": 253.78,
+        "margin_90_inr": 592.34,
+        "margin_95_inr": 746.44,
+        "margin_90_pct": 26.78
+      },
+      "tomato": {
+        "tier": "crop_specific",
+        "val_samples": 3154,
+        "group": "Vegetables",
+        "val_rmse": 1996.27,
+        "val_mae": 1520.02,
+        "margin_90_inr": 3306.33,
+        "margin_95_inr": 3907.03,
+        "margin_90_pct": 92.53
+      },
+      "turmeric": {
+        "tier": "crop_specific",
+        "val_samples": 174,
+        "group": "Spices & Plantation",
+        "val_rmse": 2253.88,
+        "val_mae": 1703.84,
+        "margin_90_inr": 3797.58,
+        "margin_95_inr": 5165.87,
+        "margin_90_pct": 31.47
+      }
+    }
+  },
+  "30 Days": {
+    "horizon_days": 30,
+    "val_sample_size": 24835,
+    "test_sample_size": 42263,
+    "test_date_range": "2025-01-01 to 2026-03-19",
+    "global_validation_metrics": {
+      "rmse": 1581.99,
+      "mae": 955.48,
+      "p90_margin_inr": 2303.0,
+      "p95_margin_inr": 3047.86
+    },
+    "current_production_baseline": {
+      "margin_inr": 866.61,
+      "test_covered_count": 30858,
+      "test_total_count": 42263,
+      "test_coverage_pct": 73.01
+    },
+    "proposed_conformal_calibration": {
+      "target_90": {
+        "mean_margin_inr": 2101.31,
+        "test_covered_count": 40465,
+        "test_total_count": 42263,
+        "test_coverage_pct": 95.75
+      },
+      "target_95": {
+        "mean_margin_inr": 2697.49,
+        "test_covered_count": 41651,
+        "test_total_count": 42263,
+        "test_coverage_pct": 98.55
+      }
+    },
+    "commodity_group_evaluation": {
+      "Cereals & Millets": {
+        "test_sample_count": 2118,
+        "current_global_coverage_pct": 97.36,
+        "proposed_90_coverage_pct": 90.32,
+        "proposed_95_coverage_pct": 96.79,
+        "current_margin_inr": 866.61,
+        "proposed_mean_90_margin_inr": 521.37,
+        "test_mae_inr": 158.95
+      },
+      "Commercial Crops": {
+        "test_sample_count": 5932,
+        "current_global_coverage_pct": 73.79,
+        "proposed_90_coverage_pct": 94.86,
+        "proposed_95_coverage_pct": 97.98,
+        "current_margin_inr": 866.61,
+        "proposed_mean_90_margin_inr": 1538.98,
+        "test_mae_inr": 602.44
+      },
+      "Fruits": {
+        "test_sample_count": 5815,
+        "current_global_coverage_pct": 93.65,
+        "proposed_90_coverage_pct": 91.54,
+        "proposed_95_coverage_pct": 97.82,
+        "current_margin_inr": 866.61,
+        "proposed_mean_90_margin_inr": 709.65,
+        "test_mae_inr": 228.13
+      },
+      "Oilseeds": {
+        "test_sample_count": 1535,
+        "current_global_coverage_pct": 85.21,
+        "proposed_90_coverage_pct": 94.4,
+        "proposed_95_coverage_pct": 97.85,
+        "current_margin_inr": 866.61,
+        "proposed_mean_90_margin_inr": 1273.12,
+        "test_mae_inr": 404.56
+      },
+      "Vegetables": {
+        "test_sample_count": 26863,
+        "current_global_coverage_pct": 65.76,
+        "proposed_90_coverage_pct": 97.36,
+        "proposed_95_coverage_pct": 99.02,
+        "current_margin_inr": 866.61,
+        "proposed_mean_90_margin_inr": 2698.63,
+        "test_mae_inr": 785.45
+      }
+    },
+    "group_fallbacks": {
+      "Cereals & Millets": {
+        "val_samples": 2521,
+        "val_rmse": 328.07,
+        "val_mae": 204.76,
+        "margin_90_inr": 535.03,
+        "margin_95_inr": 747.94,
+        "margin_90_pct": 24.09
+      },
+      "Commercial Crops": {
+        "val_samples": 3510,
+        "val_rmse": 1728.43,
+        "val_mae": 655.7,
+        "margin_90_inr": 1529.39,
+        "margin_95_inr": 1965.44,
+        "margin_90_pct": 43.68
+      },
+      "Fruits": {
+        "val_samples": 2810,
+        "val_rmse": 1033.85,
+        "val_mae": 310.71,
+        "margin_90_inr": 709.65,
+        "margin_95_inr": 1017.24,
+        "margin_90_pct": 24.04
+      },
+      "Oilseeds": {
+        "val_samples": 994,
+        "val_rmse": 830.52,
+        "val_mae": 582.74,
+        "margin_90_inr": 1273.12,
+        "margin_95_inr": 1606.34,
+        "margin_90_pct": 19.49
+      },
+      "Pulses": {
+        "val_samples": 205,
+        "val_rmse": 1016.96,
+        "val_mae": 627.45,
+        "margin_90_inr": 1513.24,
+        "margin_95_inr": 1898.17,
+        "margin_90_pct": 18.65
+      },
+      "Spices & Plantation": {
+        "val_samples": 146,
+        "val_rmse": 2671.09,
+        "val_mae": 2129.83,
+        "margin_90_inr": 4651.48,
+        "margin_95_inr": 5019.07,
+        "margin_90_pct": 38.5
+      },
+      "Vegetables": {
+        "val_samples": 14649,
+        "val_rmse": 1780.78,
+        "val_mae": 1298.37,
+        "margin_90_inr": 2774.32,
+        "margin_95_inr": 3632.39,
+        "margin_90_pct": 72.43
+      }
+    },
+    "crop_calibrations": {
+      "banana (green)": {
+        "tier": "crop_specific",
+        "val_samples": 2810,
+        "group": "Fruits",
+        "val_rmse": 1033.85,
+        "val_mae": 310.71,
+        "margin_90_inr": 709.65,
+        "margin_95_inr": 1017.24,
+        "margin_90_pct": 24.04
+      },
+      "black gram (urad)": {
+        "tier": "crop_specific",
+        "val_samples": 205,
+        "group": "Pulses",
+        "val_rmse": 1016.96,
+        "val_mae": 627.45,
+        "margin_90_inr": 1513.24,
+        "margin_95_inr": 1898.17,
+        "margin_90_pct": 18.65
+      },
+      "brinjal": {
+        "tier": "crop_specific",
+        "val_samples": 2932,
+        "group": "Vegetables",
+        "val_rmse": 1680.34,
+        "val_mae": 1240.38,
+        "margin_90_inr": 2598.66,
+        "margin_95_inr": 3352.03,
+        "margin_90_pct": 56.47
+      },
+      "coconut": {
+        "tier": "crop_specific",
+        "val_samples": 3360,
+        "group": "Commercial Crops",
+        "val_rmse": 1759.61,
+        "val_mae": 663.35,
+        "margin_90_inr": 1538.98,
+        "margin_95_inr": 1984.41,
+        "margin_90_pct": 44.5
+      },
+      "cotton": {
+        "tier": "crop_specific",
+        "val_samples": 150,
+        "group": "Commercial Crops",
+        "val_rmse": 742.45,
+        "val_mae": 484.22,
+        "margin_90_inr": 1217.73,
+        "margin_95_inr": 1741.45,
+        "margin_90_pct": 21.62
+      },
+      "green chilli": {
+        "tier": "crop_specific",
+        "val_samples": 2963,
+        "group": "Vegetables",
+        "val_rmse": 2364.18,
+        "val_mae": 1693.57,
+        "margin_90_inr": 3781.75,
+        "margin_95_inr": 5249.93,
+        "margin_90_pct": 56.72
+      },
+      "groundnut": {
+        "tier": "crop_specific",
+        "val_samples": 994,
+        "group": "Oilseeds",
+        "val_rmse": 830.52,
+        "val_mae": 582.74,
+        "margin_90_inr": 1273.12,
+        "margin_95_inr": 1606.34,
+        "margin_90_pct": 19.49
+      },
+      "ladies finger (bhendi)": {
+        "tier": "crop_specific",
+        "val_samples": 2962,
+        "group": "Vegetables",
+        "val_rmse": 1199.27,
+        "val_mae": 947.11,
+        "margin_90_inr": 1948.97,
+        "margin_95_inr": 2299.57,
+        "margin_90_pct": 85.31
+      },
+      "maize": {
+        "tier": "crop_specific",
+        "val_samples": 1133,
+        "group": "Cereals & Millets",
+        "val_rmse": 277.91,
+        "val_mae": 139.21,
+        "margin_90_inr": 486.81,
+        "margin_95_inr": 687.85,
+        "margin_90_pct": 17.25
+      },
+      "onion": {
+        "tier": "crop_specific",
+        "val_samples": 2900,
+        "group": "Vegetables",
+        "val_rmse": 1249.59,
+        "val_mae": 922.99,
+        "margin_90_inr": 1798.36,
+        "margin_95_inr": 2309.59,
+        "margin_90_pct": 32.92
+      },
+      "paddy (dhan)": {
+        "tier": "crop_specific",
+        "val_samples": 1388,
+        "group": "Cereals & Millets",
+        "val_rmse": 363.93,
+        "val_mae": 258.28,
+        "margin_90_inr": 619.67,
+        "margin_95_inr": 782.52,
+        "margin_90_pct": 27.0
+      },
+      "tomato": {
+        "tier": "crop_specific",
+        "val_samples": 2892,
+        "group": "Vegetables",
+        "val_rmse": 2105.96,
+        "val_mae": 1688.44,
+        "margin_90_inr": 3434.98,
+        "margin_95_inr": 3994.23,
+        "margin_90_pct": 124.17
+      },
+      "turmeric": {
+        "tier": "crop_specific",
+        "val_samples": 146,
+        "group": "Spices & Plantation",
+        "val_rmse": 2671.09,
+        "val_mae": 2129.83,
+        "margin_90_inr": 4651.48,
+        "margin_95_inr": 5019.07,
+        "margin_90_pct": 38.5
+      }
+    }
+  }
+}

@@ -1,282 +1,436 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Wheat,
-  Tractor,
-  Store,
-  MapPin,
-  Landmark,
   TrendingUp,
-  BarChart3,
-  ShoppingBag,
+  MapPin,
+  Calendar,
   ArrowRight,
-  Sparkles,
-  Compass
+  Info,
+  CalendarDays,
+  Scale
 } from 'lucide-react';
-import { useAgri } from '@/context/AgriContext';
+import { CropPrice } from '@/types';
+import { getCropPrices } from '@/lib/supabase/crops';
 import { useLanguage } from '@/i18n';
-import GlobalSearch from '@/components/home/GlobalSearch';
-import { SectionHeader } from '@/components/ui';
+
+interface SeasonalCropMeta {
+  seasonKey: 'kharif_kuruvai' | 'rabi_samba' | 'horticultural';
+  seasonNameEn: string;
+  seasonNameTa: string;
+  seasonMonths: string;
+  seasonBadgeColor: string;
+}
+
+// Supported Tamil Nadu Department of Agriculture cropping calendar classifications
+const SEASONAL_CLASSIFICATIONS: Record<string, SeasonalCropMeta> = {
+  paddy: {
+    seasonKey: 'rabi_samba',
+    seasonNameEn: 'Samba / Rabi Season',
+    seasonNameTa: 'சம்பா / தாளடி பருவம்',
+    seasonMonths: 'Oct – Feb',
+    seasonBadgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
+  },
+  rice: {
+    seasonKey: 'rabi_samba',
+    seasonNameEn: 'Samba / Rabi Season',
+    seasonNameTa: 'சம்பா / தாளடி பருவம்',
+    seasonMonths: 'Oct – Feb',
+    seasonBadgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
+  },
+  wheat: {
+    seasonKey: 'rabi_samba',
+    seasonNameEn: 'Rabi Season Grain',
+    seasonNameTa: 'ரபி பருவ தானியம்',
+    seasonMonths: 'Nov – Mar',
+    seasonBadgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
+  },
+  maize: {
+    seasonKey: 'kharif_kuruvai',
+    seasonNameEn: 'Kuruvai / Kharif Season',
+    seasonNameTa: 'குறுவை / காரீப் பருவம்',
+    seasonMonths: 'Jun – Oct',
+    seasonBadgeColor: 'bg-amber-100 text-amber-800 border-amber-200'
+  },
+  groundnut: {
+    seasonKey: 'kharif_kuruvai',
+    seasonNameEn: 'Kuruvai / Kharif Season',
+    seasonNameTa: 'குறுவை / காரீப் பருவம்',
+    seasonMonths: 'Jul – Oct',
+    seasonBadgeColor: 'bg-amber-100 text-amber-800 border-amber-200'
+  },
+  cotton: {
+    seasonKey: 'kharif_kuruvai',
+    seasonNameEn: 'Kharif Harvest Season',
+    seasonNameTa: 'காரீப் அறுவடை பருவம்',
+    seasonMonths: 'Aug – Nov',
+    seasonBadgeColor: 'bg-amber-100 text-amber-800 border-amber-200'
+  },
+  soybean: {
+    seasonKey: 'kharif_kuruvai',
+    seasonNameEn: 'Kharif Oilseed',
+    seasonNameTa: 'காரீப் எண்ணெய் வித்து',
+    seasonMonths: 'Jul – Oct',
+    seasonBadgeColor: 'bg-amber-100 text-amber-800 border-amber-200'
+  },
+  tomato: {
+    seasonKey: 'horticultural',
+    seasonNameEn: 'Continuous Horticulture',
+    seasonNameTa: 'ஆண்டு முழுமை காய்கறி',
+    seasonMonths: 'Year-Round Harvest',
+    seasonBadgeColor: 'bg-rose-100 text-rose-800 border-rose-200'
+  },
+  onion: {
+    seasonKey: 'horticultural',
+    seasonNameEn: 'Continuous Horticulture',
+    seasonNameTa: 'வணிக காய்கறி வரத்து',
+    seasonMonths: 'Year-Round Arrivals',
+    seasonBadgeColor: 'bg-purple-100 text-purple-800 border-purple-200'
+  },
+  sugarcane: {
+    seasonKey: 'horticultural',
+    seasonNameEn: 'Annual Commercial Crop',
+    seasonNameTa: 'வருடாந்திர வணிகப் பயிர்',
+    seasonMonths: '10–12 Month Cycle',
+    seasonBadgeColor: 'bg-teal-100 text-teal-800 border-teal-200'
+  }
+};
+
+function getSeasonMeta(cropName?: string): SeasonalCropMeta {
+  if (!cropName) {
+    return {
+      seasonKey: 'horticultural',
+      seasonNameEn: 'Seasonal Crop',
+      seasonNameTa: 'பருவகால பயிர்',
+      seasonMonths: 'Current Season',
+      seasonBadgeColor: 'bg-slate-100 text-slate-800 border-slate-200'
+    };
+  }
+  const lower = cropName.toLowerCase();
+  for (const [key, meta] of Object.entries(SEASONAL_CLASSIFICATIONS)) {
+    if (lower.includes(key)) return meta;
+  }
+  return {
+    seasonKey: 'horticultural',
+    seasonNameEn: 'Seasonal Crop',
+    seasonNameTa: 'பருவகால பயிர்',
+    seasonMonths: 'Current Season',
+    seasonBadgeColor: 'bg-slate-100 text-slate-800 border-slate-200'
+  };
+}
 
 export default function HomeCommandCenter() {
-  const { cropPrices } = useAgri();
-  const { language, translations, translateCrop, translateCategory } = useLanguage();
+  const { language, translations, translateCrop } = useLanguage();
   const isTa = language === 'ta';
 
-  // Dynamic Time Greeting
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return isTa ? 'இனிய காலை வணக்கம் 👋' : 'Good Morning 👋';
-    if (hour < 17) return isTa ? 'இனிய மதிய வணக்கம் 👋' : 'Good Afternoon 👋';
-    return isTa ? 'இனிய மாலை வணக்கம் 👋' : 'Good Evening 👋';
-  }, [isTa]);
+  const [prices, setPrices] = useState<CropPrice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSeason, setSelectedSeason] = useState<'all' | 'rabi_samba' | 'kharif_kuruvai' | 'horticultural'>('all');
 
-  // Quick Services Grid configuration (Original 8 category cards)
-  const quickServices = [
-    {
-      id: 'crop-prices',
-      title: translations.nav.cropPrices,
-      subtitle: isTa ? 'மண்டி விலைகள்' : 'Mandi Rates',
-      href: '/crop-price',
-      icon: TrendingUp,
-      color: 'text-emerald-700 bg-emerald-50 border-emerald-200/80 hover:border-emerald-400'
-    },
-    {
-      id: 'predictions',
-      title: translations.nav.predictions,
-      subtitle: isTa ? 'விலை முன்னறிவிப்பு' : 'Market Trends',
-      href: '/prediction',
-      icon: BarChart3,
-      color: 'text-blue-700 bg-blue-50 border-blue-200/80 hover:border-blue-400'
-    },
-    {
-      id: 'machinery',
-      title: translations.nav.machinery,
-      subtitle: isTa ? 'டிராக்டர் வாடகை' : 'Rent Equipment',
-      href: '/machinery',
-      icon: Tractor,
-      color: 'text-amber-700 bg-amber-50 border-amber-200/80 hover:border-amber-400'
-    },
-    {
-      id: 'nearby-map',
-      title: translations.nav.map || (isTa ? 'விவசாய வரைபடம்' : 'Agri Map'),
-      subtitle: isTa ? 'அருகிலுள்ளவை' : 'Nearby Discovery',
-      href: '/map',
-      icon: Compass,
-      color: 'text-emerald-800 bg-emerald-100/60 border-emerald-300 hover:border-emerald-500'
-    },
-    {
-      id: 'marketplace',
-      title: isTa ? 'விளைச்சல் சந்தை' : 'Sell Produce',
-      subtitle: isTa ? 'நேரடி விற்பனை' : 'Farmer Marketplace',
-      href: '/ecommerce?tab=produce',
-      icon: Wheat,
-      color: 'text-orange-700 bg-orange-50 border-orange-200/80 hover:border-orange-400'
-    },
-    {
-      id: 'schemes',
-      title: translations.nav.schemes,
-      subtitle: isTa ? 'அரசு மானியங்கள்' : 'Govt Subsidies',
-      href: '/schemes',
-      icon: Landmark,
-      color: 'text-indigo-700 bg-indigo-50 border-indigo-200/80 hover:border-indigo-400'
-    },
-    {
-      id: 'dealers',
-      title: translations.nav.dealers,
-      subtitle: isTa ? 'அங்கீகரிக்கப்பட்டவர்கள்' : 'Direct Buyers',
-      href: '/dealers',
-      icon: Store,
-      color: 'text-teal-700 bg-teal-50 border-teal-200/80 hover:border-teal-400'
-    },
-    {
-      id: 'store',
-      title: translations.nav.ecommerce,
-      subtitle: isTa ? 'விதை & உரம்' : 'Seeds & Inputs',
-      href: '/ecommerce',
-      icon: ShoppingBag,
-      color: 'text-purple-700 bg-purple-50 border-purple-200/80 hover:border-purple-400'
+  useEffect(() => {
+    async function loadPrices() {
+      try {
+        setLoading(true);
+        const res = await getCropPrices();
+        if (res.data && res.data.length > 0) {
+          setPrices(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to load seasonal crop prices for home page:', err);
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
+    loadPrices();
+  }, []);
 
-  // Top Crop Prices for Preview (First 4)
-  const topPrices = useMemo(() => {
-    return cropPrices.slice(0, 4);
-  }, [cropPrices]);
+  // Filter seasonal crops based on supported classification
+  const seasonalCrops = useMemo(() => {
+    return prices.map((item) => {
+      const meta = getSeasonMeta(item.crop?.name);
+      return {
+        ...item,
+        seasonMeta: meta
+      };
+    });
+  }, [prices]);
+
+  const displayedSeasonalCrops = useMemo(() => {
+    if (selectedSeason === 'all') return seasonalCrops;
+    return seasonalCrops.filter((c) => c.seasonMeta.seasonKey === selectedSeason);
+  }, [seasonalCrops, selectedSeason]);
 
   return (
     <div className="bg-slate-50 min-h-screen">
-      {/* 1. Hero Command Center Area */}
-      <section className="bg-gradient-to-b from-emerald-50/70 via-white to-slate-50 border-b border-slate-200/80 py-10 sm:py-14 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto text-center space-y-4">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            {greeting}
-          </span>
-
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-            {isTa ? 'இன்று உங்களுக்கு என்ன சேவை தேவை?' : 'How can AgriME help you today?'}
-          </h1>
-
-          <p className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto">
-            {isTa
-              ? 'மண்டி பயிர் விலைகள், வாடகை இயந்திரங்கள், அரசு மானியங்கள் மற்றும் உள்ளூர் வியாபாரிகளை உடனடியாகக் கண்டறியவும்.'
-              : 'Find Mandi crop rates, rent farm machinery, discover govt schemes, and connect with direct buyers.'}
-          </p>
-
-          {/* Prominent Global Search Bar */}
-          <div className="pt-2">
-            <GlobalSearch />
+      {/* 1. Simple, Concise Introduction to AgriME */}
+      <section className="bg-white border-b border-slate-200/80 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-3xl">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                {isTa ? 'தமிழ்நாடு விவசாய தளம்' : 'Tamil Nadu Farmers Portal'}
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              {isTa ? 'AgriME — நேரடி விவசாய சேவைகள் & மண்டி தகவல்' : 'AgriME — Direct Agricultural Services & Mandi Intelligence'}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              {isTa
+                ? 'AgriME விவசாயிகள் துல்லியமான மண்டி பயிர் விலைகள், எதிர்கால விலை முன்னறிவிப்புகள் மற்றும் விவசாய உபகரண வாடகை, நேரடி வியாபாரிகள் மற்றும் அரசு நலத்திட்டங்கள் போன்ற அத்தியாவசிய சேவைகளை எளிதாகப் பெற உதவுகிறது.'
+                : 'AgriME helps farmers across Tamil Nadu access authentic crop prices, predictive market price forecasts, and essential agricultural services including verified buyers, machinery rentals, and welfare schemes.'}
+            </p>
           </div>
 
-          {/* Quick Categories Bar (8 visual cards) */}
-          <div className="pt-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 sm:gap-3 text-left">
-              {quickServices.map((service) => {
-                const IconComponent = service.icon;
-                return (
-                  <Link
-                    key={service.id}
-                    href={service.href}
-                    className={`p-3 rounded-2xl border transition-all duration-200 shadow-2xs hover:shadow-xs group flex flex-col justify-between ${service.color}`}
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-white/80 flex items-center justify-center mb-2 shadow-2xs group-hover:scale-105 transition-transform">
-                      <IconComponent className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-xs leading-tight text-slate-900">
-                        {service.title}
-                      </h3>
-                      <p className="text-[10px] text-slate-500 mt-0.5 truncate font-medium">
-                        {service.subtitle}
-                      </p>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <Link
+              href="/crop-price"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-xs transition-all"
+            >
+              <TrendingUp className="w-4 h-4 text-emerald-100" />
+              <span>{translations.nav.cropPrices}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <Link
+              href="/prediction"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs sm:text-sm border border-slate-200 transition-all"
+            >
+              <span>{translations.nav.predictions}</span>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* 2. Contextual Sections Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
-        {/* Section 1: Nearby Agricultural Discovery Banner */}
-        <section className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-xl">
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-                <Compass className="w-3.5 h-3.5" />
-                {isTa ? 'இடம் சார்ந்த விவசாய வரைபடம்' : 'Location-Based Agricultural Map'}
-              </span>
-              <h2 className="text-xl sm:text-2xl font-black">
-                {isTa
-                  ? 'உங்கள் பகுதியில் உள்ள டிராக்டர்கள் & வியாபாரிகளை வரைபடத்தில் காண்க'
-                  : 'Discover Nearby Tractors, Harvesters & Mandis on Map'}
+      {/* 2. Seasonal Crops and Their Relevant Price Information */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🌾</span>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                {isTa ? 'பருவகால பயிர்கள் மற்றும் சந்தை விலைகள்' : 'Seasonal Crops & Mandi Prices'}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                {isTa
-                  ? 'நிகழ்நேர தூரம் மற்றும் வழிசெலுத்தலுடன் காட்பாடி, வேலூர், மற்றும் தமிழக மாவட்டங்களில் உள்ள விவசாய சேவைகளைக் கண்டறியவும்.'
-                  : 'Locate heavy farm machinery, direct grain buyers, and regulated mandis with real-time distance and turn-by-turn navigation.'}
-              </p>
             </div>
-
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
-              <Link
-                href="/map"
-                className="px-5 py-3 rounded-xl font-extrabold text-xs sm:text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md transition-all inline-flex items-center gap-2"
-              >
-                <Compass className="w-4 h-4" />
-                <span>{isTa ? 'வரைபடத்தைத் திறக்கவும்' : 'Open Interactive Map'}</span>
-              </Link>
-              <Link
-                href="/dealers"
-                className="px-4 py-3 rounded-xl font-bold text-xs sm:text-sm bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all inline-flex items-center gap-1.5"
-              >
-                <Store className="w-4 h-4" />
-                <span>{translations.nav.dealers}</span>
-              </Link>
-            </div>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              {isTa
+                ? 'தமிழ்நாட்டின் நடப்பு பருவ சாகுபடி பயிர்களுக்கான அதிகாரப்பூர்வ மண்டி மாதிரி, குறைந்தபட்ச மற்றும் அதிகபட்ச விலைகள்.'
+                : 'Current seasonal crop rates, modal benchmarks, and price ranges recorded across Tamil Nadu APMC mandis.'}
+            </p>
           </div>
-        </section>
 
-        {/* Section 2: Crop Prices Quick Decision Support */}
-        <section>
-          <SectionHeader
-            title={translations.nav.cropPrices}
-            subtitle={
-              isTa
-                ? 'வேலூர் மற்றும் தமிழக மண்டிகளின் இன்றைய கொள்முதல் மற்றும் மாதிரி விலைகள்.'
-                : 'Today’s reference commodity rates across Vellore and Tamil Nadu APMC mandis.'
-            }
-            icon="🌾"
-            actionHref="/crop-price"
-            actionLabel={isTa ? 'அனைத்து விலைகளையும் காண்க' : 'View All Mandi Prices'}
-          />
+          {/* Quick Season Classification Filter */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              onClick={() => setSelectedSeason('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                selectedSeason === 'all'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              {isTa ? 'அனைத்து பயிர்களும்' : 'All Seasonal Crops'} ({seasonalCrops.length})
+            </button>
+            <button
+              onClick={() => setSelectedSeason('rabi_samba')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                selectedSeason === 'rabi_samba'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              {isTa ? 'சம்பா / ரபி' : 'Samba / Rabi'}
+            </button>
+            <button
+              onClick={() => setSelectedSeason('kharif_kuruvai')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                selectedSeason === 'kharif_kuruvai'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              {isTa ? 'குறுவை / காரீப்' : 'Kuruvai / Kharif'}
+            </button>
+            <button
+              onClick={() => setSelectedSeason('horticultural')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                selectedSeason === 'horticultural'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              {isTa ? 'காய்கறி / வணிகம்' : 'Horticultural'}
+            </button>
+          </div>
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {topPrices.map((item) => {
+        {/* Loading Skeleton */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl p-5 border border-slate-200 animate-pulse space-y-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+                  <div className="h-5 bg-slate-200 rounded-full w-20"></div>
+                </div>
+                <div className="h-16 bg-slate-100 rounded-xl"></div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-slate-200 rounded w-3/4"></div>
+                  <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : displayedSeasonalCrops.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center border border-slate-200">
+            <p className="text-sm font-semibold text-slate-700">
+              {isTa ? 'தேர்ந்தெடுக்கப்பட்ட பருவத்திற்கான பயிர்கள் எதுவும் இல்லை' : 'No seasonal crop records found for the selected season.'}
+            </p>
+          </div>
+        ) : (
+          /* Seasonal Crop Price Cards */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {displayedSeasonalCrops.map((item) => {
+              const cropName = item.crop?.name || 'Crop';
+              const modalRate = item.modal_price || item.price;
+              const minRate = item.min_price || Math.round(Number(item.price) * 0.96);
+              const maxRate = item.max_price || Math.round(Number(item.price) * 1.04);
+              const unit = item.unit || '₹/Quintal';
+              const obsDate = item.arrival_date || item.recorded_at?.split('T')[0] || 'Recorded';
+              const isLive = item.source_status === 'LIVE';
+
               return (
                 <div
                   key={item.id}
-                  className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs hover:shadow-card hover:border-emerald-300 transition-all flex flex-col justify-between"
+                  className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all flex flex-col justify-between space-y-4"
                 >
-                  <div>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-2xl">{item.crop?.icon || '🌾'}</span>
-                        <div>
-                          <h3 className="font-extrabold text-slate-900 text-sm">
-                            {translateCrop(item.crop?.name)}
+                  <div className="space-y-3">
+                    {/* Header: Crop Name, Icon & Seasonal Classification */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-2xl shrink-0">{item.crop?.icon || '🌾'}</span>
+                        <div className="min-w-0">
+                          <h3 className="font-extrabold text-slate-900 text-base leading-snug truncate">
+                            {translateCrop(cropName)}
                           </h3>
-                          <span className="text-[10px] font-bold text-slate-500 uppercase">
-                            {translateCategory(item.crop?.category)}
+                          {item.variety && (
+                            <span className="text-[11px] font-semibold text-slate-500 block truncate">
+                              {item.variety}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Season Tag */}
+                      <span
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 ${item.seasonMeta.seasonBadgeColor}`}
+                        title={`${item.seasonMeta.seasonNameEn} (${item.seasonMeta.seasonMonths})`}
+                      >
+                        {isTa ? item.seasonMeta.seasonNameTa : item.seasonMeta.seasonNameEn}
+                      </span>
+                    </div>
+
+                    {/* Price Rate Box */}
+                    <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xs font-semibold text-slate-600">
+                          {isTa ? 'நடப்பு / சமீபத்திய விலை:' : 'Current / Latest Rate:'}
+                        </span>
+                        <div className="text-right">
+                          <span className="text-2xl font-black text-slate-900">
+                            ₹{Number(item.price).toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-xs font-bold text-slate-500 ml-1">
+                            /{unit.includes('/') ? unit.split('/')[1] : unit}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Modal, Min & Max Range Breakdown */}
+                      <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-200/80 text-center text-xs">
+                        <div className="bg-white/80 rounded-lg py-1.5 px-1 border border-slate-200/60">
+                          <span className="text-[10px] font-medium text-slate-500 block">
+                            {isTa ? 'குறைந்தபட்சம்' : 'Min'}
+                          </span>
+                          <span className="font-bold text-slate-800 text-xs">
+                            ₹{Number(minRate).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+
+                        <div className="bg-white/80 rounded-lg py-1.5 px-1 border border-emerald-200/80 text-emerald-800">
+                          <span className="text-[10px] font-bold text-emerald-700 block">
+                            {isTa ? 'மாதிரி (Modal)' : 'Modal'}
+                          </span>
+                          <span className="font-extrabold text-emerald-900 text-xs">
+                            ₹{Number(modalRate).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+
+                        <div className="bg-white/80 rounded-lg py-1.5 px-1 border border-slate-200/60">
+                          <span className="text-[10px] font-medium text-slate-500 block">
+                            {isTa ? 'அதிகபட்சம்' : 'Max'}
+                          </span>
+                          <span className="font-bold text-slate-800 text-xs">
+                            ₹{Number(maxRate).toLocaleString('en-IN')}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 my-2.5">
-                      <span className="text-[10px] font-medium text-slate-500 block">
-                        {translations.cropPrices.currentRate}
-                      </span>
-                      <div className="text-xl font-black text-slate-900 mt-0.5">
-                        ₹{Number(item.price).toLocaleString('en-IN')}
-                        <span className="text-xs font-semibold text-slate-500 ml-1">
-                          /{item.unit?.includes('/') ? item.unit.split('/')[1] : item.unit || 'Q'}
+                    {/* Market Location and Observation Date (Clearly Distinguishing Live vs Historical) */}
+                    <div className="space-y-1.5 text-xs text-slate-600 pt-1">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate font-medium">{item.market?.name || 'Tamil Nadu APMC Mandi'}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 text-[11px] pt-0.5">
+                        <div className="flex items-center gap-1 text-slate-500 font-medium">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>
+                            {isTa ? 'பதிவு தேதி:' : 'Observed Date:'} <strong className="text-slate-700">{obsDate}</strong>
+                          </span>
+                        </div>
+
+                        {/* Distinction badge: Live Mandi Arrival vs Recorded APMC Benchmark */}
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            isLive
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}
+                        >
+                          {isLive
+                            ? (isTa ? 'நேரலை சந்தை' : 'Live Mandi Price')
+                            : (isTa ? 'பதிவான மண்டி விலை' : 'Recorded APMC Rate')}
                         </span>
                       </div>
                     </div>
-
-                    <div className="text-[11px] text-slate-500 flex items-center gap-1 truncate">
-                      <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                      <span className="truncate">{item.market?.name || 'Local Mandi'}</span>
-                    </div>
                   </div>
 
-                  <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
+                  {/* Card Action Link */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                     <Link
                       href={`/crop-price?crop=${item.crop_id}`}
-                      className="text-xs font-bold text-agri-700 hover:text-agri-800 transition-colors inline-flex items-center gap-1"
+                      className="text-xs font-bold text-emerald-700 hover:text-emerald-800 inline-flex items-center gap-1.5 transition-colors"
                     >
-                      <span>{isTa ? 'ஒப்பீடு' : 'Compare'}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <Scale className="w-3.5 h-3.5" />
+                      <span>{isTa ? 'மண்டி விலை ஒப்பீடு' : 'View Mandi Rate'}</span>
+                      <ArrowRight className="w-3 h-3" />
                     </Link>
-                    <Link
-                      href={`/map?category=markets&id=${item.market_id}`}
-                      className="text-[11px] font-semibold text-slate-500 hover:text-slate-800"
-                    >
-                      {isTa ? 'வரைபடம்' : 'Map'}
-                    </Link>
+
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      {item.unit || '₹/Q'}
+                    </span>
                   </div>
                 </div>
               );
             })}
           </div>
-        </section>
-      </div>
+        )}
+      </section>
     </div>
   );
 }

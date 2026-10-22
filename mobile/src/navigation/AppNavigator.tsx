@@ -98,7 +98,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerBackTitleVisible: false }}>
+      <Stack.Navigator screenOptions={{ headerBackVisible: false }}>
         {!isAuthenticated ? (
           <Stack.Screen
             name="Auth"

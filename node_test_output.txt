@@ -1,0 +1,24 @@
+
+--- DIAGNOSTIC: 7 Days Sample 0 (tomato) ---
+TS Delta: -38.87370143827884
+Sklearn Delta: -38.87370143827884
+Diff: 0
+
+--- PARITY SUMMARY ---
+Total fixtures tested: 60
+Max absolute difference: 0.000000e+0
+Failures count: 0
+▶ AgriME Scikit-Learn Tree Ensemble TypeScript Parity Tests
+  ✔ tree ensemble JSON artifact exists and contains all 3 horizons (33.228ms)
+  ✔ searchSortedLeft implements exact np.searchsorted(side="left") semantics (0.4193ms)
+  ✔ searchSortedRight implements exact np.searchsorted(side="right") semantics (0.2822ms)
+  ✔ TypeScript tree ensemble achieves exact numerical parity (< 1e-4) with Python Scikit-Learn on all horizons (34.8546ms)
+✔ AgriME Scikit-Learn Tree Ensemble TypeScript Parity Tests (70.3713ms)
+ℹ tests 4
+ℹ suites 1
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 189.1979

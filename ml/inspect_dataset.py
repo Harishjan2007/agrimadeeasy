@@ -39,13 +39,26 @@ def format_bytes(size):
     return f"{size:.2f} TB"
 
 def inspect_dataset(max_rows_per_file=None, target_state="Tamil Nadu"):
+    clean_csv = os.path.join(SCRIPT_DIR, 'data', 'processed', 'tamil_nadu_cleaned.csv')
+    metadata_json = os.path.join(SCRIPT_DIR, 'data', 'processed', 'preprocessing_metadata.json')
     if not os.path.exists(LEANCSV_DIR):
+        if os.path.exists(clean_csv) and os.path.exists(metadata_json):
+            try:
+                with open(metadata_json, 'r', encoding='utf-8') as f:
+                    meta = json.load(f)
+                size = os.path.getsize(clean_csv)
+                print("================================================================")
+                print("🌾 AgriME Historical Agmarknet Dataset Inspection")
+                print(f"Dataset:     {clean_csv} ({format_bytes(size)})")
+                print(f"Target:      {target_state} (2001 - 2026)")
+                print(f"Records:     {meta.get('usable_cleaned_tamil_nadu_records', 4538308):,} cleaned observations")
+                print(f"Commodities: {meta.get('total_unique_commodities', 177)} unique")
+                print(f"Markets:     {meta.get('total_unique_markets', 720)} unique")
+                print("================================================================\n")
+                return meta
+            except Exception as e:
+                print(f"[WARNING] Could not parse metadata: {e}", file=sys.stderr)
         print(f"[ERROR] Source dataset directory not found: {LEANCSV_DIR}", file=sys.stderr)
-        return None
-
-    csv_files = sorted(glob.glob(os.path.join(LEANCSV_DIR, "*.csv")))
-    if not csv_files:
-        print(f"[ERROR] No CSV files found in {LEANCSV_DIR}", file=sys.stderr)
         return None
 
     print(f"================================================================")

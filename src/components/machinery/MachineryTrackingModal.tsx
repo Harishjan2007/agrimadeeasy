@@ -56,9 +56,9 @@ export default function MachineryTrackingModal({
     if (!isOpen || !booking?.id) return;
 
     // Initial fetch from Supabase
-    fetchSupabaseTracking(booking.id).then((data) => {
-      if (data) {
-        updateMachineryLocation(booking.id, data);
+    fetchSupabaseTracking(booking.id).then((result) => {
+      if (result?.data) {
+        updateMachineryLocation(booking.id, result.data);
         setLastRefreshedAt(new Date());
       }
     }).catch(() => {});
@@ -87,7 +87,10 @@ export default function MachineryTrackingModal({
     if (!booking?.id) return;
     setIsRefreshing(true);
     try {
-      const fresh = await fetchSupabaseTracking(booking.id);
+      const { data: fresh, error } = await fetchSupabaseTracking(booking.id);
+      if (error) {
+        console.warn('Failed to refresh tracking from Supabase:', error.message);
+      }
       if (fresh) {
         updateMachineryLocation(booking.id, fresh);
       }

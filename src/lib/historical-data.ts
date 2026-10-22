@@ -205,7 +205,10 @@ export function queryHistoricalPrices(params: HistoricalQueryParams): Historical
         availableMarkets: 0,
         availableDistricts: 0,
         dateRange: { start: '', end: '' },
-        datasetWideDateRange: options.dateRange
+        datasetWideDateRange: {
+          start: options.dateRange.min,
+          end: options.dateRange.max
+        }
       },
       priceSummary: {
         minPrice: 0,
@@ -385,7 +388,10 @@ export function queryHistoricalPrices(params: HistoricalQueryParams): Historical
         start: totalMatching > 0 ? earliestDateSeen : '',
         end: totalMatching > 0 ? latestDateSeen : ''
       },
-      datasetWideDateRange: options.dateRange
+      datasetWideDateRange: {
+        start: options.dateRange.min,
+        end: options.dateRange.max
+      }
     },
     priceSummary: {
       minPrice: resolvedMin,

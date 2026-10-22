@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import Link from 'next/link';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -11,8 +10,7 @@ import {
   Sparkles, 
   BarChart3,
   AlertCircle,
-  RefreshCw,
-  Scale
+  RefreshCw
 } from 'lucide-react';
 import { Crop, Market, CropPrediction } from '@/types';
 import { getCropPredictions, getCrops, getMarkets } from '@/lib/supabase/crops';
@@ -107,25 +105,6 @@ export default function PredictionPageClient() {
         icon={TrendingUp}
         iconColor="text-blue-700"
         iconBg="bg-blue-50 border-blue-200"
-
-        actions={
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <Link
-              href="/crop-price?tab=compare"
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all"
-            >
-              <Scale className="w-4 h-4 text-emerald-100" />
-              <span>{translations.prediction.compareMarketPricesBtn}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-            <Link
-              href="/crop-price"
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all"
-            >
-              <span>{isTa ? 'இன்றைய மண்டி விலைகள்' : "View Today's Mandi Prices"}</span>
-            </Link>
-          </div>
-        }
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">

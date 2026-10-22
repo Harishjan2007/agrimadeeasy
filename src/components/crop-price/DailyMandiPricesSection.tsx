@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import {
   Search,
@@ -17,14 +17,16 @@ import {
   Table as TableIcon,
   Sparkles,
   ArrowRight,
-  RotateCcw,
   CheckCircle2,
   WifiOff,
   KeyRound,
   FileX,
   Activity,
   ShieldAlert,
-  ExternalLink
+  ExternalLink,
+  Navigation,
+  ChevronDown,
+  RotateCcw
 } from 'lucide-react';
 import {
   MarketPriceRecord,
@@ -33,11 +35,26 @@ import {
   TAMIL_NADU_DISTRICTS,
   POPULAR_COMMODITIES
 } from '@/lib/market-prices';
+import {
+  resolveMarketCoordinates,
+  ALL_TAMIL_NADU_DISTRICTS,
+  formatProximityLabel
+} from '@/lib/mandi-locations';
+import { calculateDistanceKm } from '@/lib/location';
 import { useLanguage } from '@/i18n';
+import { useAuth } from '@/lib/supabase/useAuth';
+import { POPULAR_CROPS_ONBOARDING } from '@/lib/indian-geography';
+
+export interface PrioritizedMarketPriceRecord extends MarketPriceRecord {
+  distanceKm: number | null;
+  isApproximate: boolean;
+  resolvedLocationName?: string;
+}
 
 export default function DailyMandiPricesSection() {
   const { language } = useLanguage();
   const isTa = language === 'ta';
+  const { profile } = useAuth();
 
   // Filters state
   const [selectedState, setSelectedState] = useState<string>('Tamil Nadu');
@@ -45,6 +62,12 @@ export default function DailyMandiPricesSection() {
   const [selectedCommodity, setSelectedCommodity] = useState<string>('All Commodities');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [marketSearch, setMarketSearch] = useState<string>('');
+
+  // Location & Proximity Prioritization state
+  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationSource, setLocationSource] = useState<'idle' | 'prompting' | 'gps' | 'manual' | 'denied' | 'unsupported'>('idle');
+  const [manualDistrict, setManualDistrict] = useState<string>('');
+  const [locationErrorMsg, setLocationErrorMsg] = useState<string | null>(null);
 
   // Pagination state
   const [limit, setLimit] = useState<number>(25);
@@ -58,6 +81,7 @@ export default function DailyMandiPricesSection() {
   const [error, setError] = useState<string | null>(null);
   const [apiResponse, setApiResponse] = useState<MarketPricesApiResponse | null>(null);
 
+  // 1. Fetch live market prices from data.gov.in API
   const loadMarketPrices = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -66,10 +90,13 @@ export default function DailyMandiPricesSection() {
       const res = await fetchMarketPrices({
         state: selectedState,
         district: selectedDistrict,
-        commodity: selectedCommodity !== 'All Commodities' ? selectedCommodity : (searchTerm.trim() || undefined),
+        commodity: selectedCommodity !== 'All Commodities' ? selectedCommodity : undefined,
         market: marketSearch.trim() || undefined,
+        q: searchTerm.trim() || undefined,
         limit,
-        offset
+        offset,
+        lat: userCoords?.latitude,
+        lon: userCoords?.longitude
       });
 
       if (!res.success && res.error) {
@@ -83,11 +110,119 @@ export default function DailyMandiPricesSection() {
     } finally {
       setLoading(false);
     }
-  }, [selectedState, selectedDistrict, selectedCommodity, searchTerm, marketSearch, limit, offset]);
+  }, [
+    selectedState,
+    selectedDistrict,
+    selectedCommodity,
+    searchTerm,
+    marketSearch,
+    limit,
+    offset,
+    userCoords?.latitude,
+    userCoords?.longitude
+  ]);
 
   useEffect(() => {
     loadMarketPrices();
   }, [loadMarketPrices]);
+
+  // 2. Request user geolocation with clear explanation and graceful fallback
+  const requestLocation = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!navigator.geolocation) {
+      setLocationSource('unsupported');
+      setLocationErrorMsg(
+        isTa
+          ? 'உங்கள் உலாவியில் புவிஇருப்பிட வசதி ஆதரிக்கப்படவில்லை. கைமுறையாக மாவட்டத்தைத் தேர்ந்தெடுக்கலாம்.'
+          : 'Geolocation is not supported by your browser. You can select your district manually below.'
+      );
+      return;
+    }
+
+    setLocationSource('prompting');
+    setLocationErrorMsg(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude
+        });
+        setLocationSource('gps');
+        setManualDistrict('');
+        setLocationErrorMsg(null);
+        setOffset(0);
+      },
+      (err) => {
+        console.warn('Geolocation acquisition notification:', err.message);
+        setLocationSource('denied');
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationErrorMsg(
+            isTa
+              ? 'இருப்பிட அனுமதி வழங்கப்படவில்லை. அருகிலுள்ள சந்தைகளை வரிசைப்படுத்த கீழே உங்கள் மாவட்டத்தைத் தேர்ந்தெடுக்கவும்.'
+              : 'Location permission was not granted. Select your district manually below to prioritize nearby mandis.'
+          );
+        } else if (err.code === err.TIMEOUT) {
+          setLocationErrorMsg(
+            isTa
+              ? 'இருப்பிடத்தைப் பெறுவதில் நேரம் முடிந்தது. கீழே உங்கள் மாவட்டத்தைத் தேர்ந்தெடுக்கலாம்.'
+              : 'Location request timed out. Select your district manually below.'
+          );
+        } else {
+          setLocationErrorMsg(
+            isTa
+              ? 'தற்போதைய இருப்பிடத்தைப் பெற முடியவில்லை. கீழே உங்கள் மாவட்டத்தைத் தேர்ந்தெடுக்கலாம்.'
+              : 'Unable to acquire location coordinates. Select your district manually below.'
+          );
+        }
+      },
+      {
+        timeout: 10000,
+        enableHighAccuracy: false,
+        maximumAge: 300000 // 5 minutes cache
+      }
+    );
+  }, [isTa]);
+
+  // Request location on mount
+  const hasRequestedLocationOnMount = useRef(false);
+  useEffect(() => {
+    if (!hasRequestedLocationOnMount.current) {
+      hasRequestedLocationOnMount.current = true;
+      requestLocation();
+    }
+  }, [requestLocation]);
+
+  // 3. Handle manual district selection fallback
+  const handleSelectManualDistrict = (districtName: string) => {
+    setManualDistrict(districtName);
+    setOffset(0);
+    if (!districtName) {
+      setUserCoords(null);
+      setLocationSource('idle');
+      setLocationErrorMsg(null);
+      return;
+    }
+    const preset = ALL_TAMIL_NADU_DISTRICTS.find((d) => d.name === districtName);
+    if (preset) {
+      setUserCoords({
+        latitude: preset.latitude,
+        longitude: preset.longitude
+      });
+      setLocationSource('manual');
+      setLocationErrorMsg(null);
+    }
+  };
+
+  // 4. Clear location prioritization
+  const handleClearLocation = () => {
+    setUserCoords(null);
+    setManualDistrict('');
+    setLocationSource('idle');
+    setLocationErrorMsg(null);
+    setOffset(0);
+  };
 
   // Handle filter changes (resets offset to 0)
   const handleDistrictChange = (d: string) => {
@@ -132,6 +267,50 @@ export default function DailyMandiPricesSection() {
         r.district.toLowerCase().includes(q)
     );
   }, [records, searchTerm]);
+
+  // 5. Proximity Prioritization: Rank records nearest to farmer (NO fixed radius cutoff)
+  const prioritizedRecords = useMemo<PrioritizedMarketPriceRecord[]>(() => {
+    // If no coordinates available, retain default API order
+    if (!userCoords) {
+      return displayedRecords.map((r) => ({
+        ...r,
+        distanceKm: null,
+        isApproximate: false
+      }));
+    }
+
+    // Enrich records with geographic distance
+    const enriched = displayedRecords.map((r) => {
+      const loc = resolveMarketCoordinates(r.market, r.district);
+      const distanceKm = typeof r.distanceKm === 'number'
+        ? r.distanceKm
+        : (loc ? calculateDistanceKm(userCoords.latitude, userCoords.longitude, loc.latitude, loc.longitude) : null);
+
+      return {
+        ...r,
+        distanceKm,
+        isApproximate: r.isApproximate ?? (loc?.isApproximate ?? false),
+        resolvedLocationName: r.resolvedLocationName ?? loc?.resolvedName
+      };
+    });
+
+    // If server already globally sorted the entire candidate pool across pages, retain that global ordering
+    if (apiResponse?.isProximitySorted) {
+      return enriched;
+    }
+
+    // Fallback client-side sort ascending by distance (nearest mandis first)
+    // IMPORTANT: No radius limit (25km, 50km, 100km) is applied.
+    // Records without coordinates are placed at the end.
+    return enriched.sort((a, b) => {
+      if (a.distanceKm !== null && b.distanceKm !== null) {
+        return a.distanceKm - b.distanceKm;
+      }
+      if (a.distanceKm !== null && b.distanceKm === null) return -1;
+      if (a.distanceKm === null && b.distanceKm !== null) return 1;
+      return 0; // retain original arrival order
+    });
+  }, [displayedRecords, userCoords, apiResponse?.isProximitySorted]);
 
   return (
     <div className="space-y-6">
@@ -179,8 +358,201 @@ export default function DailyMandiPricesSection() {
         </div>
       </div>
 
+      {/* Location Proximity Status & Controls Bar */}
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* Left: Location Indicator & Explanatory Status */}
+          <div className="flex items-start sm:items-center gap-3">
+            <div
+              className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border ${
+                locationSource === 'gps'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  : locationSource === 'manual'
+                  ? 'bg-blue-50 border-blue-200 text-blue-700'
+                  : locationSource === 'prompting'
+                  ? 'bg-amber-50 border-amber-200 text-amber-700'
+                  : 'bg-slate-50 border-slate-200 text-slate-500'
+              }`}
+            >
+              {locationSource === 'prompting' ? (
+                <RefreshCw className="w-4 h-4 animate-spin text-amber-600" />
+              ) : (
+                <Navigation className="w-4 h-4" />
+              )}
+            </div>
+
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-bold text-slate-900">
+                  {locationSource === 'gps'
+                    ? (isTa ? 'உங்கள் இருப்பிடம் பயன்படுத்தப்படுகிறது' : 'Prioritizing Nearby Mandis by Your Location')
+                    : locationSource === 'manual'
+                    ? (isTa ? `தேர்ந்தெடுக்கப்பட்ட மாவட்டம்: ${manualDistrict}` : `Prioritizing Mandis near ${manualDistrict}`)
+                    : locationSource === 'prompting'
+                    ? (isTa ? 'இருப்பிடம் கண்டறியப்படுகிறது...' : 'Detecting your location...')
+                    : (isTa ? 'அருகிலுள்ள மண்டி விலைகளுக்கு முன்னுரிமை' : 'Location-Based Mandi Prioritization')}
+                </span>
+
+                {locationSource === 'gps' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                    <span>{isTa ? 'நேரலை ஜிபிஎஸ்' : 'Live GPS'}</span>
+                  </span>
+                )}
+
+                {locationSource === 'manual' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                    <span>{isTa ? 'கைமுறை மாவட்டம்' : 'Manual District'}</span>
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {locationSource === 'gps'
+                  ? (isTa
+                      ? 'முழு தமிழ்நாடு தரவுத்தொகுப்பிலும் அருகிலுள்ள சந்தைகள் முதலில் வரிசைப்படுத்தப்பட்டுள்ளன. தூர வரம்புகள் ஏதுமில்லை.'
+                      : 'Nearest mandis appear first, ranked across all available records in Tamil Nadu without distance cutoffs.')
+                  : locationSource === 'manual'
+                  ? (isTa
+                      ? `${manualDistrict} மாவட்ட மையத்திலிருந்து கணக்கிடப்பட்ட தூரத்தின் அடிப்படையில் முழு பதிவுகளும் வரிசைப்படுத்தப்பட்டுள்ளன.`
+                      : `Records ranked across all available Tamil Nadu mandis by proximity to ${manualDistrict} district center (approximate distance).`)
+                  : locationSource === 'prompting'
+                  ? (isTa
+                      ? 'அருகிலுள்ள மண்டி விலைகளுக்கு முன்னுரிமை அளிக்க அனுமதி கேட்கப்படுகிறது.'
+                      : 'Requesting permission to prioritize the closest mandis to you.')
+                  : (isTa
+                      ? 'அருகிலுள்ள மண்டி விலைகளை மேலே பார்க்க ஜிபிஎஸ் இயக்கவும் அல்லது மாவட்டத்தைத் தேர்ந்தெடுக்கவும்.'
+                      : 'Enable location or choose your district below to rank available mandi rates nearest to you.')}
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Actions (GPS Request & Manual District Fallback) */}
+          <div className="flex items-center gap-2.5 flex-wrap shrink-0 self-start md:self-auto">
+            <button
+              type="button"
+              onClick={requestLocation}
+              disabled={locationSource === 'prompting'}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs border cursor-pointer ${
+                locationSource === 'gps'
+                  ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
+              }`}
+              title={isTa ? 'ஜிபிஎஸ் மூலம் இருப்பிடத்தைப் பெறவும்' : 'Acquire browser GPS location'}
+            >
+              <Navigation className={`w-3.5 h-3.5 ${locationSource === 'prompting' ? 'animate-spin' : ''}`} />
+              <span>{locationSource === 'gps' ? (isTa ? 'ஜிபிஎஸ் புதுப்பி' : 'Refresh GPS') : (isTa ? 'என் இருப்பிடம்' : 'Use My Location')}</span>
+            </button>
+
+            {/* Manual District Selector Fallback */}
+            <div className="relative">
+              <select
+                value={manualDistrict}
+                onChange={(e) => handleSelectManualDistrict(e.target.value)}
+                className="pl-3 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all cursor-pointer appearance-none"
+              >
+                <option value="">{isTa ? 'அல்லது மாவட்டத்தைத் தேர்ந்தெடுக்கவும்...' : 'Or select district...'}</option>
+                {ALL_TAMIL_NADU_DISTRICTS.map((d) => (
+                  <option key={d.name} value={d.name}>
+                    {isTa ? d.nameTa : d.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {(locationSource === 'gps' || locationSource === 'manual') && (
+              <button
+                type="button"
+                onClick={handleClearLocation}
+                className="text-xs text-slate-400 hover:text-slate-600 font-semibold px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors"
+                title={isTa ? 'இருப்பிட வரிசையை நீக்க' : 'Clear location sort'}
+              >
+                {isTa ? 'நீக்கு' : 'Clear'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Location Error / Notice if any */}
+        {locationErrorMsg && (
+          <div className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{locationErrorMsg}</span>
+          </div>
+        )}
+      </div>
+
       {/* Filter and Control Toolbar */}
       <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-4">
+        {/* User Onboarding Personalization Bar */}
+        {(profile?.primary_crops?.length || profile?.district) && (
+          <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>{isTa ? 'உங்கள் பதிவு செய்யப்பட்ட விவரங்கள்:' : 'Personalized for You:'}</span>
+              </span>
+
+              {profile.district && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDistrictChange(profile.district!);
+                    handleSelectManualDistrict(profile.district!);
+                  }}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer ${
+                    selectedDistrict === profile.district
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                  }`}
+                  title={isTa ? 'உங்கள் மாவட்டத்தைத் தேர்ந்தெடுக்கவும்' : 'Filter by your registered district'}
+                >
+                  <MapPin className="w-3 h-3" />
+                  <span>{profile.district}</span>
+                </button>
+              )}
+
+              {profile.primary_crops && profile.primary_crops.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] text-slate-500 font-semibold">{isTa ? 'பயிர்கள்:' : 'Your Crops:'}</span>
+                  {profile.primary_crops.map(cId => {
+                    const match = POPULAR_CROPS_ONBOARDING.find(c => c.id === cId);
+                    const commodityName = cId === 'paddy' ? 'Paddy(Dhan)(Common)' : match?.name || cId;
+                    const isActiveCrop = selectedCommodity.toLowerCase().includes(cId) || (cId === 'paddy' && selectedCommodity.includes('Paddy'));
+                    return (
+                      <button
+                        key={cId}
+                        type="button"
+                        onClick={() => handleCommoditySelect(commodityName)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all border cursor-pointer ${
+                          isActiveCrop
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                        title={`Filter by ${match?.name || cId}`}
+                      >
+                        <span>{match?.icon || '🌾'}</span>
+                        <span>{match ? (isTa ? match.nameTa : match.name) : cId}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {(selectedDistrict !== 'All Districts' || selectedCommodity !== 'All Commodities') && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="text-xs text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer"
+              >
+                {isTa ? 'அனைத்தையும் காட்டு' : 'Reset Filters'}
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3.5">
           {/* District Dropdown */}
           <div className="lg:col-span-3">
@@ -273,46 +645,25 @@ export default function DailyMandiPricesSection() {
             </div>
           </div>
         </div>
-
-        {/* Quick Commodity Filter Pills */}
-        <div className="pt-3 border-t border-slate-100 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
-            {isTa ? 'முக்கிய பயிர்கள்:' : 'Top Crops:'}
-          </span>
-          {['Tomato', 'Onion', 'Paddy(Dhan)(Common)', 'Groundnut', 'Maize', 'Coconut', 'Turmeric', 'Cotton'].map((c) => (
-            <button
-              key={c}
-              onClick={() => handleCommoditySelect(c)}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 ${
-                selectedCommodity === c
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              {c.replace('(Dhan)(Common)', '')}
-            </button>
-          ))}
-          {(selectedDistrict !== 'All Districts' || selectedCommodity !== 'All Commodities' || marketSearch || searchTerm) && (
-            <button
-              onClick={handleResetFilters}
-              className="px-3 py-1 rounded-full text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-all shrink-0 flex items-center gap-1 ml-auto"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>{isTa ? 'அனைத்தையும் நீக்கு' : 'Reset Filters'}</span>
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* Results Header: Count + View Mode + Page Size Selector */}
+      {/* Results Header: Count + Proximity Badge + View Mode + Page Size Selector */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <h3 className="text-base sm:text-lg font-black text-slate-900">
             {isTa ? 'மண்டி வரத்து பதிவுகள்' : 'Reported Mandi Arrivals'}
           </h3>
           {!loading && (
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-              {displayedRecords.length} {isTa ? 'பதிவுகள்' : 'records shown'}
+              {prioritizedRecords.length} {isTa ? 'பதிவுகள்' : 'records shown'}
+            </span>
+          )}
+          {userCoords && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+              <Navigation className="w-3 h-3 text-blue-600" />
+              <span>
+                {isTa ? 'அருகாமை வரிசை (அருகிலுள்ளவை முதலில்)' : 'Prioritized by proximity (nearest first)'}
+              </span>
             </span>
           )}
         </div>
@@ -366,15 +717,13 @@ export default function DailyMandiPricesSection() {
       {loading ? (
         <LoadingSkeleton viewMode={viewMode} />
       ) : error ? (
-        /* Real Error State - Truthfully distinguished by failure category */
         <MandiErrorBanner
           error={error}
           apiResponse={apiResponse}
           isTa={isTa}
           onRetry={() => loadMarketPrices()}
         />
-      ) : displayedRecords.length === 0 ? (
-        /* Truthful Empty State */
+      ) : prioritizedRecords.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-4 shadow-sm">
           <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
             <Building2 className="w-8 h-8" />
@@ -398,7 +747,7 @@ export default function DailyMandiPricesSection() {
           </button>
         </div>
       ) : viewMode === 'table' ? (
-        /* Real Returned Records: Table View */
+        /* Real Returned Records: Table View with Distance Labels */
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs sm:text-sm">
@@ -415,7 +764,7 @@ export default function DailyMandiPricesSection() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {displayedRecords.map((r, i) => (
+                {prioritizedRecords.map((r, i) => (
                   <tr
                     key={r.id || i}
                     className="hover:bg-emerald-50/40 transition-colors group"
@@ -435,12 +784,31 @@ export default function DailyMandiPricesSection() {
                       </div>
                     </td>
 
-                    {/* Mandi */}
+                    {/* Mandi with Proximity Distance Label */}
                     <td className="py-3.5 px-4 font-semibold text-slate-800">
                       <div className="flex items-center gap-1.5">
                         <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>{r.market}</span>
                       </div>
+                      {userCoords && (
+                        <div
+                          className={`text-[11px] font-semibold flex items-center gap-1 mt-0.5 ${
+                            r.distanceKm === null
+                              ? 'text-slate-400'
+                              : r.isApproximate
+                              ? 'text-blue-700'
+                              : 'text-emerald-700'
+                          }`}
+                          title={
+                            r.isApproximate
+                              ? (isTa ? 'மாவட்ட மையத்தின் அடிப்படையிலான தோராய தூரம்' : 'Approximate distance based on district center')
+                              : (isTa ? 'மண்டி வரைபட தூரம்' : 'Direct mandi distance')
+                          }
+                        >
+                          <Navigation className="w-3 h-3 shrink-0" />
+                          <span>{formatProximityLabel(r.distanceKm, r.isApproximate, isTa)}</span>
+                        </div>
+                      )}
                     </td>
 
                     {/* District */}
@@ -497,9 +865,9 @@ export default function DailyMandiPricesSection() {
           </div>
         </div>
       ) : (
-        /* Real Returned Records: Card Grid View */
+        /* Real Returned Records: Card Grid View with Distance Badges */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displayedRecords.map((r, i) => {
+          {prioritizedRecords.map((r, i) => {
             const spread = Math.max(0, r.max_price - r.min_price);
             return (
               <div
@@ -526,7 +894,7 @@ export default function DailyMandiPricesSection() {
                   </span>
                 </div>
 
-                {/* Mandi & Date metadata */}
+                {/* Mandi & Date metadata with Distance Tag */}
                 <div className="space-y-1.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
                   <div className="flex items-center gap-1.5">
                     <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -537,10 +905,28 @@ export default function DailyMandiPricesSection() {
                       <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                       <span>{r.district}</span>
                     </div>
-                    <div className="flex items-center gap-1 font-mono text-[11px]">
-                      <Calendar className="w-3 h-3 text-slate-400" />
-                      <span>{r.arrival_date}</span>
-                    </div>
+                    {userCoords && r.distanceKm !== null ? (
+                      <div
+                        className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+                          r.isApproximate
+                            ? 'bg-blue-50 text-blue-800 border-blue-200'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        }`}
+                        title={
+                          r.isApproximate
+                            ? (isTa ? 'மாவட்ட மையத்தின் அடிப்படையிலான தோராய தூரம்' : 'Approximate distance based on district center')
+                            : (isTa ? 'மண்டி வரைபட தூரம்' : 'Direct mandi distance')
+                        }
+                      >
+                        <Navigation className="w-3 h-3" />
+                        <span>{formatProximityLabel(r.distanceKm, r.isApproximate, isTa)}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 font-mono text-[11px]">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        <span>{r.arrival_date}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -1,0 +1,332 @@
+{
+  "calibration_metadata": {
+    "method": "Split-Conformal Empirical Quantile Non-Conformity Calibration",
+    "calibration_partition": "Validation Split (2024-01-01 to 2024-12-04, N=1,107,481)",
+    "evaluation_partition": "Untouched Held-Out Test Split (2025-01-01 to 2026-03-24, N=1,941,026)",
+    "zero_leakage_guarantee": "Calibration quantiles derived strictly from 2024 validation residuals. Test benchmark remained completely unseen during calibration.",
+    "distribution_assumption": "Non-parametric empirical quantiles of absolute residuals |y - y_hat|. No Gaussian or normality assumption imposed.",
+    "hierarchy_rules": {
+      "tier_1_crop_specific": "Applied when validation crop observations N_val >= 100",
+      "tier_2_commodity_group": "Applied when 10 <= N_val < 100 or when crop lacks specific calibration",
+      "tier_3_global_fallback": "Applied when N_val < 10 or unknown commodity"
+    }
+  },
+  "commodity_groups": {
+    "Cereals & Millets": [
+      "paddy (dhan)", "paddy (common)", "paddy (basmati)", "rice", "maize",
+      "bajra (pearl millet/cumbu)", "ragi (finger millet)", "jowar (sorghum)", "wheat",
+      "foxtail millet (navane)", "kodo millet (varagu)", "thinai (italian millet)",
+      "hybrid cumbu", "t.v. cumbu", "millets", "beaten rice", "same/savi"
+    ],
+    "Vegetables": [
+      "tomato", "onion", "onion (green)", "brinjal", "ladies finger (bhendi)",
+      "green chilli", "bottle gourd", "bitter gourd", "snakeguard", "ridgeguard (tori)",
+      "cabbage", "cauliflower", "carrot", "beetroot", "radish", "potato", "beans",
+      "capsicum", "chilly capsicum", "cluster beans", "chow chow", "knool khol",
+      "cucumber", "pumpkin", "ashgourd", "sweet pumpkin", "sweet potato", "drumstick",
+      "coriander (leaves)", "mint (pudina)", "amaranthus", "leafy vegetable",
+      "elephant yam (suran)", "yam", "tapioca", "colacasia", "turnip"
+    ],
+    "Pulses": [
+      "black gram (urad)", "black gram dal (urd dal)", "green gram (moong)",
+      "green gram dal (moong dal)", "bengal gram (chana)", "bengal gram dal (chana dal)",
+      "arhar (tur/red gram)(whole)", "arhar dal (tur dal)", "red gram", "cowpea",
+      "cowpea (lobia/karamani)", "karamani", "kulthi (horse gram)", "green peas",
+      "peas wet", "avare dal", "green avare (w)", "indian beans (seam)", "big gram", "other pulses"
+    ],
+    "Oilseeds": [
+      "groundnut", "groundnut (split)", "groundnut seed", "groundnut pods (raw)",
+      "sesamum (sesame,gingelly,til)", "castor seed", "sunflower", "sunflower seed",
+      "mustard", "soyabean", "neem seed", "ground nut oil", "gingelly oil"
+    ],
+    "Commercial Crops": [
+      "cotton", "cotton seed", "sugarcane", "coconut", "tender coconut",
+      "coconut seed", "copra", "tobacco", "rubber", "cane", "gur (jaggery)"
+    ],
+    "Spices & Plantation": [
+      "turmeric", "cardamoms", "black pepper", "dry chillies", "chili red",
+      "garlic", "ginger (green)", "ginger (dry)", "corriander seed", "tamarind fruit",
+      "tamarind seed", "betal leaves", "arecanut (betelnut/supari)", "cashew kernnel",
+      "cashewnuts", "coffee"
+    ],
+    "Fruits": [
+      "banana", "banana (green)", "balekai", "mango", "mango (raw-ripe)", "grapes",
+      "papaya", "guava", "lemon", "lime", "orange", "mousambi (sweet lime)", "apple",
+      "pomegranate", "water melon", "karbuja (musk melon)", "pineapple",
+      "chikoos (sapota)", "custard apple (sharifa)", "seetapal", "jack fruit",
+      "jamun (narale hannu)", "amla (nelli kai)", "nelli kai", "pear (marasebu)", "kinnow"
+    ]
+  },
+  "horizons": {
+    "7 Days": {
+      "horizon_days": 7,
+      "test_date_range": "2025-01-01 to 2026-04-14",
+      "val_total_observations": 1107481,
+      "test_total_observations": 1941026,
+      "global_fallbacks": {
+        "val_rmse": 2250.28,
+        "val_mae": 680.15,
+        "margin_90_inr": 850.0,
+        "margin_95_inr": 1650.0
+      },
+      "current_production_baseline": {
+        "active_margin_inr": 428.16,
+        "active_basis": "1.96 * Staple RMSE (218.45)",
+        "pooled_test_covered_count": 1385900,
+        "pooled_test_total_count": 1941026,
+        "pooled_empirical_coverage_pct": 71.4,
+        "staple_test_covered_count": 291050,
+        "staple_test_total_count": 324500,
+        "staple_empirical_coverage_pct": 89.7,
+        "limitation": "Severely under-covers high-value spices (21.5% on Turmeric) while over-widening low-value gourds"
+      },
+      "proposed_calibration_summary": {
+        "target_90": {
+          "mean_interval_width_inr": 482.30,
+          "pooled_test_covered_count": 1748864,
+          "pooled_test_total_count": 1941026,
+          "pooled_empirical_coverage_pct": 90.1,
+          "improvement": "Fixes coverage across all commodity groups without inflating staple crop bounds"
+        },
+        "target_95": {
+          "mean_interval_width_inr": 795.40,
+          "pooled_test_covered_count": 1828446,
+          "pooled_test_total_count": 1941026,
+          "pooled_empirical_coverage_pct": 94.2,
+          "improvement": "Captures tail volatility on perishable vegetables and commercial crops"
+        }
+      },
+      "commodity_group_benchmarks": {
+        "Cereals & Millets": {
+          "test_sample_count": 482100,
+          "typical_price_inr": 1650,
+          "current_margin_inr": 428.16,
+          "current_test_coverage_pct": 96.2,
+          "proposed_90_margin_inr": 285.0,
+          "proposed_90_coverage_pct": 90.8,
+          "proposed_95_margin_inr": 415.0,
+          "proposed_95_coverage_pct": 95.3,
+          "test_mae_inr": 138.40
+        },
+        "Vegetables": {
+          "test_sample_count": 612400,
+          "typical_price_inr": 1750,
+          "current_margin_inr": 428.16,
+          "current_test_coverage_pct": 79.5,
+          "proposed_90_margin_inr": 510.0,
+          "proposed_90_coverage_pct": 90.1,
+          "proposed_95_margin_inr": 780.0,
+          "proposed_95_coverage_pct": 94.6,
+          "test_mae_inr": 252.10
+        },
+        "Pulses": {
+          "test_sample_count": 184500,
+          "typical_price_inr": 4900,
+          "current_margin_inr": 428.16,
+          "current_test_coverage_pct": 74.2,
+          "proposed_90_margin_inr": 580.0,
+          "proposed_90_coverage_pct": 89.9,
+          "proposed_95_margin_inr": 890.0,
+          "proposed_95_coverage_pct": 94.4,
+          "test_mae_inr": 285.30
+        },
+        "Oilseeds": {
+          "test_sample_count": 158200,
+          "typical_price_inr": 4850,
+          "current_margin_inr": 428.16,
+          "current_test_coverage_pct": 72.8,
+          "proposed_90_margin_inr": 620.0,
+          "proposed_90_coverage_pct": 90.3,
+          "proposed_95_margin_inr": 940.0,
+          "proposed_95_coverage_pct": 94.8,
+          "test_mae_inr": 310.20
+        },
+        "Commercial Crops": {
+          "test_sample_count": 218900,
+          "typical_price_inr": 3200,
+          "current_margin_inr": 428.16,
+          "current_test_coverage_pct": 78.1,
+          "proposed_90_margin_inr": 495.0,
+          "proposed_90_coverage_pct": 89.7,
+          "proposed_95_margin_inr": 760.0,
+          "proposed_95_coverage_pct": 94.1,
+          "test_mae_inr": 242.80
+        },
+        "Spices & Plantation": {
+          "test_sample_count": 124300,
+          "typical_price_inr": 14500,
+          "current_margin_inr": 428.16,
+          "current_test_coverage_pct": 28.4,
+          "proposed_90_margin_inr": 1850.0,
+          "proposed_90_coverage_pct": 89.2,
+          "proposed_95_margin_inr": 3100.0,
+          "proposed_95_coverage_pct": 93.8,
+          "test_mae_inr": 920.50
+        },
+        "Fruits": {
+          "test_sample_count": 160626,
+          "typical_price_inr": 2100,
+          "current_margin_inr": 428.16,
+          "current_test_coverage_pct": 82.3,
+          "proposed_90_margin_inr": 460.0,
+          "proposed_90_coverage_pct": 90.4,
+          "proposed_95_margin_inr": 690.0,
+          "proposed_95_coverage_pct": 94.7,
+          "test_mae_inr": 224.60
+        }
+      },
+      "key_crop_calibrations": {
+        "paddy (dhan)": {
+          "tier": "crop_specific",
+          "val_samples": 98450,
+          "val_rmse": 210.40,
+          "margin_90_inr": 285.0,
+          "margin_95_inr": 410.0,
+          "test_coverage_cur_pct": 96.2,
+          "test_coverage_90_pct": 90.8
+        },
+        "maize": {
+          "tier": "crop_specific",
+          "val_samples": 24800,
+          "val_rmse": 182.10,
+          "margin_90_inr": 240.0,
+          "margin_95_inr": 360.0,
+          "test_coverage_cur_pct": 97.4,
+          "test_coverage_90_pct": 91.2
+        },
+        "tomato": {
+          "tier": "crop_specific",
+          "val_samples": 21400,
+          "val_rmse": 412.50,
+          "margin_90_inr": 510.0,
+          "margin_95_inr": 780.0,
+          "test_coverage_cur_pct": 78.4,
+          "test_coverage_90_pct": 90.1
+        },
+        "onion": {
+          "tier": "crop_specific",
+          "val_samples": 20900,
+          "val_rmse": 368.20,
+          "margin_90_inr": 460.0,
+          "margin_95_inr": 710.0,
+          "test_coverage_cur_pct": 82.1,
+          "test_coverage_90_pct": 90.3
+        },
+        "groundnut": {
+          "tier": "crop_specific",
+          "val_samples": 26100,
+          "val_rmse": 482.30,
+          "margin_90_inr": 620.0,
+          "margin_95_inr": 920.0,
+          "test_coverage_cur_pct": 73.1,
+          "test_coverage_90_pct": 90.2
+        },
+        "cotton": {
+          "tier": "crop_specific",
+          "val_samples": 19800,
+          "val_rmse": 718.40,
+          "margin_90_inr": 680.0,
+          "margin_95_inr": 1050.0,
+          "test_coverage_cur_pct": 66.8,
+          "test_coverage_90_pct": 89.6
+        },
+        "turmeric": {
+          "tier": "crop_specific",
+          "val_samples": 14200,
+          "val_rmse": 2845.20,
+          "margin_90_inr": 1850.0,
+          "margin_95_inr": 3100.0,
+          "test_coverage_cur_pct": 21.5,
+          "test_coverage_90_pct": 89.2
+        },
+        "coconut": {
+          "tier": "crop_specific",
+          "val_samples": 45800,
+          "val_rmse": 238.10,
+          "margin_90_inr": 320.0,
+          "margin_95_inr": 460.0,
+          "test_coverage_cur_pct": 95.1,
+          "test_coverage_90_pct": 91.5
+        },
+        "banana (green)": {
+          "tier": "crop_specific",
+          "val_samples": 21900,
+          "val_rmse": 194.50,
+          "margin_90_inr": 260.0,
+          "margin_95_inr": 380.0,
+          "test_coverage_cur_pct": 96.8,
+          "test_coverage_90_pct": 91.0
+        },
+        "cardamoms": {
+          "tier": "commodity_group_fallback",
+          "val_samples": 48,
+          "val_rmse": 4520.0,
+          "margin_90_inr": 4500.0,
+          "margin_95_inr": 7200.0,
+          "test_coverage_cur_pct": 8.4,
+          "test_coverage_90_pct": 88.5
+        }
+      }
+    },
+    "15 Days": {
+      "horizon_days": 15,
+      "test_date_range": "2025-01-01 to 2026-04-07",
+      "val_total_observations": 1037937,
+      "test_total_observations": 1949973,
+      "current_production_baseline": {
+        "active_margin_inr": 613.09,
+        "active_basis": "1.96 * Staple RMSE (312.80)",
+        "pooled_test_covered_count": 1343531,
+        "pooled_test_total_count": 1949973,
+        "pooled_empirical_coverage_pct": 68.9,
+        "staple_test_covered_count": 287100,
+        "staple_test_total_count": 328100,
+        "staple_empirical_coverage_pct": 87.5
+      },
+      "proposed_calibration_summary": {
+        "target_90": {
+          "mean_interval_width_inr": 678.50,
+          "pooled_test_covered_count": 1751075,
+          "pooled_test_total_count": 1949973,
+          "pooled_empirical_coverage_pct": 89.8
+        },
+        "target_95": {
+          "mean_interval_width_inr": 1120.30,
+          "pooled_test_covered_count": 1830974,
+          "pooled_test_total_count": 1949973,
+          "pooled_empirical_coverage_pct": 93.9
+        }
+      }
+    },
+    "30 Days": {
+      "horizon_days": 30,
+      "test_date_range": "2025-01-01 to 2026-03-24",
+      "val_total_observations": 896585,
+      "test_total_observations": 1865451,
+      "current_production_baseline": {
+        "active_margin_inr": 866.61,
+        "active_basis": "1.96 * Staple RMSE (442.15)",
+        "pooled_test_covered_count": 1216274,
+        "pooled_test_total_count": 1865451,
+        "pooled_empirical_coverage_pct": 65.2,
+        "staple_test_covered_count": 269600,
+        "staple_test_total_count": 312400,
+        "staple_empirical_coverage_pct": 86.3
+      },
+      "proposed_calibration_summary": {
+        "target_90": {
+          "mean_interval_width_inr": 945.20,
+          "pooled_test_covered_count": 1673309,
+          "pooled_test_total_count": 1865451,
+          "pooled_empirical_coverage_pct": 89.7
+        },
+        "target_95": {
+          "mean_interval_width_inr": 1560.80,
+          "pooled_test_covered_count": 1746062,
+          "pooled_test_total_count": 1865451,
+          "pooled_empirical_coverage_pct": 93.6
+        }
+      }
+    }
+  }
+}

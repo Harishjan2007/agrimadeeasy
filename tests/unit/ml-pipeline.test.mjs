@@ -5,23 +5,106 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const leancsvDir = path.resolve(__dirname, '../../leancsv');
+const processedDir = path.resolve(__dirname, '../../ml/data/processed');
+const cleanedCsvPath = path.join(processedDir, 'tamil_nadu_cleaned.csv');
+const metadataPath = path.join(processedDir, 'preprocessing_metadata.json');
 const modelJsonPath = path.resolve(__dirname, '../../ml/models/crop_price_ml_model.json');
 
 describe('AgriME Machine Learning Pipeline Integrity Tests', () => {
-  test('source dataset directory exists and contains yearly CSV files from 2001 to 2026', () => {
-    assert.ok(fs.existsSync(leancsvDir), 'leancsv directory must exist');
-    const files = fs.readdirSync(leancsvDir).filter((f) => f.endsWith('.csv'));
-    assert.ok(files.length >= 26, `Expected at least 26 yearly CSV files, found ${files.length}`);
-    assert.ok(files.includes('2001.csv'), 'Must contain 2001.csv');
-    assert.ok(files.includes('2026.csv'), 'Must contain 2026.csv');
+  test('source dataset exists and contains verified Tamil Nadu records from 2001 to 2026', () => {
+    assert.ok(fs.existsSync(cleanedCsvPath), 'tamil_nadu_cleaned.csv must exist');
+    assert.ok(fs.existsSync(metadataPath), 'preprocessing_metadata.json must exist');
+
+    const meta = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+    assert.equal(meta.target_state, 'Tamil Nadu', 'Target state must be Tamil Nadu');
+    assert.ok(
+      meta.usable_cleaned_tamil_nadu_records > 4000000,
+      `Expected > 4M usable records, found ${meta.usable_cleaned_tamil_nadu_records}`
+    );
+
+    // Verify yearly distribution spans full 2001 to 2026 chronological window
+    const yearly = meta.yearly_distribution;
+    assert.ok(yearly, 'Yearly distribution metadata must exist');
+    for (let yr = 2001; yr <= 2026; yr++) {
+      const yearStr = String(yr);
+      assert.ok(
+        yearly[yearStr] !== undefined && yearly[yearStr] > 0,
+        `Year ${yearStr} must have positive record count (found ${yearly[yearStr]})`
+      );
+    }
+
+    const stat = fs.statSync(cleanedCsvPath);
+    assert.ok(
+      stat.size > 100 * 1024 * 1024,
+      `Dataset file size must exceed 100MB, found ${(stat.size / (1024 * 1024)).toFixed(1)}MB`
+    );
   });
 
-  test('CSV schema matches expected 11 Agmarknet columns', () => {
-    const csv2001 = path.join(leancsvDir, '2001.csv');
-    const firstLine = fs.readFileSync(csv2001, 'utf-8').split('\n')[0].trim();
-    const expectedCols = 'State,District,Market,Commodity,Variety,Grade,Arrival_Date,Min_Price,Max_Price,Modal_Price,Commodity_Code';
-    assert.equal(firstLine, expectedCols, 'Header must match standard 11 Agmarknet columns');
+  test('CSV schema matches expected 11 Agmarknet columns and valid data types', () => {
+    assert.ok(fs.existsSync(cleanedCsvPath), 'tamil_nadu_cleaned.csv must exist');
+
+    // Read first chunk to inspect header and sample rows efficiently
+    const fd = fs.openSync(cleanedCsvPath, 'r');
+    const buffer = Buffer.alloc(65536);
+    const bytesRead = fs.readSync(fd, buffer, 0, 65536, 0);
+    fs.closeSync(fd);
+
+    const chunk = buffer.toString('utf-8', 0, bytesRead);
+    const lines = chunk.split('\n').filter((l) => l.trim().length > 0);
+    assert.ok(lines.length >= 2, 'Dataset must contain at least a header and sample data rows');
+
+    const header = lines[0].trim();
+    const columns = header.split(',').map((c) => c.trim().toLowerCase());
+
+    const expectedAgmarknetCols = [
+      'state',
+      'district',
+      'market',
+      'commodity',
+      'variety',
+      'grade',
+      'arrival_date',
+      'min_price',
+      'max_price',
+      'modal_price',
+      'commodity_code'
+    ];
+
+    for (const col of expectedAgmarknetCols) {
+      assert.ok(
+        columns.includes(col),
+        `Dataset schema must contain standard Agmarknet column: '${col}'`
+      );
+    }
+
+    // Validate first data row values against expected schema and bounds
+    const firstRowValues = lines[1].trim().split(',');
+    assert.equal(
+      firstRowValues.length,
+      columns.length,
+      'First data row column count must match header'
+    );
+
+    const stateIdx = columns.indexOf('state');
+    const dateIdx = columns.indexOf('arrival_date');
+    const minIdx = columns.indexOf('min_price');
+    const maxIdx = columns.indexOf('max_price');
+    const modalIdx = columns.indexOf('modal_price');
+
+    assert.equal(firstRowValues[stateIdx], 'Tamil Nadu', 'State must be Tamil Nadu');
+    assert.match(
+      firstRowValues[dateIdx],
+      /^2001-\d{2}-\d{2}$/,
+      'First record arrival date must be in year 2001'
+    );
+
+    const minP = parseFloat(firstRowValues[minIdx]);
+    const maxP = parseFloat(firstRowValues[maxIdx]);
+    const modalP = parseFloat(firstRowValues[modalIdx]);
+
+    assert.ok(!isNaN(minP) && minP > 0, 'Min price must be a positive number');
+    assert.ok(!isNaN(maxP) && maxP >= minP, 'Max price must be >= Min price');
+    assert.ok(!isNaN(modalP) && modalP >= minP && modalP <= maxP, 'Modal price must be within Min and Max');
   });
 
   test('chronological split respects non-overlapping date boundaries', () => {

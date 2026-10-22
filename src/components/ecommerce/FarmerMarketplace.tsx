@@ -179,7 +179,7 @@ export default function FarmerMarketplace() {
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
           const matchCrop = item.crop_name.toLowerCase().includes(q);
-          const matchCat = item.category.toLowerCase().includes(q);
+          const matchCat = item.category?.toLowerCase().includes(q) || false;
           const matchLoc = item.location.toLowerCase().includes(q);
           const matchDesc = item.description?.toLowerCase().includes(q) || false;
           if (!matchCrop && !matchCat && !matchLoc && !matchDesc) return false;

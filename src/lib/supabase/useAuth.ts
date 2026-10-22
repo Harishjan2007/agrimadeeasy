@@ -42,6 +42,32 @@ export function useAuth(): AuthState {
     }
   }, []);
 
+  const enrichProfile = useCallback((baseProfile: Profile | null, currentUser: User): Profile => {
+    let localProfile: Partial<Profile> = {};
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`agrime_profile_${currentUser.id}`);
+        if (stored) localProfile = JSON.parse(stored);
+      } catch {}
+    }
+
+    const meta = currentUser.user_metadata || {};
+    return {
+      id: currentUser.id,
+      name: baseProfile?.name || meta.name || currentUser.email?.split('@')[0] || 'User',
+      email: currentUser.email || baseProfile?.email || '',
+      phone: baseProfile?.phone || meta.phone || '',
+      role: (baseProfile?.role || meta.role || 'farmer') as UserRole,
+      location: baseProfile?.location || meta.location || '',
+      user_type: meta.user_type || localProfile.user_type || baseProfile?.user_type || 'Farmer',
+      state: meta.state || localProfile.state || baseProfile?.state || '',
+      district: meta.district || localProfile.district || baseProfile?.district || '',
+      primary_crops: meta.primary_crops || localProfile.primary_crops || baseProfile?.primary_crops || [],
+      main_interests: meta.main_interests || localProfile.main_interests || baseProfile?.main_interests || [],
+      created_at: baseProfile?.created_at || new Date().toISOString()
+    };
+  }, []);
+
   const refreshProfile = useCallback(async (): Promise<Profile | null> => {
     if (!isSupabaseConfigured || !supabase) return null;
     const client = supabase;
@@ -51,25 +77,40 @@ export function useAuth(): AuthState {
         setUser(null);
         setProfile(null);
         setRole(null);
+        if (typeof document !== 'undefined') {
+          document.cookie = 'agrime_auth=; path=/; max-age=0; SameSite=Lax';
+        }
         return null;
       }
 
       setUser(currentUser);
-      const userProfile = await fetchProfile(currentUser.id);
-      setProfile(userProfile);
+      const rawProfile = await fetchProfile(currentUser.id);
+      const enriched = enrichProfile(rawProfile, currentUser);
+      setProfile(enriched);
       
-      const userRole = (userProfile?.role || currentUser.user_metadata?.role || 'farmer') as UserRole;
+      const userRole = enriched.role || 'farmer';
       setRole(userRole);
-      return userProfile;
+      if (typeof document !== 'undefined') {
+        document.cookie = 'agrime_auth=true; path=/; max-age=604800; SameSite=Lax';
+      }
+      return enriched;
     } catch (e) {
       return null;
     }
-  }, [fetchProfile]);
+  }, [fetchProfile, enrichProfile]);
 
   const signOut = useCallback(async () => {
+    if (typeof document !== 'undefined') {
+      document.cookie = 'agrime_auth=; path=/; max-age=0; SameSite=Lax';
+      try {
+        localStorage.removeItem('agrime_demo_session');
+      } catch {}
+    }
     if (isSupabaseConfigured && supabase) {
       const client = supabase;
-      await client.auth.signOut();
+      try {
+        await client.auth.signOut();
+      } catch {}
     }
     setUser(null);
     setProfile(null);
@@ -79,7 +120,29 @@ export function useAuth(): AuthState {
   useEffect(() => {
     let isMounted = true;
 
+    // Check for demo session if Supabase is not configured or in fallback
+    const checkDemoSession = () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const demoRaw = localStorage.getItem('agrime_demo_session');
+          if (demoRaw) {
+            const demoData = JSON.parse(demoRaw);
+            if (demoData?.user && isMounted) {
+              setUser(demoData.user);
+              setProfile(demoData.profile);
+              setRole(demoData.profile?.role || 'farmer');
+              document.cookie = 'agrime_auth=true; path=/; max-age=604800; SameSite=Lax';
+              setLoading(false);
+              return true;
+            }
+          }
+        } catch {}
+      }
+      return false;
+    };
+
     if (!isSupabaseConfigured || !supabase) {
+      checkDemoSession();
       setLoading(false);
       return;
     }
@@ -93,16 +156,26 @@ export function useAuth(): AuthState {
 
         if (session?.user) {
           setUser(session.user);
-          const userProfile = await fetchProfile(session.user.id);
+          const rawProfile = await fetchProfile(session.user.id);
           if (isMounted) {
-            setProfile(userProfile);
-            const userRole = (userProfile?.role || session.user.user_metadata?.role || 'farmer') as UserRole;
-            setRole(userRole);
+            const enriched = enrichProfile(rawProfile, session.user);
+            setProfile(enriched);
+            setRole(enriched.role);
+            if (typeof document !== 'undefined') {
+              document.cookie = 'agrime_auth=true; path=/; max-age=604800; SameSite=Lax';
+            }
           }
         } else {
-          setUser(null);
-          setProfile(null);
-          setRole(null);
+          // Check if local demo session is active
+          const hasDemo = checkDemoSession();
+          if (!hasDemo && isMounted) {
+            setUser(null);
+            setProfile(null);
+            setRole(null);
+            if (typeof document !== 'undefined') {
+              document.cookie = 'agrime_auth=; path=/; max-age=0; SameSite=Lax';
+            }
+          }
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
@@ -124,14 +197,20 @@ export function useAuth(): AuthState {
         setProfile(null);
         setRole(null);
         setLoading(false);
+        if (typeof document !== 'undefined') {
+          document.cookie = 'agrime_auth=; path=/; max-age=0; SameSite=Lax';
+        }
       } else if (session?.user) {
         setUser(session.user);
-        const userProfile = await fetchProfile(session.user.id);
+        const rawProfile = await fetchProfile(session.user.id);
         if (isMounted) {
-          setProfile(userProfile);
-          const userRole = (userProfile?.role || session.user.user_metadata?.role || 'farmer') as UserRole;
-          setRole(userRole);
+          const enriched = enrichProfile(rawProfile, session.user);
+          setProfile(enriched);
+          setRole(enriched.role);
           setLoading(false);
+          if (typeof document !== 'undefined') {
+            document.cookie = 'agrime_auth=true; path=/; max-age=604800; SameSite=Lax';
+          }
         }
       }
     });

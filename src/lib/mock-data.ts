@@ -11,6 +11,7 @@ import {
   MachineryBooking,
   Profile
 } from '@/types';
+import { VERIFIED_GOVERNMENT_SCHEMES } from './schemes-data';
 
 export const MOCK_CROPS: Crop[] = [
   { id: 'c1', name: 'Paddy (Basmati)', category: 'Cereals', icon: '🌾' },
@@ -406,7 +407,9 @@ export const MOCK_PREDICTIONS: CropPrediction[] = [
   }
 ];
 
-export const MOCK_SCHEMES: GovernmentScheme[] = [
+export const MOCK_SCHEMES: GovernmentScheme[] = VERIFIED_GOVERNMENT_SCHEMES;
+
+export const _LEGACY_SCHEMES: GovernmentScheme[] = [
   // 10 Central Government Schemes
   {
     id: 'sch1',
@@ -823,60 +826,9 @@ export const MOCK_DEALER_CROP_PRICES: DealerCropPrice[] = [
   }
 ];
 
-export const MOCK_PRODUCTS: Product[] = [
-  {
-    id: 'p1',
-    dealer_id: 'd1',
-    name: 'Certified Paddy Seeds (BPT 5204 Samba Masuri)',
-    category: 'Seeds',
-    description: 'High germination rate (98%), pest-resistant certified seed bag (25 kg). Ideal for Kharif & Rabi seasons.',
-    price: 1150,
-    stock: 45,
-    image_url: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?auto=format&fit=crop&w=600&q=80',
-    created_at: '2026-08-01T00:00:00Z',
-    updated_at: '2026-08-24T00:00:00Z',
-    dealer: MOCK_DEALERS[0]
-  },
-  {
-    id: 'p2',
-    dealer_id: 'd1',
-    name: 'Organic Neem Oil Bio-Pesticide (1 Litre)',
-    category: 'Pesticides',
-    description: '100% cold-pressed pure neem oil with 10,000 ppm azadirachtin. Effective against leaf folders and sucking pests.',
-    price: 420,
-    stock: 80,
-    image_url: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80',
-    created_at: '2026-08-05T00:00:00Z',
-    updated_at: '2026-08-24T00:00:00Z',
-    dealer: MOCK_DEALERS[0]
-  },
-  {
-    id: 'p3',
-    dealer_id: 'd2',
-    name: 'NPK 19:19:19 Water Soluble Fertilizer (1 kg)',
-    category: 'Fertilizers',
-    description: 'Balanced nutrient booster for vegetative growth and root strengthening for paddy, groundnut, and vegetables.',
-    price: 210,
-    stock: 120,
-    image_url: 'https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?auto=format&fit=crop&w=600&q=80',
-    created_at: '2026-08-10T00:00:00Z',
-    updated_at: '2026-08-24T00:00:00Z',
-    dealer: MOCK_DEALERS[1]
-  },
-  {
-    id: 'p4',
-    dealer_id: 'd2',
-    name: 'Battery Operated 16L Knapsack Sprayer',
-    category: 'Equipment',
-    description: 'Heavy duty 12V 12Ah lithium battery with adjustable brass nozzle and comfortable back padding.',
-    price: 2850,
-    stock: 15,
-    image_url: 'https://images.unsplash.com/photo-1592417817098-8f3d6910985b?auto=format&fit=crop&w=600&q=80',
-    created_at: '2026-08-12T00:00:00Z',
-    updated_at: '2026-08-24T00:00:00Z',
-    dealer: MOCK_DEALERS[1]
-  }
-];
+import { DEMO_PRODUCTS } from '@/lib/products-data';
+
+export const MOCK_PRODUCTS: Product[] = DEMO_PRODUCTS;
 
 export const MOCK_MACHINERY: Machinery[] = [
   {

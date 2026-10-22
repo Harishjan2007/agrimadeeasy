@@ -2,62 +2,70 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Sprout, PhoneCall, Mail, ShieldCheck, HeartHandshake } from 'lucide-react';
 import { useLanguage } from '@/i18n';
 
 export default function Footer() {
   const { language, translations } = useLanguage();
+  const pathname = usePathname();
 
   const isTa = language === 'ta';
 
+  // Specific pages where bottom promotional cards must be removed
+  const hidePromoPages = ['/', '/crop-price', '/prediction', '/dealers', '/ecommerce', '/machinery', '/schemes'];
+  const hidePromo = hidePromoPages.some((p) => pathname === p || (p !== '/' && pathname?.startsWith(p)));
+
   return (
     <footer className="bg-slate-900 text-slate-300 mt-auto border-t border-slate-800">
-      {/* Upper Footer: Value pillars */}
-      <div className="border-b border-slate-800 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-            <div className="w-10 h-10 rounded-lg bg-agri-500/10 text-agri-400 flex items-center justify-center shrink-0">
-              <Sprout className="w-5 h-5" />
+      {/* Upper Footer: Value pillars (omitted on Home, Crop Prices, Predictions, Dealers, Farm Store, Machinery, Government Schemes) */}
+      {!hidePromo && (
+        <div className="border-b border-slate-800 py-8 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+              <div className="w-10 h-10 rounded-lg bg-agri-500/10 text-agri-400 flex items-center justify-center shrink-0">
+                <Sprout className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-white text-sm">
+                  {isTa ? 'நேரடி மண்டி & வியாபாரி விலைகள்' : 'Direct Mandi & Buyer Prices'}
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {isTa ? 'ஒழுங்குமுறை விற்பனைக்கூடங்கள் மற்றும் வியாபாரிகளின் சந்தை விலைகள்.' : 'Benchmark crop rates from regulated mandis and verified buyers.'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold text-white text-sm">
-                {isTa ? 'நேரடி மண்டி & வியாபாரி விலைகள்' : 'Direct Mandi & Buyer Prices'}
-              </h4>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {isTa ? 'ஒழுங்குமுறை விற்பனைக்கூடங்கள் மற்றும் வியாபாரிகளின் சந்தை விலைகள்.' : 'Benchmark crop rates from regulated mandis and verified buyers.'}
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-            <div className="w-10 h-10 rounded-lg bg-harvest-500/10 text-harvest-400 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-5 h-5" />
+            <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+              <div className="w-10 h-10 rounded-lg bg-harvest-500/10 text-harvest-400 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-white text-sm">
+                  {isTa ? 'அங்கீகரிக்கப்பட்ட இயந்திர வாடகை' : 'Verified Local Machinery Rentals'}
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {isTa ? 'இடைத்தரகர்கள் இன்றி வெளிப்படையான மணிநேர இயந்திர வாடகை.' : 'Transparent hourly tractor & harvester bookings without middlemen.'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold text-white text-sm">
-                {isTa ? 'அங்கீகரிக்கப்பட்ட இயந்திர வாடகை' : 'Verified Local Machinery Rentals'}
-              </h4>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {isTa ? 'இடைத்தரகர்கள் இன்றி வெளிப்படையான மணிநேர இயந்திர வாடகை.' : 'Transparent hourly tractor & harvester bookings without middlemen.'}
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-            <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
-              <HeartHandshake className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-white text-sm">
-                {isTa ? 'அரசு நலத்திட்ட வழிகாட்டுதல்' : 'Government Scheme Updates'}
-              </h4>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {isTa ? 'PM-கிசான், SMAM இயந்திர மானியம் மற்றும் பயிர் காப்பீட்டு தகவல்கள்.' : 'Instant guidance for PM-Kisan, SMAM machinery subsidy, and PMFBY insurance.'}
-              </p>
+            <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+                <HeartHandshake className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-white text-sm">
+                  {isTa ? 'அரசு நலத்திட்ட வழிகாட்டுதல்' : 'Government Scheme Updates'}
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {isTa ? 'PM-கிசான், SMAM இயந்திர மானியம் மற்றும் பயிர் காப்பீட்டு தகவல்கள்.' : 'Instant guidance for PM-Kisan, SMAM machinery subsidy, and PMFBY insurance.'}
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Footer Links */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

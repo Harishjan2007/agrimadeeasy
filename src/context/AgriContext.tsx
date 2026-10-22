@@ -17,7 +17,9 @@ import {
   BookingStatus,
   FarmerProduceListing,
   ProduceRequest,
-  ProduceRequestStatus
+  ProduceRequestStatus,
+  ProduceInquiry,
+  MachineryTracking
 } from '@/types';
 import {
   MOCK_CROPS,
@@ -32,25 +34,15 @@ import {
   MOCK_MACHINERY,
   MOCK_BOOKINGS
 } from '@/lib/mock-data';
+import { INITIAL_DEMO_INQUIRIES } from '@/lib/dealers-data';
 
 export interface CartItem {
   product: Product;
   quantity: number;
 }
 
-export interface ProduceInquiry {
-  id: string;
-  dealerId: string;
-  dealerName: string;
-  farmerName: string;
-  farmerPhone: string;
-  cropName: string;
-  estimatedQuantity: string;
-  expectedPrice: string;
-  message?: string;
-  createdAt: string;
-  status: 'new' | 'contacted' | 'completed';
-}
+export { INITIAL_DEMO_INQUIRIES };
+export type { ProduceInquiry };
 
 export interface AgriContextType {
   // Current user & role
@@ -58,6 +50,7 @@ export interface AgriContextType {
   userRole: UserRole;
   switchRole: (role: UserRole) => void;
   setUser: (profile: Profile) => void;
+  updateCurrentUser: (updates: Partial<Profile>) => void;
 
   // Data collections
   crops: Crop[];
@@ -84,6 +77,7 @@ export interface AgriContextType {
   cancelBooking: (bookingId: string) => void;
   toggleMachineryAvailability: (machineryId: string) => void;
   addMachinery: (newMachine: Omit<Machinery, 'id' | 'created_at' | 'updated_at'>) => void;
+  updateMachinery: (machineryId: string, updates: Partial<Machinery>) => void;
   machineryTracking: Record<string, MachineryTracking>;
   updateMachineryLocation: (bookingId: string, locationData: Omit<MachineryTracking, 'id' | 'created_at'>) => void;
   getMachineryLocation: (bookingId: string) => MachineryTracking | null;
@@ -91,6 +85,7 @@ export interface AgriContextType {
   // Dealer actions
   updateDealerCropPrice: (priceId: string, newPrice: number) => void;
   addDealerCropPrice: (cropId: string, buyingPrice: number, unit?: string) => void;
+  updateDealer: (dealerId: string, updates: Partial<Dealer>) => void;
   addProduct: (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => void;
   updateProductStock: (productId: string, newStock: number) => void;
   submitProduceInquiry: (inquiry: Omit<ProduceInquiry, 'id' | 'createdAt' | 'status'>) => void;
@@ -120,6 +115,7 @@ const defaultAgriContext: AgriContextType = {
   userRole: 'farmer',
   switchRole: () => {},
   setUser: () => {},
+  updateCurrentUser: () => {},
   crops: MOCK_CROPS,
   markets: MOCK_MARKETS,
   cropPrices: MOCK_CROP_PRICES,
@@ -129,9 +125,11 @@ const defaultAgriContext: AgriContextType = {
   dealerCropPrices: MOCK_DEALER_CROP_PRICES,
   updateDealerCropPrice: () => {},
   addDealerCropPrice: () => {},
+  updateDealer: () => {},
   machinery: MOCK_MACHINERY,
   toggleMachineryAvailability: () => {},
   addMachinery: () => {},
+  updateMachinery: () => {},
   bookings: MOCK_BOOKINGS,
   bookMachinery: () => ({} as MachineryBooking),
   updateBookingStatus: () => true,
@@ -165,6 +163,7 @@ const AgriContext = createContext<AgriContextType>(defaultAgriContext);
 
 const STORAGE_KEYS = {
   USER: 'agrime_current_user',
+  DEALERS: 'agrime_dealers',
   DEALER_PRICES: 'agrime_dealer_prices',
   MACHINERY: 'agrime_machinery',
   BOOKINGS: 'agrime_bookings',
@@ -179,12 +178,13 @@ const STORAGE_KEYS = {
 export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // State initialization with fallbacks
   const [currentUser, setCurrentUser] = useState<Profile>(MOCK_PROFILES[0]);
+  const [dealers, setDealers] = useState<Dealer[]>(MOCK_DEALERS);
   const [dealerCropPrices, setDealerCropPrices] = useState<DealerCropPrice[]>(MOCK_DEALER_CROP_PRICES);
   const [machinery, setMachinery] = useState<Machinery[]>(MOCK_MACHINERY);
   const [bookings, setBookings] = useState<MachineryBooking[]>(MOCK_BOOKINGS);
   const [machineryTracking, setMachineryTracking] = useState<Record<string, MachineryTracking>>({});
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
-  const [inquiries, setInquiries] = useState<ProduceInquiry[]>([]);
+  const [inquiries, setInquiries] = useState<ProduceInquiry[]>(INITIAL_DEMO_INQUIRIES);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [produceListings, setProduceListings] = useState<FarmerProduceListing[]>([]);
   const [produceRequests, setProduceRequests] = useState<ProduceRequest[]>([]);
@@ -195,6 +195,9 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
       if (savedUser) setCurrentUser(JSON.parse(savedUser));
+
+      const savedDealers = localStorage.getItem(STORAGE_KEYS.DEALERS);
+      if (savedDealers) setDealers(JSON.parse(savedDealers));
 
       const savedPrices = localStorage.getItem(STORAGE_KEYS.DEALER_PRICES);
       if (savedPrices) setDealerCropPrices(JSON.parse(savedPrices));
@@ -234,6 +237,7 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isLoaded) return;
     try {
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(currentUser));
+      localStorage.setItem(STORAGE_KEYS.DEALERS, JSON.stringify(dealers));
       localStorage.setItem(STORAGE_KEYS.DEALER_PRICES, JSON.stringify(dealerCropPrices));
       localStorage.setItem(STORAGE_KEYS.MACHINERY, JSON.stringify(machinery));
       localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
@@ -246,7 +250,7 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.warn('Could not persist state to localStorage', e);
     }
-  }, [currentUser, dealerCropPrices, machinery, bookings, machineryTracking, products, inquiries, cart, produceListings, produceRequests, isLoaded]);
+  }, [currentUser, dealers, dealerCropPrices, machinery, bookings, machineryTracking, products, inquiries, cart, produceListings, produceRequests, isLoaded]);
 
   // Switch role helper
   const switchRole = (role: UserRole) => {
@@ -267,6 +271,14 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setUser = (profile: Profile) => {
     setCurrentUser(profile);
+  };
+
+  const updateCurrentUser = (updates: Partial<Profile>) => {
+    setCurrentUser((prev) => ({
+      ...prev,
+      ...updates,
+      updated_at: new Date().toISOString()
+    }));
   };
 
   // Machinery Booking
@@ -387,6 +399,16 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setMachinery((prev) => [newMachine, ...prev]);
   };
 
+  const updateMachinery = (machineryId: string, updates: Partial<Machinery>) => {
+    setMachinery((prev) =>
+      prev.map((m) =>
+        m.id === machineryId
+          ? { ...m, ...updates, updated_at: new Date().toISOString() }
+          : m
+      )
+    );
+  };
+
   // Dealer actions
   const updateDealerCropPrice = (priceId: string, newPrice: number) => {
     setDealerCropPrices((prev) =>
@@ -417,6 +439,17 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setDealerCropPrices((prev) => [newPriceEntry, ...prev]);
   };
+
+  const updateDealer = (dealerId: string, updates: Partial<Dealer>) => {
+    setDealers((prev) =>
+      prev.map((d) =>
+        d.id === dealerId
+          ? { ...d, ...updates }
+          : d
+      )
+    );
+  };
+
 
   const addProduct = (productData: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
     const newProduct: Product = {
@@ -555,12 +588,13 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userRole: currentUser.role,
         switchRole,
         setUser,
+        updateCurrentUser,
         crops: MOCK_CROPS,
         markets: MOCK_MARKETS,
         cropPrices: MOCK_CROP_PRICES,
         predictions: MOCK_PREDICTIONS,
         schemes: MOCK_SCHEMES,
-        dealers: MOCK_DEALERS,
+        dealers,
         dealerCropPrices,
         products,
         machinery,
@@ -571,11 +605,13 @@ export const AgriProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cancelBooking,
         toggleMachineryAvailability,
         addMachinery,
+        updateMachinery,
         machineryTracking,
         updateMachineryLocation,
         getMachineryLocation,
         updateDealerCropPrice,
         addDealerCropPrice,
+        updateDealer,
         addProduct,
         updateProductStock,
         submitProduceInquiry,

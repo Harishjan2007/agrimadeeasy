@@ -24,7 +24,7 @@ export default function QuickServices() {
       description: isTa 
         ? 'அருகிலுள்ள வியாபாரிகள், வாடகை இயந்திரங்கள் மற்றும் மண்டிகளை நேரடி தூரத்துடன் வரைபடத்தில் கண்டறியவும்.'
         : 'Find nearby crop buyers, rental tractors, and mandis with real-time distance on an interactive map.',
-      href: '/map',
+      href: '/crop-price',
       icon: MapPin,
       badge: isTa ? 'நேரடி வரைபடம்' : 'Live Discovery',
       iconBg: 'bg-emerald-100 text-emerald-800',

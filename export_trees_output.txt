@@ -1,0 +1,10 @@
+Loading fitted models from D:\LEAN\ml\models\crop_price_model.joblib...
+Horizon '7 Days': Extracted base_pred=-1.8102, 93 trees, 15 features.
+Horizon '15 Days': Extracted base_pred=-1.8039, 150 trees, 15 features.
+Horizon '30 Days': Extracted base_pred=1.2593, 150 trees, 15 features.
+
+[EVAL] Standalone Tree Evaluator vs Scikit-Learn max absolute difference: 0.00000000e+00
+[EVAL] Tested 60 fixtures across 3 horizons. Failures (< 1e-4): 0
+[OK] Atomically promoted verified tree model to: D:\LEAN\ml\models\crop_price_trees.json (5,883,888 bytes)
+[OK] Atomically promoted verified fixtures to: D:\LEAN\tests\unit\tree_parity_fixtures.json
+[PASS] 100% Exact Numerical Parity verified between standalone tree evaluator and Scikit-Learn across all fixtures!

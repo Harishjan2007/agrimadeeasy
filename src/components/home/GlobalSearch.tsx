@@ -153,7 +153,7 @@ export default function GlobalSearch({
           title: m.name,
           subtitle: m.location,
           badge: isTa ? 'மண்டி' : 'APMC Mandi',
-          href: `/map?category=markets&id=${m.id}`,
+          href: `/crop-price?search=${encodeURIComponent(m.name)}`,
           icon: MapPin,
           iconBg: 'bg-purple-100 text-purple-800'
         });
@@ -163,7 +163,7 @@ export default function GlobalSearch({
     // 5. Schemes
     schemes.forEach((s) => {
       const name = s.name.toLowerCase();
-      const cat = s.category.toLowerCase();
+      const cat = s.category ? s.category.toLowerCase() : '';
       if (name.includes(q) || cat.includes(q)) {
         matched.push({
           id: `scheme-${s.id}`,

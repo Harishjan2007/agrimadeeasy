@@ -14,6 +14,8 @@
 import type { Crop, Market, PriceTrend, MLModelMetrics } from '../types';
 import treeEnsembleArtifact from '../../ml/models/crop_price_trees.json';
 import modelMetadataArtifact from '../../ml/models/crop_price_ml_model.json';
+import fs from 'fs';
+import path from 'path';
 
 export interface TreeNode {
   is_leaf: boolean;
@@ -80,6 +82,26 @@ export interface TreePredictionResult {
 }
 
 /**
+ * Binary search matching Scikit-Learn's HistGradientBoostingRegressor _map_num_col:
+ * A value belongs to bin k if bin_thresholds[k-1] < val <= bin_thresholds[k].
+ * Floating-point single precision (Math.fround) ensures bit-for-bit parity with float32 trained thresholds.
+ */
+export function searchSortedLeft(arr: number[], val: number): number {
+  let low = 0;
+  let high = arr.length;
+  const fVal = Math.fround(val);
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (fVal <= arr[mid]) {
+      high = mid;
+    } else {
+      low = mid + 1;
+    }
+  }
+  return low;
+}
+
+/**
  * Fast binary search matching np.searchsorted(thresholds, val, side='right')
  */
 export function searchSortedRight(arr: number[], val: number): number {
@@ -96,6 +118,24 @@ export function searchSortedRight(arr: number[], val: number): number {
   return low;
 }
 
+export const MODEL_FEATURE_NAMES = [
+  'commodity_enc',
+  'district_enc',
+  'market_enc',
+  'current_price',
+  'min_price',
+  'max_price',
+  'spread',
+  'roll_mean_7d',
+  'roll_mean_30d',
+  'roll_std_30d',
+  'momentum_7d',
+  'sin_month',
+  'cos_month',
+  'sin_doy',
+  'cos_doy'
+];
+
 /**
  * Pure tree traversal matching Scikit-Learn HistGradientBoostingRegressor.predict()
  */
@@ -103,21 +143,63 @@ export function predictDeltaFromTreeEnsemble(
   horizonModel: HorizonTreeModel,
   featureVector: number[]
 ): number {
-  const { base_prediction, bin_thresholds, is_categorical, trees } = horizonModel;
-  const nFeatures = featureVector.length;
+  const { base_prediction, bin_thresholds, is_categorical, trees, feature_names } = horizonModel;
+  const nFeatures = bin_thresholds ? bin_thresholds.length : 15;
 
-  // 1. Map continuous/categorical features to integer bins
+  // Build name-to-index lookup for input featureVector
+  const nameToIndex = new Map<string, number>();
+  if (feature_names && Array.isArray(feature_names)) {
+    for (let i = 0; i < feature_names.length; i++) {
+      nameToIndex.set(feature_names[i], i);
+    }
+  }
+
+  // 1. Map input features to integer bins according to the tree model's internal layout
   const binnedFeatures = new Int32Array(nFeatures);
   for (let j = 0; j < nFeatures; j++) {
-    const val = featureVector[j];
-    if (is_categorical[j]) {
-      binnedFeatures[j] = val >= 0 ? Math.floor(val) : 0;
+    let val: number;
+    const featName = MODEL_FEATURE_NAMES[j];
+    if (featName && nameToIndex.has(featName)) {
+      val = featureVector[nameToIndex.get(featName)!];
+    } else if (featureVector.length === 15 && is_categorical && is_categorical[0] && !is_categorical[12]) {
+      // Reorder from [continuous(12), categorical(3)] to [categorical(3), continuous(12)]
+      val = j < 3 ? featureVector[12 + j] : featureVector[j - 3];
     } else {
-      if (isNaN(val)) {
-        binnedFeatures[j] = bin_thresholds[j] ? bin_thresholds[j].length : 0;
+      val = featureVector[j];
+    }
+
+    if (is_categorical && is_categorical[j]) {
+      const thArr = bin_thresholds[j] || [];
+      if (val === undefined || isNaN(val) || val === null || val < 0) {
+        binnedFeatures[j] = 255; // missing / unknown category bin in scikit-learn
+      } else {
+        const intVal = Math.floor(val);
+        if (intVal < thArr.length && thArr[intVal] === val) {
+          binnedFeatures[j] = intVal;
+        } else {
+          let low = 0;
+          let high = thArr.length - 1;
+          let foundBin = 255;
+          while (low <= high) {
+            const mid = (low + high) >>> 1;
+            if (thArr[mid] === val) {
+              foundBin = mid;
+              break;
+            } else if (thArr[mid] < val) {
+              low = mid + 1;
+            } else {
+              high = mid - 1;
+            }
+          }
+          binnedFeatures[j] = foundBin;
+        }
+      }
+    } else {
+      if (val === undefined || isNaN(val)) {
+        binnedFeatures[j] = 255; // missing continuous value bin in scikit-learn
       } else {
         const thArr = bin_thresholds[j] || [];
-        binnedFeatures[j] = searchSortedRight(thArr, val);
+        binnedFeatures[j] = searchSortedLeft(thArr, val);
       }
     }
   }
@@ -135,21 +217,20 @@ export function predictDeltaFromTreeEnsemble(
       const featIdx = node.feature_idx!;
       const binVal = binnedFeatures[featIdx];
 
-      if (node.is_categorical) {
+      if (binVal === 255) {
+        // Scikit-learn routes missing/unknown categorical and continuous values via missing_go_to_left
+        nodeIdx = node.missing_go_to_left ? node.left! : node.right!;
+      } else if (node.is_categorical) {
         const bitset = node.bitset;
         if (bitset && binVal >= 0 && binVal < 256) {
           const word = bitset[binVal >> 5];
-          const inSet = ((word >> (binVal & 31)) & 1) === 1;
+          const inSet = ((word >>> (binVal & 31)) & 1) === 1;
           nodeIdx = inSet ? node.left! : node.right!;
         } else {
-          nodeIdx = node.right!;
+          nodeIdx = (binVal <= node.bin_threshold!) ? node.left! : node.right!;
         }
       } else {
-        if (binVal <= node.bin_threshold!) {
-          nodeIdx = node.left!;
-        } else {
-          nodeIdx = node.right!;
-        }
+        nodeIdx = (binVal <= node.bin_threshold!) ? node.left! : node.right!;
       }
     }
 
@@ -157,6 +238,51 @@ export function predictDeltaFromTreeEnsemble(
   }
 
   return total;
+}
+
+try {
+  if (typeof process !== 'undefined' && process.cwd) {
+    const fixturesFile = path.resolve(process.cwd(), 'tests/unit/tree_parity_fixtures.json');
+    if (fs.existsSync(fixturesFile)) {
+      const fixtures = JSON.parse(fs.readFileSync(fixturesFile, 'utf-8'));
+      const report: any = {
+        timestamp: new Date().toISOString(),
+        tested: 0,
+        failuresCount: 0,
+        maxAbsoluteDiff: 0,
+        failures: []
+      };
+
+      for (const h of ['7 Days', '15 Days', '30 Days']) {
+        const hModel = (treeEnsembleArtifact as any)[h];
+        const samples = fixtures[h] || [];
+        for (let i = 0; i < samples.length; i++) {
+          const s = samples[i];
+          const delta = predictDeltaFromTreeEnsemble(hModel, s.feature_vector);
+          const diff = Math.abs(delta - s.expected_delta);
+          if (diff > report.maxAbsoluteDiff) {
+            report.maxAbsoluteDiff = diff;
+          }
+          if (diff >= 1e-4) {
+            report.failures.push({
+              horizon: h,
+              index: i,
+              crop: s.crop,
+              tsPredictedDelta: delta,
+              expectedDelta: s.expected_delta,
+              diff: diff
+            });
+          }
+          report.tested++;
+        }
+      }
+      report.failuresCount = report.failures.length;
+      report.passed = report.failuresCount === 0 && report.maxAbsoluteDiff < 1e-4;
+      fs.writeFileSync(path.resolve(process.cwd(), 'parity_results.json'), JSON.stringify(report, null, 2), 'utf-8');
+    }
+  }
+} catch (e: any) {
+  // Ignore in browser/client contexts
 }
 
 /**

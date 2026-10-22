@@ -20,6 +20,8 @@ export interface Translations {
     dealerPortal: string;
     machineryHostPortal: string;
     machineryPortal: string;
+    pending: string;
+    completed: string;
     mandiDirectory: string;
     fleetCatalog: string;
     map: string;
@@ -47,6 +49,7 @@ export interface Translations {
     submit: string;
     submitting: string;
     cancel: string;
+    save: string;
     saveChanges: string;
     saving: string;
     success: string;
@@ -288,6 +291,24 @@ export interface Translations {
     mandiBenchmarkNotice: string;
     noDealersForFilter: string;
     clearFilters: string;
+    demoDealerBadge: string;
+    demoNotice: string;
+    radius: string;
+    useCurrentLocation: string;
+    locationUnavailable: string;
+    locationFallbackDesc: string;
+    manualDistrict: string;
+    sortHighestPrice: string;
+    selectCropPrompt: string;
+    minQuantity: string;
+    maxCapacity: string;
+    distance: string;
+    demoNoticeModalTitle: string;
+    demoNoticeModalDesc: string;
+    allDealersTab: string;
+    enrolledDealersTab: string;
+    demoDealersTab: string;
+    buyerTypeLabel: string;
   };
 
   // E-Commerce
@@ -616,6 +637,42 @@ export interface Translations {
     finderMatchReasonCrop: string;
     finderMatchReasonPurpose: string;
     finderOfficialDisclaimer: string;
+
+    // Advanced Schemes & Questionnaire Additions
+    districtFilterLabel?: string;
+    allDistricts?: string;
+    cropFilterLabel?: string;
+    allCrops?: string;
+    supportFilterLabel?: string;
+    allSupport?: string;
+    landholdingFilterLabel?: string;
+    allLandholding?: string;
+    moreFilters?: string;
+    hideFilters?: string;
+    applicantTypeLabel?: string;
+    allApplicantTypes?: string;
+    departmentLabel?: string;
+    allDepartments?: string;
+    benefitTypeLabel?: string;
+    allBenefitTypes?: string;
+    clearAllFilters?: string;
+    showingSchemes?: string;
+    matchingSchemes?: string;
+    likelyMatch?: string;
+    moreInfoNeeded?: string;
+    doesNotMatch?: string;
+    step?: string;
+    next?: string;
+    back?: string;
+    submitQuestionnaire?: string;
+    editAnswers?: string;
+    clearQuestionnaire?: string;
+    benefitAmountLabel?: string;
+    documentsRequiredLabel?: string;
+    department?: string;
+    activeStatus?: string;
+    seasonalStatus?: string;
+    unverifiedStatus?: string;
   };
 
   // Auth (Login / Signup)
@@ -744,6 +801,7 @@ export interface Translations {
     gpsError: string;
     activeJobs: string;
     allBookings: string;
+    equipmentType: string;
   };
 
   // Location Map & Discovery (/map)

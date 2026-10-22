@@ -6,7 +6,6 @@ import {
   Filter,
   Search,
   RotateCcw,
-  TrendingUp,
   Building2,
   MapPin,
   ChevronLeft,
@@ -23,8 +22,7 @@ import { useLanguage } from '@/i18n';
 import type {
   FilterOptions,
   HistoricalQueryResult,
-  HistoricalRecord,
-  HistoricalChartPoint
+  HistoricalRecord
 } from '@/lib/historical-data';
 
 export default function HistoricalDatasetSection() {
@@ -50,10 +48,6 @@ export default function HistoricalDatasetSection() {
   const [pageSize, setPageSize] = useState<number>(20);
   const [sortBy, setSortBy] = useState<'date' | 'modal_price' | 'min_price' | 'max_price'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-
-  // Chart Metric state
-  const [chartMetric, setChartMetric] = useState<'modal_price' | 'min_price' | 'max_price'>('modal_price');
-  const [hoveredChartPoint, setHoveredChartPoint] = useState<HistoricalChartPoint | null>(null);
 
   // Query Results
   const [queryData, setQueryData] = useState<HistoricalQueryResult | null>(null);
@@ -227,19 +221,6 @@ export default function HistoricalDatasetSection() {
     }
   };
 
-  // Chart Rendering Calculations
-  const chartPoints = queryData?.chartData || [];
-  const chartMinPrice = useMemo(() => {
-    if (chartPoints.length === 0) return 0;
-    const minVal = Math.min(...chartPoints.map((p) => (chartMetric === 'modal_price' ? p.modal_price : chartMetric === 'min_price' ? p.min_price : p.max_price)));
-    return Math.max(0, Math.floor(minVal * 0.9));
-  }, [chartPoints, chartMetric]);
-
-  const chartMaxPrice = useMemo(() => {
-    if (chartPoints.length === 0) return 1000;
-    const maxVal = Math.max(...chartPoints.map((p) => (chartMetric === 'modal_price' ? p.modal_price : chartMetric === 'min_price' ? p.min_price : p.max_price)));
-    return Math.ceil(maxVal * 1.1);
-  }, [chartPoints, chartMetric]);
 
   return (
     <div className="space-y-6">
@@ -454,172 +435,7 @@ export default function HistoricalDatasetSection() {
 
 
 
-      {/* 4. Historical Price Chart */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-100">
-          <div>
-            <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
-              <span>{isTa ? 'காலவரிசை விலை வரைபடம்' : 'Historical Price Trend Over Time'}</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {isTa
-                ? 'ஒரு தேதியில் பல ஏலங்கள் இருந்தால், கூட்டுச் சராசரி கொண்டு வரைபடம் கணக்கிடப்படுகிறது.'
-                : 'Aggregated chronologically by arrival date. Tooltip displays exact mandi rate.'}
-            </p>
-          </div>
-
-          {/* Metric Toggle: Modal / Min / Max */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl shrink-0 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setChartMetric('modal_price')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                chartMetric === 'modal_price'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-700 hover:text-slate-900'
-              }`}
-            >
-              {isTa ? 'மாதிரி (Modal)' : 'Modal Price'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setChartMetric('min_price')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                chartMetric === 'min_price'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-700 hover:text-slate-900'
-              }`}
-            >
-              {isTa ? 'குறைந்தபட்சம்' : 'Min Price'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setChartMetric('max_price')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                chartMetric === 'max_price'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-700 hover:text-slate-900'
-              }`}
-            >
-              {isTa ? 'அதிகபட்சம்' : 'Max Price'}
-            </button>
-          </div>
-        </div>
-
-        {/* SVG Chart Area */}
-        {chartPoints.length === 0 ? (
-          <div className="py-16 text-center text-slate-400">
-            <p className="text-sm font-semibold">{isTa ? 'தேர்ந்தெடுக்கப்பட்ட வடிகட்டிகளுக்கு பதிவுகள் இல்லை' : 'No historical observations match the selected criteria.'}</p>
-            <p className="text-xs text-slate-500 mt-1">{isTa ? 'தேதி வரம்பை அல்லது மாவட்டத்தை மாற்றவும்.' : 'Try broadening the date range or choosing another market.'}</p>
-          </div>
-        ) : (
-          <div className="relative pt-4">
-            <div className="h-64 sm:h-72 w-full">
-              <svg className="w-full h-full overflow-visible" viewBox="0 0 800 240" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-
-                {/* Grid Lines */}
-                {[0.2, 0.4, 0.6, 0.8].map((ratio, idx) => (
-                  <line
-                    key={idx}
-                    x1="0"
-                    y1={240 * ratio}
-                    x2="800"
-                    y2={240 * ratio}
-                    stroke="#f1f5f9"
-                    strokeWidth="1"
-                    strokeDasharray="4 4"
-                  />
-                ))}
-
-                {/* Area Fill */}
-                <path
-                  d={(() => {
-                    const points = chartPoints.map((p, i) => {
-                      const val = chartMetric === 'modal_price' ? p.modal_price : chartMetric === 'min_price' ? p.min_price : p.max_price;
-                      const x = (i / (chartPoints.length - 1 || 1)) * 800;
-                      const y = 240 - ((val - chartMinPrice) / (chartMaxPrice - chartMinPrice || 1)) * 220;
-                      return `${x},${y}`;
-                    });
-                    return `M 0,240 L ${points.join(' L ')} L 800,240 Z`;
-                  })()}
-                  fill="url(#chartGradient)"
-                />
-
-                {/* Line Path */}
-                <path
-                  d={(() => {
-                    const points = chartPoints.map((p, i) => {
-                      const val = chartMetric === 'modal_price' ? p.modal_price : chartMetric === 'min_price' ? p.min_price : p.max_price;
-                      const x = (i / (chartPoints.length - 1 || 1)) * 800;
-                      const y = 240 - ((val - chartMinPrice) / (chartMaxPrice - chartMinPrice || 1)) * 220;
-                      return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
-                    });
-                    return points.join(' ');
-                  })()}
-                  fill="none"
-                  stroke="#059669"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-
-                {/* Interactive Points */}
-                {chartPoints.map((p, i) => {
-                  const val = chartMetric === 'modal_price' ? p.modal_price : chartMetric === 'min_price' ? p.min_price : p.max_price;
-                  const x = (i / (chartPoints.length - 1 || 1)) * 800;
-                  const y = 240 - ((val - chartMinPrice) / (chartMaxPrice - chartMinPrice || 1)) * 220;
-
-                  return (
-                    <circle
-                      key={i}
-                      cx={x}
-                      cy={y}
-                      r="4"
-                      className="fill-white stroke-emerald-600 stroke-2 hover:r-6 cursor-pointer transition-all"
-                      onMouseEnter={() => setHoveredChartPoint(p)}
-                      onMouseLeave={() => setHoveredChartPoint(null)}
-                    />
-                  );
-                })}
-              </svg>
-            </div>
-
-            {/* Hover Tooltip */}
-            {hoveredChartPoint && (
-              <div className="absolute top-2 right-4 bg-slate-900 text-white rounded-xl px-3.5 py-2 text-xs shadow-lg pointer-events-none z-20 flex items-center gap-3">
-                <div>
-                  <p className="text-[10px] text-slate-400 font-bold">{hoveredChartPoint.date}</p>
-                  <p className="font-extrabold text-emerald-400 text-sm">
-                    ₹{hoveredChartPoint.modal_price.toLocaleString()} / Quintal
-                  </p>
-                </div>
-                <div className="text-[10px] text-slate-300 border-l border-slate-700 pl-3">
-                  <p>Min: ₹{hoveredChartPoint.min_price.toLocaleString()}</p>
-                  <p>Max: ₹{hoveredChartPoint.max_price.toLocaleString()}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Timeline Axis Labels */}
-            <div className="flex justify-between items-center text-[10px] sm:text-xs text-slate-400 font-semibold pt-2 border-t border-slate-100">
-              <span>{chartPoints[0]?.date}</span>
-              <span>
-                {isTa ? 'அளவீட்டு அலகு: ₹ / குவிண்டால்' : 'Unit: ₹ / Quintal (INR per 100 kg)'}
-              </span>
-              <span>{chartPoints[chartPoints.length - 1]?.date}</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 5. Historical Records Table */}
+      {/* Historical Records Table */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -631,22 +447,33 @@ export default function HistoricalDatasetSection() {
             </p>
           </div>
 
-          {/* Page Size Selector */}
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="text-xs font-bold text-slate-500">{isTa ? 'வரிசைகள்:' : 'Rows per page:'}</span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPage(1);
-              }}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+          {/* Export & Page Size Controls */}
+          <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+            <button
+              onClick={handleExportCSV}
+              disabled={isExporting || queryLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all disabled:opacity-50"
+              title="Download filtered historical dataset as CSV"
             >
-              <option value="10">10</option>
-              <option value="20">20</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
+              <span>{isExporting ? (isTa ? 'ஏற்றப்படுகிறது...' : 'Exporting...') : (isTa ? 'CSV பதிவிறக்கம்' : 'Export CSV')}</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500">{isTa ? 'வரிசைகள்:' : 'Rows per page:'}</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
           </div>
         </div>
 

@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured, formatSupabaseError } from './client';
 import { Dealer, DealerCropPrice } from '@/types';
 import { getCropIcon } from './crops';
 import { MOCK_DEALERS, MOCK_DEALER_CROP_PRICES } from '@/lib/mock-data';
+import { ALL_DEMO_DEALERS } from '@/lib/dealers-data';
 
 /**
  * Raw relational shape from Supabase dealer query
@@ -25,12 +26,18 @@ interface RawDealerRow {
   id: string;
   profile_id: string;
   shop_name: string;
+  name?: string | null;
   address: string;
   phone: string;
   opening_hours: string;
   latitude?: number | null;
   longitude?: number | null;
   district?: string | null;
+  state?: string | null;
+  buyer_type?: string | null;
+  purchase_conditions?: string | null;
+  bought_crops?: string[] | null;
+  produce_categories?: string[] | null;
   created_at: string;
   updated_at?: string;
   dealer_crop_prices: RawDealerCropPriceRow[] | null;
@@ -64,12 +71,18 @@ function mapRawDealer(row: RawDealerRow): Dealer {
     id: row.id,
     profile_id: row.profile_id,
     shop_name: row.shop_name,
+    name: row.name || undefined,
     address: row.address,
     phone: row.phone,
     opening_hours: row.opening_hours,
     latitude: row.latitude !== null && row.latitude !== undefined ? Number(row.latitude) : undefined,
     longitude: row.longitude !== null && row.longitude !== undefined ? Number(row.longitude) : undefined,
     district: row.district || undefined,
+    state: row.state || undefined,
+    buyer_type: row.buyer_type || undefined,
+    purchase_conditions: row.purchase_conditions || undefined,
+    bought_crops: row.bought_crops || undefined,
+    produce_categories: row.produce_categories || undefined,
     created_at: row.created_at,
     crop_prices: activePrices
   };
@@ -125,7 +138,7 @@ export async function getDealers(): Promise<{
           .order('shop_name', { ascending: true });
 
         if (!baseResult.error && baseResult.data && baseResult.data.length > 0) {
-          data = baseResult.data as unknown as RawDealerRow[];
+          data = baseResult.data as any;
           error = null;
         }
       }
@@ -159,6 +172,19 @@ export async function getDealerById(id: string): Promise<{
 }> {
   if (!id) {
     return { data: null, cropPrices: [], error: new Error('Invalid dealer ID'), isConfigured: isSupabaseConfigured };
+  }
+
+  // Check demonstration dealers first if ID indicates a demo record
+  if (id.startsWith('demo-dealer-')) {
+    const demoDealer = ALL_DEMO_DEALERS.find((d) => d.id === id);
+    if (demoDealer) {
+      return {
+        data: demoDealer,
+        cropPrices: demoDealer.crop_prices || [],
+        error: null,
+        isConfigured: isSupabaseConfigured
+      };
+    }
   }
 
   if (isSupabaseConfigured && supabase) {
@@ -203,7 +229,7 @@ export async function getDealerById(id: string): Promise<{
           .maybeSingle();
 
         if (!baseResult.error && baseResult.data) {
-          data = baseResult.data as unknown as RawDealerRow;
+          data = baseResult.data as any;
           error = null;
         }
       }
@@ -257,4 +283,103 @@ function getFallbackDealers(): Dealer[] {
       crop_prices: activePrices
     };
   });
+}
+
+/**
+ * Update an existing dealer business profile in Supabase and/or local cache
+ */
+export async function updateDealerProfile(
+  dealerId: string,
+  updates: Partial<Dealer> & { full_name?: string }
+): Promise<{
+  data: Partial<Dealer> | null;
+  error: Error | null;
+}> {
+  const payload: Record<string, any> = {
+    updated_at: new Date().toISOString()
+  };
+
+  if (updates.shop_name !== undefined) payload.shop_name = updates.shop_name;
+  if (updates.phone !== undefined) payload.phone = updates.phone;
+  if (updates.address !== undefined) payload.address = updates.address;
+  if (updates.district !== undefined) payload.district = updates.district;
+  if (updates.state !== undefined) payload.state = updates.state;
+  if (updates.opening_hours !== undefined) payload.opening_hours = updates.opening_hours;
+  if (updates.latitude !== undefined) payload.latitude = updates.latitude;
+  if (updates.longitude !== undefined) payload.longitude = updates.longitude;
+  if (updates.bought_crops !== undefined) payload.bought_crops = updates.bought_crops;
+  if (updates.produce_categories !== undefined) payload.produce_categories = updates.produce_categories;
+  if (updates.purchase_conditions !== undefined) payload.purchase_conditions = updates.purchase_conditions;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      // 1. Update dealers table
+      let updateQuery = supabase.from('dealers').update(payload);
+      if (dealerId && !dealerId.startsWith('d') && !dealerId.startsWith('demo-')) {
+        updateQuery = updateQuery.eq('id', dealerId);
+      } else if (updates.profile_id) {
+        updateQuery = updateQuery.eq('profile_id', updates.profile_id);
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          updateQuery = updateQuery.eq('profile_id', user.id);
+        }
+      }
+
+      const { data: updatedDealer, error: dealerError } = await updateQuery.select().maybeSingle();
+
+      // 2. Also synchronize dealer's user profile record
+      const profileUpdates: Record<string, any> = {
+        updated_at: new Date().toISOString()
+      };
+      if (updates.full_name) profileUpdates.name = updates.full_name;
+      if (updates.shop_name) profileUpdates.shop_name = updates.shop_name;
+      if (updates.phone) profileUpdates.phone = updates.phone;
+      if (updates.address) {
+        profileUpdates.location = updates.address;
+        profileUpdates.business_address = updates.address;
+      }
+      if (updates.state) profileUpdates.state = updates.state;
+      if (updates.district) profileUpdates.district = updates.district;
+      if (updates.latitude !== undefined) profileUpdates.latitude = updates.latitude;
+      if (updates.longitude !== undefined) profileUpdates.longitude = updates.longitude;
+      if (updates.bought_crops) profileUpdates.bought_crops = updates.bought_crops;
+      if (updates.produce_categories) profileUpdates.produce_categories = updates.produce_categories;
+      if (updates.purchase_conditions) profileUpdates.purchase_conditions = updates.purchase_conditions;
+      if (updates.opening_hours) profileUpdates.opening_hours = updates.opening_hours;
+
+      const profileTargetId = updates.profile_id || (await supabase.auth.getUser()).data.user?.id;
+      if (profileTargetId) {
+        await supabase.from('profiles').update(profileUpdates).eq('id', profileTargetId);
+        try {
+          await supabase.auth.updateUser({ data: profileUpdates });
+        } catch {}
+      }
+
+      if (dealerError) {
+        console.error('Supabase updateDealerProfile error:', dealerError.message);
+        return {
+          data: null,
+          error: new Error(dealerError.message || 'Failed to update dealer profile in database')
+        };
+      }
+
+      return {
+        data: { ...(updatedDealer as Dealer || {}), ...updates },
+        error: null
+      };
+    } catch (err: any) {
+      console.error('updateDealerProfile caught exception:', err);
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error(String(err) || 'Database update exception')
+      };
+    }
+  }
+
+  // Fallback / Offline (Supabase not configured in current environment)
+  return {
+    data: { id: dealerId, ...updates },
+    error: null
+  };
 }

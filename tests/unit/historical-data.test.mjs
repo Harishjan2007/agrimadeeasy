@@ -1,5 +1,5 @@
+import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import test from 'node:test';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -9,8 +9,8 @@ const METADATA_FILE = path.join(ROOT_DIR, 'ml', 'data', 'processed', 'last_10_ye
 const CSV_FILE = path.join(ROOT_DIR, 'ml', 'data', 'processed', 'tamil_nadu_last_10_years.csv');
 const CROPS_DIR = path.join(ROOT_DIR, 'ml', 'data', 'processed', 'cache', 'crops');
 
-test('Historical 10-Year Dataset Integrity and Cache Verification', async (t) => {
-  await t.test('10-year CSV and metadata files exist and have content', () => {
+describe('Historical 10-Year Dataset Integrity and Cache Verification', () => {
+  test('10-year CSV and metadata files exist and have content', () => {
     assert.ok(fs.existsSync(CSV_FILE), 'tamil_nadu_last_10_years.csv must exist');
     assert.ok(fs.existsSync(METADATA_FILE), 'last_10_years_metadata.json must exist');
     assert.ok(fs.existsSync(FILTER_OPTIONS_FILE), 'filter_options.json must exist');
@@ -27,7 +27,7 @@ test('Historical 10-Year Dataset Integrity and Cache Verification', async (t) =>
     assert.equal(meta.counts.unique_districts_count, 36);
   });
 
-  await t.test('Filter options correctly expose structured dataset properties', () => {
+  test('Filter options correctly expose structured dataset properties', () => {
     const options = JSON.parse(fs.readFileSync(FILTER_OPTIONS_FILE, 'utf-8'));
     assert.equal(options.totalRecords, 3781229);
     assert.equal(options.dateRange.min, '2016-04-20');
@@ -43,7 +43,7 @@ test('Historical 10-Year Dataset Integrity and Cache Verification', async (t) =>
     assert.ok(topCropNames.includes('Coconut'));
   });
 
-  await t.test('Crop partition files exist and are chronologically sorted', () => {
+  test('Crop partition files exist and are chronologically sorted', () => {
     const tomatoFile = path.join(CROPS_DIR, 'tomato.json');
     assert.ok(fs.existsSync(tomatoFile), 'tomato.json must exist');
 
@@ -58,7 +58,7 @@ test('Historical 10-Year Dataset Integrity and Cache Verification', async (t) =>
     }
   });
 
-  await t.test('Historical query engine validates and filters correctly', () => {
+  test('Historical query engine validates and filters correctly', () => {
     const tomatoFile = path.join(CROPS_DIR, 'tomato.json');
     const tomato = JSON.parse(fs.readFileSync(tomatoFile, 'utf-8'));
 

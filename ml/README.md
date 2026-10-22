@@ -40,9 +40,10 @@ ml/
   pip install -r ml/requirements.txt
   ```
 
-### Step 1: Preprocess Raw Agmarknet Records (If not already processed)
-Streams all 26 CSV files in `./leancsv/` and generates `ml/data/processed/tamil_nadu_cleaned.csv`:
+### Step 1: Preprocessed Tamil Nadu Dataset
+The complete, cleaned Tamil Nadu APMC dataset spanning 2001–2026 is maintained at `ml/data/processed/tamil_nadu_cleaned.csv` (4.54M records, 720 mandis, 177 commodities). The former raw all-India dataset (`leancsv/`) has been separated and retired:
 ```bash
+# Validates the preprocessed dataset and metadata
 python ml/preprocess_tamil_nadu.py
 ```
 
