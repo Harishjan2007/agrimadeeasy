@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -33,6 +33,7 @@ import {
 import { UserRole } from '@/types';
 import { signUpUser, setAuthCookie } from '@/lib/supabase/auth';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/supabase/useAuth';
 import { useLanguage } from '@/i18n';
 import { 
   INDIAN_STATES_AND_UTS, 
@@ -95,6 +96,8 @@ function SignupContent() {
   const initialRoleParam = searchParams ? (searchParams.get('role') as UserRole) : null;
   const { language, translations } = useLanguage();
   const isTa = language === 'ta';
+
+  const { user, role: authRole, loading: authLoading } = useAuth();
 
   // Step state: 1 (Credentials & Account) -> 2 (Role-Specific Onboarding)
   const [step, setStep] = useState<1 | 2>(1);
@@ -204,15 +207,42 @@ function SignupContent() {
     );
   };
 
-  // Safe destination redirect helper
-  const getDestinationUrl = () => {
-    if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
-      return redirectParam;
+  // Helper to validate that a redirect parameter is a safe, internal, non-auth route
+  const isSafeInternalRedirect = useCallback((url: string | null): boolean => {
+    if (!url || typeof url !== 'string') return false;
+    if (!url.startsWith('/') || url.startsWith('//') || url.startsWith('/\\')) return false;
+
+    const pathOnly = url.split('?')[0].split('#')[0].toLowerCase();
+    if (
+      pathOnly === '/login' ||
+      pathOnly.startsWith('/login/') ||
+      pathOnly === '/signup' ||
+      pathOnly.startsWith('/signup/')
+    ) {
+      return false;
     }
-    if (selectedRole === 'dealer') return '/dealer';
-    if (selectedRole === 'machinery_provider') return '/machinery-provider';
+
+    return true;
+  }, []);
+
+  // Safe destination redirect helper
+  const getDestinationUrl = useCallback(() => {
+    if (isSafeInternalRedirect(redirectParam)) {
+      return redirectParam!;
+    }
+    const targetRole = authRole || (user?.user_metadata?.role as UserRole) || selectedRole;
+    if (targetRole === 'dealer') return '/dealer';
+    if (targetRole === 'machinery_provider') return '/machinery-provider';
     return '/';
-  };
+  }, [redirectParam, authRole, user, selectedRole, isSafeInternalRedirect]);
+
+  // If already authenticated, redirect immediately without showing sign-up screen
+  useEffect(() => {
+    if (!authLoading && user) {
+      const destination = getDestinationUrl();
+      router.replace(destination);
+    }
+  }, [authLoading, user, getDestinationUrl, router]);
 
   // Validate Step 1: Basic Credentials
   const handleNextStep = (e: React.FormEvent) => {
@@ -398,6 +428,17 @@ function SignupContent() {
     }
   };
 
+  if (authLoading || user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="w-10 h-10 border-4 border-agri-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm font-semibold text-slate-600 mt-4">
+          {isTa ? 'அமர்வு சரிபார்க்கப்படுகிறது...' : 'Connecting your session...'}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-2xl">
@@ -445,7 +486,7 @@ function SignupContent() {
               </p>
               <div className="pt-2">
                 <Link
-                  href={redirectParam ? `/login?redirect=${encodeURIComponent(redirectParam)}` : '/login'}
+                  href={isSafeInternalRedirect(redirectParam) ? `/login?redirect=${encodeURIComponent(redirectParam!)}` : '/login'}
                   className="btn-primary w-full py-2.5 text-center text-xs font-bold block"
                 >
                   {translations.auth.loginButton}

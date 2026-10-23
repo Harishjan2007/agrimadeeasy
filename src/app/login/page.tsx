@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Sprout, 
   User, 
   Lock, 
-  ArrowRight,
+  ArrowRight, 
   AlertCircle,
   ShieldCheck,
   CheckCircle2,
@@ -16,6 +16,7 @@ import {
 import { UserRole } from '@/types';
 import { signInUser, setAuthCookie } from '@/lib/supabase/auth';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/supabase/useAuth';
 import { useLanguage } from '@/i18n';
 
 function LoginContent() {
@@ -25,21 +26,49 @@ function LoginContent() {
   const { language, translations, translateRole } = useLanguage();
   const isTa = language === 'ta';
 
+  const { user, role: authRole, loading: authLoading } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('farmer');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Helper to validate that a redirect parameter is a safe, internal, non-auth route
+  const isSafeInternalRedirect = useCallback((url: string | null): boolean => {
+    if (!url || typeof url !== 'string') return false;
+    if (!url.startsWith('/') || url.startsWith('//') || url.startsWith('/\\')) return false;
+
+    const pathOnly = url.split('?')[0].split('#')[0].toLowerCase();
+    if (
+      pathOnly === '/login' ||
+      pathOnly.startsWith('/login/') ||
+      pathOnly === '/signup' ||
+      pathOnly.startsWith('/signup/')
+    ) {
+      return false;
+    }
+
+    return true;
+  }, []);
+
   // Validate and get destination path
-  const getDestinationUrl = (defaultRole: UserRole) => {
-    if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
-      return redirectParam;
+  const getDestinationUrl = useCallback((defaultRole: UserRole) => {
+    if (isSafeInternalRedirect(redirectParam)) {
+      return redirectParam!;
     }
     if (defaultRole === 'dealer') return '/dealer';
     if (defaultRole === 'machinery_provider') return '/machinery-provider';
     return '/';
-  };
+  }, [redirectParam, isSafeInternalRedirect]);
+
+  // If already authenticated, redirect immediately without showing sign-in screen
+  useEffect(() => {
+    if (!authLoading && user) {
+      const destination = getDestinationUrl(authRole || (user.user_metadata?.role as UserRole) || 'farmer');
+      router.replace(destination);
+    }
+  }, [authLoading, user, authRole, getDestinationUrl, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +113,17 @@ function LoginContent() {
     setLoading(false);
   };
 
+  if (authLoading || user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="w-10 h-10 border-4 border-agri-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm font-semibold text-slate-600 mt-4">
+          {isTa ? 'அமர்வு சரிபார்க்கப்படுகிறது...' : 'Connecting your session...'}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -108,7 +148,7 @@ function LoginContent() {
         </p>
 
         {/* Redirect Notice Banner if redirected from a protected page */}
-        {redirectParam && (
+        {isSafeInternalRedirect(redirectParam) && (
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-center gap-2.5 text-xs text-amber-900 animate-in fade-in duration-200">
             <Info className="w-4 h-4 text-amber-600 shrink-0" />
             <div className="leading-tight">
@@ -187,7 +227,7 @@ function LoginContent() {
           <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-100">
             {translations.auth.dontHaveAccount}{' '}
             <Link 
-              href={redirectParam ? `/signup?redirect=${encodeURIComponent(redirectParam)}` : '/signup'} 
+              href={isSafeInternalRedirect(redirectParam) ? `/signup?redirect=${encodeURIComponent(redirectParam!)}` : '/signup'} 
               className="text-agri-700 font-bold hover:underline"
             >
               {translations.auth.signupLink}

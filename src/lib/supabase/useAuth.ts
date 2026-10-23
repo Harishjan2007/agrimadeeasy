@@ -137,14 +137,14 @@ export function useAuth(): AuthState {
 
         if (session?.user) {
           setUser(session.user);
+          if (typeof document !== 'undefined') {
+            document.cookie = 'agrime_auth=true; path=/; max-age=604800; SameSite=Lax';
+          }
           const rawProfile = await fetchProfile(session.user.id);
           if (isMounted) {
             const enriched = enrichProfile(rawProfile, session.user);
             setProfile(enriched);
             setRole(enriched.role);
-            if (typeof document !== 'undefined') {
-              document.cookie = 'agrime_auth=true; path=/; max-age=604800; SameSite=Lax';
-            }
           }
         } else {
           if (isMounted) {
@@ -171,7 +171,7 @@ export function useAuth(): AuthState {
     const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
-      if (event === 'SIGNED_OUT' || !session) {
+      if (event === 'SIGNED_OUT') {
         setUser(null);
         setProfile(null);
         setRole(null);
@@ -181,15 +181,15 @@ export function useAuth(): AuthState {
         }
       } else if (session?.user) {
         setUser(session.user);
+        if (typeof document !== 'undefined') {
+          document.cookie = 'agrime_auth=true; path=/; max-age=604800; SameSite=Lax';
+        }
         const rawProfile = await fetchProfile(session.user.id);
         if (isMounted) {
           const enriched = enrichProfile(rawProfile, session.user);
           setProfile(enriched);
           setRole(enriched.role);
           setLoading(false);
-          if (typeof document !== 'undefined') {
-            document.cookie = 'agrime_auth=true; path=/; max-age=604800; SameSite=Lax';
-          }
         }
       }
     });
@@ -198,7 +198,7 @@ export function useAuth(): AuthState {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [fetchProfile, enrichProfile]);
 
   return {
     user,

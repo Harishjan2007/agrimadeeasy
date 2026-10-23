@@ -438,10 +438,10 @@ function MachineryProviderPortalContent() {
             </p>
           </div>
           <div className="flex flex-col gap-2.5">
-            <Link href="/login" className="btn-primary w-full py-2.5 text-center text-sm font-bold">
+            <Link href="/login?redirect=/machinery-provider" className="btn-primary w-full py-2.5 text-center text-sm font-bold">
               {translations.auth.loginButton}
             </Link>
-            <Link href="/signup" className="btn-secondary w-full py-2.5 text-center text-sm font-semibold">
+            <Link href="/signup?redirect=/machinery-provider" className="btn-secondary w-full py-2.5 text-center text-sm font-semibold">
               {translations.auth.signupTitle}
             </Link>
           </div>

@@ -53,27 +53,7 @@ export default function Header() {
   const activeRole: UserRole = role || 'farmer';
   const isSignedIn = Boolean(user);
 
-  // Six core protected tabs + specialized portals
-  const PROTECTED_TABS = [
-    '/crop-price',
-    '/prediction',
-    '/dealers',
-    '/dealer',
-    '/machinery',
-    '/bookings',
-    '/machinery-provider',
-    '/ecommerce',
-    '/schemes',
-    '/profile'
-  ];
-
-  const getNavHref = (targetPath: string) => {
-    if (targetPath === '/') return '/';
-    if (!isSignedIn && PROTECTED_TABS.some(p => targetPath === p || targetPath.startsWith(`${p}/`))) {
-      return `/login?redirect=${encodeURIComponent(targetPath)}`;
-    }
-    return targetPath;
-  };
+  const getNavHref = (targetPath: string) => targetPath;
 
   // Desktop Center Navigation Links (Home + core modules)
   const getNavLinks = () => {
