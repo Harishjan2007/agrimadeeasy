@@ -217,7 +217,7 @@ export interface Product {
   dealer?: Dealer;
 }
 
-export type MachineryType = 'Tractor' | 'Paddy Harvester' | 'Power Tiller' | 'Rotavator' | 'Sprayer' | 'Other';
+export type MachineryType = 'Tractor' | 'Paddy Harvester' | 'Power Tiller' | 'Rotavator' | 'Sprayer' | 'Transplanter' | 'Laser Leveller' | 'Rotary Slasher' | 'Thresher' | 'Other';
 
 export interface Machinery {
   id: string;
