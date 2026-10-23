@@ -34,6 +34,7 @@ const POOL_CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 const POOL_FETCH_LIMIT = 500; // Complete active daily arrivals pool across Tamil Nadu
 
 export const dynamic = 'force-dynamic';
+export const preferredRegion = 'bom1';
 
 export async function GET(req: NextRequest) {
   try {
