@@ -43,8 +43,8 @@ import { FARM_STORE_CATEGORIES } from '@/lib/products-data';
 import { getCropIcon } from '@/lib/supabase/crops';
 import { PageHeader } from '@/components/ui';
 import LocationPicker from '@/components/common/LocationPicker';
+import { updateDealerProfile, updateDealerInquiryStatus } from '@/lib/supabase/dealers';
 import { INDIAN_STATES_AND_UTS, getDistrictsForState } from '@/lib/indian-geography';
-import { updateDealerProfile } from '@/lib/supabase/dealers';
 
 const AVAILABLE_PRODUCE_CATEGORIES = [
   'Grains & Cereals',
@@ -357,8 +357,9 @@ export default function DealerPortalPage() {
   };
 
   // Handle Inquiry Status Update
-  const handleUpdateInquiryStatus = (inquiryId: string, status: 'new' | 'contacted' | 'completed') => {
+  const handleUpdateInquiryStatus = async (inquiryId: string, status: 'new' | 'contacted' | 'completed') => {
     updateInquiryStatus(inquiryId, status);
+    await updateDealerInquiryStatus(inquiryId, status);
     const label = status === 'contacted' ? (isTa ? 'தொடர்புகொள்ளப்பட்டது' : 'Contacted') : (isTa ? 'நிறைவடைந்தது' : 'Completed');
     showFeedback(isTa ? `விசாரணை நிலை "${label}" என மாற்றப்பட்டது!` : `Inquiry marked as ${label}!`);
   };
@@ -1963,7 +1964,7 @@ export default function DealerPortalPage() {
                     }}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none font-semibold"
                   >
-                    {INDIAN_STATES_AND_UTS.map((s) => (
+                    {INDIAN_STATES_AND_UTS.map((s: string) => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
@@ -1978,7 +1979,7 @@ export default function DealerPortalPage() {
                     onChange={(e) => setEditDistrict(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none font-semibold"
                   >
-                    {getDistrictsForState(editState).map((d) => (
+                    {getDistrictsForState(editState).map((d: string) => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>

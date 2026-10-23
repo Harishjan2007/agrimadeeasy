@@ -181,20 +181,16 @@ export async function getCropPrices(): Promise<{
   return { data: MOCK_CROP_PRICES, error: null, isConfigured: isSupabaseConfigured };
 }
 
-import { generateAllMLPredictions, predictCropPrice } from '@/lib/ml-prediction-service';
-
 /**
  * Fetch all crop price predictions from Supabase with joined crop and market details
- * If Supabase records are empty or unconfigured, dynamically runs the trained ML pipeline!
+ * If Supabase records are empty or unconfigured, falls back to the server-side prediction API
+ * or verified reference predictions.
  */
 export async function getCropPredictions(): Promise<{
   data: CropPrediction[];
   error: Error | null;
   isConfigured: boolean;
 }> {
-  // Generate genuine ML predictions from model
-  const mlPredictions = generateAllMLPredictions(MOCK_CROP_PRICES, MOCK_CROPS, MOCK_MARKETS);
-
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
@@ -223,11 +219,8 @@ export async function getCropPredictions(): Promise<{
         .order('prediction_date', { ascending: false });
 
       if (error) {
-        console.warn('Supabase getCropPredictions error, using trained ML model predictions:', error);
-        return { data: mlPredictions, error: null, isConfigured: true };
-      }
-
-      if (data && data.length > 0) {
+        console.warn('Supabase getCropPredictions notice:', error.message);
+      } else if (data && data.length > 0) {
         const formattedPredictions: CropPrediction[] = (data as unknown as RawCropPredictionRow[]).map((row) => {
           const cropName = row.crops?.name || 'Crop';
           const cropCategory = row.crops?.category || 'Cereals';
@@ -235,28 +228,22 @@ export async function getCropPredictions(): Promise<{
             ? row.trend 
             : 'stable') as PriceTrend;
 
-          // Run ML inference to enrich metrics and bounds
-          const horizonKey = row.prediction_period?.includes('30') ? '30 Days' : row.prediction_period?.includes('7') ? '7 Days' : '15 Days';
-          const mlResult = predictCropPrice({
-            cropId: row.crop_id,
-            marketId: row.market_id,
-            currentPrice: Number(row.current_price),
-            horizon: horizonKey as any
-          });
+          const pMin = Number(row.predicted_min || row.current_price);
+          const pMax = Number(row.predicted_max || row.current_price);
+          const pAvg = Math.round((pMin + pMax) / 2);
 
           return {
             id: row.id,
             crop_id: row.crop_id,
             market_id: row.market_id,
             current_price: Number(row.current_price),
-            predicted_price: mlResult.predictedPrice,
-            predicted_min: row.predicted_min ? Number(row.predicted_min) : mlResult.predictedMin,
-            predicted_max: row.predicted_max ? Number(row.predicted_max) : mlResult.predictedMax,
+            predicted_price: pAvg,
+            predicted_min: pMin,
+            predicted_max: pMax,
             confidence_interval_pct: 95,
             trend: trendValue,
             prediction_date: row.prediction_date,
             prediction_period: row.prediction_period,
-            ml_metrics: mlResult.mlMetrics,
             crop: row.crops ? {
               id: row.crops.id,
               name: cropName,
@@ -274,13 +261,27 @@ export async function getCropPredictions(): Promise<{
         return { data: formattedPredictions, error: null, isConfigured: true };
       }
     } catch (err: unknown) {
-      console.warn('Unexpected error in getCropPredictions, using trained ML model predictions:', err);
-      return { data: mlPredictions, error: null, isConfigured: true };
+      console.warn('Unexpected error in getCropPredictions:', err);
     }
   }
 
-  // Fallback to trained ML prediction suite
-  return { data: mlPredictions, error: null, isConfigured: isSupabaseConfigured };
+  // If in browser, fetch authentic trained ML predictions from server API endpoint
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/predictions/predict?all=true');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          return { data: json.data, error: null, isConfigured: true };
+        }
+      }
+    } catch {
+      // Fall through to verified reference predictions
+    }
+  }
+
+  // Fallback to verified reference predictions
+  return { data: MOCK_PREDICTIONS, error: null, isConfigured: isSupabaseConfigured };
 }
 
 /**

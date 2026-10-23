@@ -46,3 +46,13 @@ export function formatSupabaseError(error: unknown): string {
   return String(error);
 }
 
+/**
+ * Validates whether a given string is a valid standard PostgreSQL UUID.
+ * Useful to prevent 'invalid input syntax for type uuid' errors when
+ * querying Postgres UUID columns with mock or demo IDs.
+ */
+export function isValidUuid(id?: string | null): boolean {
+  if (!id || typeof id !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim());
+}
+

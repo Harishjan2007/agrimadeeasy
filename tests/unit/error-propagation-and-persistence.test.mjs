@@ -315,3 +315,52 @@ describe('5. Behavioral Verification of Persistence, Error Handling & Isolation'
     assert.deepEqual(merged.bought_crops, ['Paddy (Samba)', 'Paddy (Kuruvai)', 'Black Gram']);
   });
 });
+
+describe('6. Supabase Products and Orders Query Hardening', () => {
+  const productsTsPath = path.join(__dirname, '..', '..', 'src', 'lib', 'supabase', 'products.ts');
+  const ordersTsPath = path.join(__dirname, '..', '..', 'src', 'lib', 'supabase', 'orders.ts');
+
+  test('products.ts does not query nonexistent rating column on dealers', () => {
+    const content = fs.readFileSync(productsTsPath, 'utf8');
+
+    assert.ok(!content.includes('rating,'), 'products.ts must not request rating column in dealer select query');
+    assert.ok(!content.includes('dealers_1.rating'), 'Must not request dealers_1.rating');
+    assert.ok(content.includes('shop_name,'), 'Must select shop_name');
+    assert.ok(content.includes('opening_hours,'), 'Must select opening_hours');
+    assert.ok(content.includes('verified'), 'Must select verified');
+  });
+
+  test('products.ts maps image_url directly from Supabase and does not discard database response', () => {
+    const content = fs.readFileSync(productsTsPath, 'utf8');
+
+    assert.ok(content.includes('image_url: row.image_url || undefined'), 'Must preserve row.image_url from database');
+    assert.ok(content.includes('const mapped = (data as unknown as RawProductRow[]).map(mapRawProduct)'), 'Must map Supabase rows');
+    assert.ok(content.includes('return { data: mapped, error: null, isConfigured: true }'), 'Must return mapped database rows on success');
+  });
+
+  test('orders.ts enforces UUID validation for customer_id and product_id', () => {
+    const content = fs.readFileSync(ordersTsPath, 'utf8');
+
+    assert.ok(content.includes('isValidUuid'), 'orders.ts must use isValidUuid');
+    assert.ok(content.includes('validDbCustomerId = isValidUuid(payload.customerId) ? payload.customerId : null'), 'Must validate customer_id before DB insert');
+    assert.ok(content.includes('isValidUuid(item.productId) ? item.productId : null'), 'Must validate product_id before DB insert');
+    assert.ok(content.includes('if (customerId && !isValidUuid(customerId))'), 'getCustomerOrders must guard against non-UUID customerId');
+  });
+
+  test('Behavioral: isValidUuid correctly discriminates UUIDs and mock IDs', () => {
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    function isValidUuid(id) {
+      if (!id || typeof id !== 'string') return false;
+      return UUID_REGEX.test(id.trim());
+    }
+
+    assert.equal(isValidUuid('u-provider-1'), false, 'u-provider-1 is not a valid UUID');
+    assert.equal(isValidUuid('u-farmer-1'), false, 'u-farmer-1 is not a valid UUID');
+    assert.equal(isValidUuid('prod-seed-01'), false, 'prod-seed-01 is not a valid UUID');
+    assert.equal(isValidUuid('00000000-0000-0000-0003-000000000001'), true, 'Deterministic demo product UUID is valid');
+    assert.equal(isValidUuid('00000000-0000-0000-0001-000000000001'), true, 'Deterministic demo dealer UUID is valid');
+    assert.equal(isValidUuid('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'), true, 'Standard v4 UUID is valid');
+    assert.equal(isValidUuid(null), false, 'null is not valid');
+    assert.equal(isValidUuid(undefined), false, 'undefined is not valid');
+  });
+});

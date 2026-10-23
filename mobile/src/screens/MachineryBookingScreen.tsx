@@ -7,11 +7,12 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { MobileMachinery, MobileBooking } from '../services/dataService';
+import { MobileMachinery, MobileDataService, MobileBooking } from '../services/dataService';
 
 export default function MachineryBookingScreen({ route, navigation }: any) {
   const { machine }: { machine: MobileMachinery } = route.params || {
@@ -30,39 +31,68 @@ export default function MachineryBookingScreen({ route, navigation }: any) {
   const [date, setDate] = useState('2026-09-25');
   const [startTime, setStartTime] = useState('07:00 AM');
   const [hours, setHours] = useState('4');
-  const [farmAddress, setFarmAddress] = useState(user.location || 'Thanjavur South Canal Field #4');
+  const [farmAddress, setFarmAddress] = useState(
+    user ? `${user.location || ''}, ${user.district || ''}`.trim().replace(/^,|,$/g, '') || 'Thanjavur Field #4' : 'Thanjavur Field #4'
+  );
   const [notes, setNotes] = useState('Rotavator tilling for paddy transplanting');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const totalAmount = (Number(hours) || 1) * machine.price_per_hour;
+  const parsedHours = Math.max(1, Number(hours) || 1);
+  const totalAmount = parsedHours * machine.price_per_hour;
 
-  const handleConfirmBooking = () => {
-    const booking: MobileBooking = {
-      id: 'bk-' + Date.now(),
-      machinery_id: machine.id,
-      machinery_name: machine.name,
-      date,
-      time: startTime,
-      status: 'confirmed',
-      farmer_name: user.name,
-      farmer_phone: user.phone,
-      provider_phone: machine.contact_phone,
-      provider_lat: 10.7870, // Actual Thanjavur Mandi coordinates
-      provider_lng: 79.1378,
-      destination_lat: 10.7620, // Actual Thanjavur farm field coordinates
-      destination_lng: 79.1550,
-      destination_address: farmAddress
-    };
+  const handleConfirmBooking = async () => {
+    if (!date.trim() || !startTime.trim()) {
+      Alert.alert('Required Fields', 'Please specify the booking date and start time.');
+      return;
+    }
 
-    Alert.alert(
-      t('bookingConfirmed'),
-      `Your booking for ${machine.name} has been confirmed. You can now view real-time trip GPS tracking.`,
-      [
-        {
-          text: t('trackTrip'),
-          onPress: () => navigation.navigate('MachineryTracking', { booking })
-        }
-      ]
-    );
+    if (!farmAddress.trim()) {
+      Alert.alert('Address Required', 'Please enter your field destination address.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { data: booking, error } = await MobileDataService.createMachineryBooking({
+        farmerId: user?.id,
+        farmerName: user?.name || 'Farmer',
+        farmerPhone: user?.phone || '+91 98421 55678',
+        machineryId: machine.id,
+        machineryName: machine.name,
+        bookingDate: date.trim(),
+        startTime: startTime.trim(),
+        totalAmount,
+        destinationAddress: farmAddress.trim(),
+        providerPhone: machine.contact_phone,
+        notes: notes.trim()
+      });
+
+      setIsSubmitting(false);
+
+      if (error) {
+        Alert.alert('Booking Error', error.message || 'Could not complete booking.');
+        return;
+      }
+
+      Alert.alert(
+        t('bookingConfirmed'),
+        `Your reservation for ${machine.name} (₹${totalAmount.toLocaleString('en-IN')}) has been confirmed.\n\nStatus: Pending Provider Dispatch. Payment is settled directly upon work completion.`,
+        [
+          {
+            text: t('trackTrip'),
+            onPress: () => navigation.navigate('MachineryTracking', { booking })
+          },
+          {
+            text: 'Done',
+            onPress: () => navigation.goBack()
+          }
+        ]
+      );
+    } catch (err: any) {
+      setIsSubmitting(false);
+      Alert.alert('Booking Error', err.message || 'Could not complete booking.');
+    }
   };
 
   return (
@@ -74,12 +104,15 @@ export default function MachineryBookingScreen({ route, navigation }: any) {
           <Text style={styles.rateHighlight}>
             ₹{machine.price_per_hour} {t('hourlyRate')}
           </Text>
+          {Boolean(machine.provider_name) && (
+            <Text style={styles.providerNameText}>Provider: {machine.provider_name}</Text>
+          )}
         </View>
 
         <Text style={styles.sectionHeader}>Booking Details</Text>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Date of Work</Text>
+          <Text style={styles.fieldLabel}>Date of Work (YYYY-MM-DD) *</Text>
           <TextInput
             style={styles.input}
             value={date}
@@ -89,7 +122,7 @@ export default function MachineryBookingScreen({ route, navigation }: any) {
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Start Time</Text>
+          <Text style={styles.fieldLabel}>Start Time *</Text>
           <TextInput
             style={styles.input}
             value={startTime}
@@ -99,7 +132,7 @@ export default function MachineryBookingScreen({ route, navigation }: any) {
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Estimated Working Hours</Text>
+          <Text style={styles.fieldLabel}>Estimated Working Hours *</Text>
           <TextInput
             style={styles.input}
             value={hours}
@@ -109,7 +142,7 @@ export default function MachineryBookingScreen({ route, navigation }: any) {
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Farm Destination Address</Text>
+          <Text style={styles.fieldLabel}>Farm Destination Address *</Text>
           <TextInput
             style={styles.input}
             value={farmAddress}
@@ -125,6 +158,7 @@ export default function MachineryBookingScreen({ route, navigation }: any) {
             value={notes}
             onChangeText={setNotes}
             multiline
+            placeholder="Rotavator tilling, harvesting, etc."
           />
         </View>
 
@@ -136,10 +170,10 @@ export default function MachineryBookingScreen({ route, navigation }: any) {
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Hours</Text>
-            <Text style={styles.summaryVal}>× {hours}</Text>
+            <Text style={styles.summaryVal}>× {parsedHours}</Text>
           </View>
           <View style={[styles.summaryRow, styles.summaryTotalRow]}>
-            <Text style={styles.totalLabel}>Total Estimated Cost</Text>
+            <Text style={styles.totalLabel}>{t('totalAmount')}</Text>
             <Text style={styles.totalVal}>₹{totalAmount.toLocaleString('en-IN')}</Text>
           </View>
           <Text style={styles.summaryNote}>
@@ -147,8 +181,16 @@ export default function MachineryBookingScreen({ route, navigation }: any) {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.submitBtn} onPress={handleConfirmBooking}>
-          <Text style={styles.submitBtnText}>{t('bookNow')}</Text>
+        <TouchableOpacity
+          style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
+          onPress={handleConfirmBooking}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="#ffffff" size="small" />
+          ) : (
+            <Text style={styles.submitBtnText}>{t('bookNow')}</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -187,6 +229,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#15803d',
     marginTop: 8
+  },
+  providerNameText: {
+    fontSize: 12,
+    color: '#475569',
+    marginTop: 4
   },
   sectionHeader: {
     fontSize: 14,
@@ -262,6 +309,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center'
+  },
+  submitBtnDisabled: {
+    backgroundColor: '#86efac'
   },
   submitBtnText: {
     color: '#ffffff',

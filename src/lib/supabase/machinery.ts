@@ -2,6 +2,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured, formatSupabaseError } from './client';
 import { Machinery, MachineryBooking, BookingStatus, MachineryType, MachineryTracking, Profile } from '@/types';
 import { MOCK_MACHINERY, MOCK_BOOKINGS } from '@/lib/mock-data';
+import { DEMO_MACHINERY_DRIVERS } from '@/lib/machinery-drivers-data';
 
 interface RawMachineryRow {
   id: string;
@@ -15,6 +16,10 @@ interface RawMachineryRow {
   longitude?: number | null;
   available: boolean;
   image_url?: string;
+  is_demo?: boolean | null;
+  service_type?: string | null;
+  driver_name?: string | null;
+  experience_years?: number | null;
   created_at: string;
   updated_at?: string;
   profiles?: {
@@ -78,7 +83,7 @@ export async function getMachinery(): Promise<{
 }> {
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
+        const { data, error } = await supabase
         .from('machinery')
         .select(`
           id,
@@ -92,6 +97,10 @@ export async function getMachinery(): Promise<{
           longitude,
           available,
           image_url,
+          is_demo,
+          service_type,
+          driver_name,
+          experience_years,
           created_at,
           updated_at,
           profiles:provider_id (
@@ -106,7 +115,7 @@ export async function getMachinery(): Promise<{
 
       if (error) {
         console.warn('Supabase getMachinery notice, using fallback:', formatSupabaseError(error));
-        return { data: MOCK_MACHINERY, error: null, isConfigured: true };
+        return { data: getFallbackMachinery(), error: null, isConfigured: true };
       }
 
       if (data && data.length > 0) {
@@ -122,6 +131,10 @@ export async function getMachinery(): Promise<{
           longitude: row.longitude !== null && row.longitude !== undefined ? Number(row.longitude) : undefined,
           available: row.available,
           image_url: row.image_url,
+          isDemo: Boolean(row.is_demo),
+          service_type: row.service_type || undefined,
+          driver_name: row.driver_name || undefined,
+          experience_years: row.experience_years ? Number(row.experience_years) : undefined,
           created_at: row.created_at,
           updated_at: row.updated_at || row.created_at,
           provider: row.profiles ? {
@@ -138,11 +151,17 @@ export async function getMachinery(): Promise<{
       }
     } catch (err) {
       console.warn('Unexpected notice in getMachinery, using fallback:', formatSupabaseError(err));
-      return { data: MOCK_MACHINERY, error: null, isConfigured: true };
+      return { data: getFallbackMachinery(), error: null, isConfigured: true };
     }
   }
 
-  return { data: MOCK_MACHINERY, error: null, isConfigured: isSupabaseConfigured };
+  return { data: getFallbackMachinery(), error: null, isConfigured: isSupabaseConfigured };
+}
+
+function getFallbackMachinery(): Machinery[] {
+  const realMapped = MOCK_MACHINERY.map((m) => ({ ...m, isDemo: false }));
+  const demoMapped = DEMO_MACHINERY_DRIVERS.map((m) => ({ ...m, isDemo: true }));
+  return [...realMapped, ...demoMapped];
 }
 
 /**

@@ -43,7 +43,9 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.header}>
           <View>
             <Text style={styles.appName}>{t('appName')}</Text>
-            <Text style={styles.tagline}>{user.name} • {user.district}</Text>
+            <Text style={styles.tagline}>
+              {user ? `${user.name} • ${user.district}` : 'Farmer Service Platform'}
+            </Text>
           </View>
           <TouchableOpacity
             style={styles.langButton}

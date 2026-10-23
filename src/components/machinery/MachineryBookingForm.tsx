@@ -173,6 +173,21 @@ export default function MachineryBookingForm({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+            {machinery.isDemo && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-950 p-3.5 rounded-2xl text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-bold text-amber-900 block">
+                    {isTa ? 'மாதிரி செயல்முறை முன்பதிவு' : 'Demonstration Booking'}
+                  </span>
+                  <p className="text-[11px] text-amber-800">
+                    {isTa
+                      ? 'இது கல்லூரி செய்முறை விளக்கத்திற்கான மாதிரி முன்பதிவு. உண்மையான ஓட்டுநர் அல்லது வாகனம் அனுப்பப்படாது.'
+                      : 'This is an illustrative demonstration booking record. A commercial operator will not be physically dispatched.'}
+                  </p>
+                </div>
+              </div>
+            )}
             
             {/* Machinery summary strip */}
             <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 flex items-center justify-between text-xs">

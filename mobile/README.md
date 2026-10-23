@@ -66,23 +66,53 @@ The official cross-platform mobile application for the **AgriME Agricultural Dec
 # Navigate to the mobile directory
 cd mobile
 
-# Install dependencies
-npm install
+# Verify clean lockfile & dependencies (synchronizes React Navigation 6 and Expo SDK 51)
+npm run mobile:deps
+# or: npm install && npm ci --include=dev
 ```
 
-### Launch Development Server
+### Launch Development Server (Instant Physical Phone Testing)
 ```bash
 # Start Expo development bundler
 npx expo start
 
-# Or to target Android specifically
-npx expo run:android
-
-# Or to target iOS (macOS required)
-npx expo run:ios
-
-# Or run in web preview
-npx expo start --web
+# Or to target Android device / emulator
+npx expo start --android
 ```
 
-Scan the QR code displayed in your terminal using the **Expo Go** app on your Android or iOS device to test the app live with device GPS!
+Scan the QR code displayed in your terminal using the **Expo Go** app on your Android device to test the app live with device GPS and Supabase integration!
+
+---
+
+## 📦 Building an Installable Android APK
+
+AgriME is configured with `eas.json` to produce an **installable `.apk` file** (not just an AAB bundle).
+
+### Option 1: EAS Cloud Build (Recommended — No Android Studio Required)
+```bash
+cd mobile
+
+# 1. Log in to Expo (free account)
+npx eas-cli login
+
+# 2. Build the installable preview APK
+npx eas-cli build -p android --profile preview
+```
+When the build completes, EAS Cloud provides a direct download link and QR code to install the `AgriME.apk` directly on any Android phone.
+
+### Option 2: Local Gradle Build (Requires Android SDK & Java)
+```bash
+cd mobile
+
+# 1. Generate the native android directory
+npx expo prebuild --platform android
+
+# 2. Compile release APK locally
+cd android
+./gradlew assembleRelease
+# On Windows PowerShell:
+# .\gradlew.bat assembleRelease
+```
+The output APK will be located at:
+`mobile/android/app/build/outputs/apk/release/app-release.apk`
+

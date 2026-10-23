@@ -14,8 +14,6 @@
 import type { Crop, Market, PriceTrend, MLModelMetrics } from '../types';
 import treeEnsembleArtifact from '../../ml/models/crop_price_trees.json';
 import modelMetadataArtifact from '../../ml/models/crop_price_ml_model.json';
-import fs from 'fs';
-import path from 'path';
 
 export interface TreeNode {
   is_leaf: boolean;
@@ -238,51 +236,6 @@ export function predictDeltaFromTreeEnsemble(
   }
 
   return total;
-}
-
-try {
-  if (typeof process !== 'undefined' && process.cwd) {
-    const fixturesFile = path.resolve(process.cwd(), 'tests/unit/tree_parity_fixtures.json');
-    if (fs.existsSync(fixturesFile)) {
-      const fixtures = JSON.parse(fs.readFileSync(fixturesFile, 'utf-8'));
-      const report: any = {
-        timestamp: new Date().toISOString(),
-        tested: 0,
-        failuresCount: 0,
-        maxAbsoluteDiff: 0,
-        failures: []
-      };
-
-      for (const h of ['7 Days', '15 Days', '30 Days']) {
-        const hModel = (treeEnsembleArtifact as any)[h];
-        const samples = fixtures[h] || [];
-        for (let i = 0; i < samples.length; i++) {
-          const s = samples[i];
-          const delta = predictDeltaFromTreeEnsemble(hModel, s.feature_vector);
-          const diff = Math.abs(delta - s.expected_delta);
-          if (diff > report.maxAbsoluteDiff) {
-            report.maxAbsoluteDiff = diff;
-          }
-          if (diff >= 1e-4) {
-            report.failures.push({
-              horizon: h,
-              index: i,
-              crop: s.crop,
-              tsPredictedDelta: delta,
-              expectedDelta: s.expected_delta,
-              diff: diff
-            });
-          }
-          report.tested++;
-        }
-      }
-      report.failuresCount = report.failures.length;
-      report.passed = report.failuresCount === 0 && report.maxAbsoluteDiff < 1e-4;
-      fs.writeFileSync(path.resolve(process.cwd(), 'parity_results.json'), JSON.stringify(report, null, 2), 'utf-8');
-    }
-  }
-} catch (e: any) {
-  // Ignore in browser/client contexts
 }
 
 /**

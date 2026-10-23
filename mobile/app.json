@@ -25,12 +25,18 @@
       },
       "package": "com.agrime.app",
       "permissions": [
+        "INTERNET",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7582e834-c033-4edd-849f-18a9a828739d"
+      }
     }
   }
 }

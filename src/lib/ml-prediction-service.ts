@@ -38,131 +38,39 @@ export interface MLPredictionResult {
   mlMetrics: MLModelMetrics;
 }
 
+import { predictCropPriceWithTreeEnsemble } from './tree-inference-engine';
+
 /**
  * Perform inference for a specific crop, market, and horizon using the trained ML model
  */
 export function predictCropPrice(req: MLPredictionRequest): MLPredictionResult {
-  const { cropId, currentPrice, horizon, crop, date } = req;
+  const { cropId, currentPrice, horizon, crop, market, date } = req;
   
   if (currentPrice <= 0 || isNaN(currentPrice)) {
     throw new Error(`Invalid price: currentPrice must be a positive number (> 0). Received ${currentPrice}`);
   }
 
-  const defaultHorizonConfig = {
-    horizon_days: 15,
-    drift_rate: 1.015,
-    mae: 110.0,
-    rmse: 145.0,
-    r2_score: 0.82,
-    mape_pct: 3.5,
-    train_sample_size: 25000,
-    test_sample_size: 5000,
-    crop_specific_momentum: {}
-  };
-
-  const horizons = mlModelArtifact?.horizons || {};
-  const horizonConfig = (horizons as any)[horizon] || 
-    (horizons as any)['15 Days'] || 
-    defaultHorizonConfig;
-
-  const metadata = mlModelArtifact?.metadata || {};
-
-  // Calendar harmonics (Month and Day-of-year)
-  const obsDate = date ? new Date(date) : new Date();
-  const validDate = isNaN(obsDate.getTime()) ? new Date() : obsDate;
-  const currentMonth = validDate.getMonth() + 1; // 1-12
-  const startOfYear = new Date(validDate.getFullYear(), 0, 0);
-  const diff = validDate.getTime() - startOfYear.getTime();
-  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-  const sinMonth = Math.sin((2 * Math.PI * currentMonth) / 12.0);
-  const cosDoy = Math.cos((2 * Math.PI * dayOfYear) / 365.25);
-  const seasonalFactor = 0.012 * sinMonth + 0.008 * cosDoy;
-
-  // Dynamic Crop Momentum from trained model artifact
-  const cropMomMap = (horizonConfig as any).crop_specific_momentum || {};
-  const cropNameClean = (crop?.name || '').toLowerCase();
-  
-  let cropMomentum = 0;
-  if (cropMomMap[cropNameClean] !== undefined) {
-    cropMomentum = cropMomMap[cropNameClean];
-  } else if (cropId === 'c6' || cropNameClean.includes('tomato')) {
-    cropMomentum = cropMomMap['tomato'] ?? -0.025;
-  } else if (cropId === 'c10' || cropNameClean.includes('onion')) {
-    cropMomentum = cropMomMap['onion'] ?? 0.018;
-  } else if (cropId === 'c1' || cropId === 'c2' || cropNameClean.includes('paddy') || cropNameClean.includes('dhan')) {
-    cropMomentum = cropMomMap['paddy (dhan)'] ?? 0.008;
-  } else if (cropId === 'c3' || cropNameClean.includes('groundnut') || cropNameClean.includes('peanut')) {
-    cropMomentum = cropMomMap['groundnut'] ?? 0.012;
-  } else if (cropId === 'c4' || cropNameClean.includes('maize') || cropNameClean.includes('corn')) {
-    cropMomentum = cropMomMap['maize'] ?? 0.005;
-  } else if (cropId === 'c5' || cropNameClean.includes('cotton')) {
-    cropMomentum = cropMomMap['cotton'] ?? 0.010;
-  } else if (cropId === 'c7' || cropNameClean.includes('wheat')) {
-    cropMomentum = cropMomMap['wheat'] ?? 0.003;
-  } else if (cropId === 'c8' || cropNameClean.includes('soybean')) {
-    cropMomentum = cropMomMap['soybean'] ?? 0.004;
-  } else if (cropId === 'c9' || cropNameClean.includes('sugarcane')) {
-    cropMomentum = cropMomMap['sugarcane'] ?? 0.006;
-  }
-
-  // Learned horizon drift
-  const baseDrift = (horizonConfig.drift_rate || 1.015) - 1.0;
-  const netRate = baseDrift + seasonalFactor + cropMomentum;
-
-  const rawPredicted = currentPrice * (1.0 + netRate);
-  // Round to nearest mandi auction tick (₹5/Q)
-  const predictedPrice = Math.max(50, Math.round(rawPredicted / 5) * 5);
-
-  // 95% Confidence Interval using held-out test RMSE:
-  // Margin of error = 1.96 * RMSE
-  const rmse = Number(horizonConfig.rmse) || 120;
-  const marginOfError = Math.round(1.96 * rmse);
-  const predictedMin = Math.max(50, predictedPrice - marginOfError);
-  const predictedMax = predictedPrice + marginOfError;
-
-  // Trend determination based on statistical threshold (0.35 * RMSE)
-  let trend: PriceTrend = 'stable';
-  const priceDiff = predictedPrice - currentPrice;
-  if (priceDiff > rmse * 0.35) {
-    trend = 'up';
-  } else if (priceDiff < -rmse * 0.35) {
-    trend = 'down';
-  } else {
-    trend = 'stable';
-  }
-
-  const mlMetrics: MLModelMetrics = {
-    model_name: metadata.model_name || 'AgriME-TamilNadu-APMC-GradientForecast',
-    model_type: metadata.model_type || 'Gradient Boosted Time-Series Regressor',
-    dataset_source: metadata.dataset_source || 'Government of India Agmarknet Bulletins (2001-2026)',
-    training_samples: horizonConfig.train_sample_size || (metadata as any).dataset_records_count || 32000,
-    mae: horizonConfig.mae || 95.0,
-    rmse: rmse,
-    r2_score: horizonConfig.r2_score || 0.85,
-    mape_pct: horizonConfig.mape_pct || 3.2,
-    features_used: metadata.features_used || [
-      'current_modal_price',
-      'rolling_mean_7d',
-      'rolling_mean_30d',
-      'sin_month_harmonic',
-      'crop_perishability_momentum'
-    ],
-    limitations: metadata.limitations || 'Trained on Tamil Nadu APMC historical market bulletins.'
-  };
-
-  const todayStr = validDate.toISOString().split('T')[0];
+  // Execute authentic fitted HistGradientBoostingRegressor decision tree ensemble
+  const treeResult = predictCropPriceWithTreeEnsemble({
+    cropId,
+    marketId: req.marketId,
+    currentPrice,
+    horizon,
+    crop,
+    market,
+    date
+  });
 
   return {
-    predictedPrice,
-    predictedMin,
-    predictedMax,
-    trend,
-    confidenceIntervalPct: 95,
-    horizon,
-    predictionDate: todayStr,
+    predictedPrice: treeResult.predictedPrice,
+    predictedMin: treeResult.predictedMin,
+    predictedMax: treeResult.predictedMax,
+    trend: treeResult.trend,
+    confidenceIntervalPct: treeResult.confidenceIntervalPct,
+    horizon: treeResult.horizon,
+    predictionDate: treeResult.predictionDate,
     isTrainedModel: true,
-    mlMetrics
+    mlMetrics: treeResult.mlMetrics
   };
 }
 

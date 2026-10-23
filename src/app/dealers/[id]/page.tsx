@@ -16,12 +16,14 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { Dealer, DealerCropPrice } from '@/types';
-import { getDealerById } from '@/lib/supabase/dealers';
+import { getDealerById, createDealerInquiry } from '@/lib/supabase/dealers';
+import { useAuth } from '@/lib/supabase/useAuth';
 import { useLanguage } from '@/i18n';
 import { useAgri } from '@/context/AgriContext';
 import { getGoogleMapsUrl } from '@/lib/location';
 
 export default function DealerDetailsPage() {
+  const { user, profile } = useAuth();
   const params = useParams();
   const dealerId = (params?.id as string) || '';
   const { language, translations, translateCrop, translateCategory } = useLanguage();
@@ -72,20 +74,40 @@ export default function DealerDetailsPage() {
 
   const { submitProduceInquiry } = useAgri();
 
-  const handleInquirySubmit = (e: React.FormEvent) => {
+  const handleInquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (dealer) {
-      submitProduceInquiry({
-        dealerId: dealer.id,
-        dealerName: dealer.shop_name,
-        farmerName,
-        farmerPhone,
-        cropName,
-        estimatedQuantity: quantity,
-        expectedPrice: expectedPrice ? `₹${expectedPrice}/Quintal` : 'Negotiable',
-        message: `Farmer offer for ${quantity} Qtl of ${cropName}`
-      });
-    }
+    if (!dealer) return;
+
+    const parsedQty = parseFloat(quantity) || 1;
+    const parsedPrice = expectedPrice ? parseFloat(expectedPrice) : null;
+
+    // 1. Persist inquiry in Supabase database
+    await createDealerInquiry({
+      dealerId: dealer.id,
+      dealerName: dealer.shop_name,
+      farmerId: user?.id || null,
+      farmerName: farmerName.trim() || profile?.name || 'Farmer',
+      farmerPhone: farmerPhone.trim() || profile?.phone || '',
+      cropName: cropName.trim(),
+      quantity: parsedQty,
+      unit: 'Quintals',
+      expectedPrice: parsedPrice,
+      priceUnit: '₹/Quintal',
+      message: `Farmer offer for ${quantity} Qtl of ${cropName}`
+    });
+
+    // 2. Also register in local AgriContext for immediate UI feedback
+    submitProduceInquiry({
+      dealerId: dealer.id,
+      dealerName: dealer.shop_name,
+      farmerName: farmerName.trim() || profile?.name || 'Farmer',
+      farmerPhone: farmerPhone.trim() || profile?.phone || '',
+      cropName,
+      estimatedQuantity: quantity,
+      expectedPrice: expectedPrice ? `₹${expectedPrice}/Quintal` : 'Negotiable',
+      message: `Farmer offer for ${quantity} Qtl of ${cropName}`
+    });
+
     setInquirySuccess(true);
     setTimeout(() => {
       setInquirySuccess(false);

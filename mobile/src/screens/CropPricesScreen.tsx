@@ -7,7 +7,9 @@ import {
   TextInput,
   TouchableOpacity,
   Modal,
-  SafeAreaView
+  SafeAreaView,
+  RefreshControl,
+  ActivityIndicator
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { MobileDataService, MobileCropPrice } from '../services/dataService';
@@ -15,20 +17,39 @@ import { MobileDataService, MobileCropPrice } from '../services/dataService';
 export default function CropPricesScreen() {
   const { t } = useLanguage();
   const [prices, setPrices] = useState<MobileCropPrice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [selectedItem, setSelectedItem] = useState<MobileCropPrice | null>(null);
 
+  const loadData = async () => {
+    try {
+      const data = await MobileDataService.getCropPrices();
+      setPrices(data);
+    } catch (e) {
+      console.warn('Failed to load crop prices:', e);
+    }
+  };
+
   useEffect(() => {
-    MobileDataService.getCropPrices().then(setPrices);
+    setLoading(true);
+    loadData().finally(() => setLoading(false));
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
 
   const categories = ['All', 'Cereals', 'Vegetables', 'Commercial', 'Spices'];
 
   const filtered = prices.filter((p) => {
+    const sTerm = search.toLowerCase();
     const matchesSearch =
-      p.crop_name.toLowerCase().includes(search.toLowerCase()) ||
-      p.market_name.toLowerCase().includes(search.toLowerCase());
+      (p.crop_name || '').toLowerCase().includes(sTerm) ||
+      (p.market_name || '').toLowerCase().includes(sTerm);
     const matchesCat = category === 'All' || p.category === category;
     return matchesSearch && matchesCat;
   });
@@ -71,6 +92,7 @@ export default function CropPricesScreen() {
         data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardHeader}>

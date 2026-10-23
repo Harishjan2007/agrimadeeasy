@@ -392,7 +392,7 @@ export const DEMO_PRODUCTS: Product[] = [
     pack_size: '50 kg Bag',
     unit: 'Bag (50 kg)',
     isDemo: true,
-    image_url: 'https://images.unsplash.com/photo-1628352081506-83c43123ed6d?auto=format&fit=crop&w=600&q=80',
+    image_url: 'https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?auto=format&fit=crop&w=600&q=80',
     created_at: '2026-08-01T00:00:00Z',
     updated_at: '2026-08-24T00:00:00Z'
   },
@@ -437,7 +437,7 @@ export const DEMO_PRODUCTS: Product[] = [
     pack_size: '1 kg Pack',
     unit: 'Pack (1 kg)',
     isDemo: true,
-    image_url: 'https://images.unsplash.com/photo-1628352081506-83c43123ed6d?auto=format&fit=crop&w=600&q=80',
+    image_url: 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=600&q=80',
     created_at: '2026-08-01T00:00:00Z',
     updated_at: '2026-08-24T00:00:00Z'
   },

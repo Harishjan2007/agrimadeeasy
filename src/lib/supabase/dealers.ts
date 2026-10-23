@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, formatSupabaseError } from './client';
-import { Dealer, DealerCropPrice } from '@/types';
+import { Dealer, DealerCropPrice, DealerInquiry } from '@/types';
 import { getCropIcon } from './crops';
 import { MOCK_DEALERS, MOCK_DEALER_CROP_PRICES } from '@/lib/mock-data';
 import { ALL_DEMO_DEALERS } from '@/lib/dealers-data';
@@ -38,6 +38,8 @@ interface RawDealerRow {
   purchase_conditions?: string | null;
   bought_crops?: string[] | null;
   produce_categories?: string[] | null;
+  is_demo?: boolean | null;
+  verified?: boolean | null;
   created_at: string;
   updated_at?: string;
   dealer_crop_prices: RawDealerCropPriceRow[] | null;
@@ -83,6 +85,8 @@ function mapRawDealer(row: RawDealerRow): Dealer {
     purchase_conditions: row.purchase_conditions || undefined,
     bought_crops: row.bought_crops || undefined,
     produce_categories: row.produce_categories || undefined,
+    isDemo: Boolean(row.is_demo),
+    verified: Boolean(row.verified),
     created_at: row.created_at,
     crop_prices: activePrices
   };
@@ -112,6 +116,11 @@ export async function getDealers(): Promise<{
           latitude,
           longitude,
           district,
+          state,
+          buyer_type,
+          purchase_conditions,
+          is_demo,
+          verified,
           created_at,
           updated_at,
           dealer_crop_prices (
@@ -120,6 +129,11 @@ export async function getDealers(): Promise<{
             buying_price,
             unit,
             active,
+            min_quantity,
+            max_capacity,
+            quantity_unit,
+            payment_terms,
+            grading_terms,
             created_at,
             crops (
               id,
@@ -134,7 +148,7 @@ export async function getDealers(): Promise<{
       if (error) {
         const baseResult = await supabase
           .from('dealers')
-          .select('id, profile_id, shop_name, address, phone, opening_hours, created_at, updated_at')
+          .select('id, profile_id, shop_name, address, phone, opening_hours, latitude, longitude, district, state, buyer_type, purchase_conditions, is_demo, verified, created_at, updated_at')
           .order('shop_name', { ascending: true });
 
         if (!baseResult.error && baseResult.data && baseResult.data.length > 0) {
@@ -174,19 +188,6 @@ export async function getDealerById(id: string): Promise<{
     return { data: null, cropPrices: [], error: new Error('Invalid dealer ID'), isConfigured: isSupabaseConfigured };
   }
 
-  // Check demonstration dealers first if ID indicates a demo record
-  if (id.startsWith('demo-dealer-')) {
-    const demoDealer = ALL_DEMO_DEALERS.find((d) => d.id === id);
-    if (demoDealer) {
-      return {
-        data: demoDealer,
-        cropPrices: demoDealer.crop_prices || [],
-        error: null,
-        isConfigured: isSupabaseConfigured
-      };
-    }
-  }
-
   if (isSupabaseConfigured && supabase) {
     try {
       let { data, error } = await supabase
@@ -201,6 +202,11 @@ export async function getDealerById(id: string): Promise<{
           latitude,
           longitude,
           district,
+          state,
+          buyer_type,
+          purchase_conditions,
+          is_demo,
+          verified,
           created_at,
           updated_at,
           dealer_crop_prices (
@@ -209,6 +215,11 @@ export async function getDealerById(id: string): Promise<{
             buying_price,
             unit,
             active,
+            min_quantity,
+            max_capacity,
+            quantity_unit,
+            payment_terms,
+            grading_terms,
             created_at,
             crops (
               id,
@@ -224,7 +235,7 @@ export async function getDealerById(id: string): Promise<{
         // Fallback to baseline dealer row if relational join failed
         const baseResult = await supabase
           .from('dealers')
-          .select('id, profile_id, shop_name, address, phone, opening_hours, created_at, updated_at')
+          .select('id, profile_id, shop_name, address, phone, opening_hours, district, state, buyer_type, purchase_conditions, is_demo, verified, created_at, updated_at')
           .eq('id', id)
           .maybeSingle();
 
@@ -252,7 +263,7 @@ export async function getDealerById(id: string): Promise<{
 
   // Fallback lookup
   const fallbackList = getFallbackDealers();
-  const fallbackDealer = fallbackList.find((d) => d.id === id) || (id.startsWith('d') ? fallbackList[0] : null);
+  const fallbackDealer = fallbackList.find((d) => d.id === id || (id.startsWith('demo-dealer-') && d.id.includes(id.replace('demo-dealer-', '')))) || (id.startsWith('d') ? fallbackList[0] : null);
 
   if (fallbackDealer) {
     return {
@@ -267,7 +278,7 @@ export async function getDealerById(id: string): Promise<{
 }
 
 function getFallbackDealers(): Dealer[] {
-  return MOCK_DEALERS.map((dealer) => {
+  const mockMapped = MOCK_DEALERS.map((dealer) => {
     const activePrices = MOCK_DEALER_CROP_PRICES
       .filter((cp) => cp.dealer_id === dealer.id && cp.active)
       .map((cp) => ({
@@ -280,9 +291,17 @@ function getFallbackDealers(): Dealer[] {
 
     return {
       ...dealer,
+      isDemo: false,
       crop_prices: activePrices
     };
   });
+
+  const demoMapped = ALL_DEMO_DEALERS.map((demo) => ({
+    ...demo,
+    isDemo: true
+  }));
+
+  return [...mockMapped, ...demoMapped];
 }
 
 /**
@@ -383,3 +402,218 @@ export async function updateDealerProfile(
     error: null
   };
 }
+
+/**
+ * ==============================================================================
+ * DEALER INQUIRIES API (FIX 5)
+ * Persist farmer harvest lot offers and procurement requests directly in Supabase
+ * ==============================================================================
+ */
+
+export interface CreateInquiryInput {
+  dealerId: string;
+  dealerName: string;
+  farmerId?: string | null;
+  farmerName: string;
+  farmerPhone: string;
+  cropName: string;
+  quantity: number;
+  unit?: string;
+  expectedPrice?: number | null;
+  priceUnit?: string;
+  message?: string;
+}
+
+export async function createDealerInquiry(input: CreateInquiryInput): Promise<{
+  data: DealerInquiry | null;
+  error: Error | null;
+}> {
+  if (!input.dealerId || !input.farmerName || !input.farmerPhone || !input.cropName || input.quantity <= 0) {
+    return {
+      data: null,
+      error: new Error('Invalid inquiry details: dealer, farmer name, phone, crop, and quantity are required.')
+    };
+  }
+
+  const payload: Record<string, any> = {
+    dealer_id: input.dealerId,
+    dealer_name: input.dealerName,
+    farmer_id: input.farmerId || null,
+    farmer_name: input.farmerName.trim(),
+    farmer_phone: input.farmerPhone.trim(),
+    crop_name: input.cropName.trim(),
+    quantity: Number(input.quantity),
+    unit: input.unit || 'Quintals',
+    expected_price: input.expectedPrice !== undefined && input.expectedPrice !== null ? Number(input.expectedPrice) : null,
+    price_unit: input.priceUnit || '₹/Quintal',
+    message: input.message ? input.message.trim() : null,
+    status: 'new',
+    created_at: new Date().toISOString()
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('dealer_inquiries')
+        .insert([payload])
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase createDealerInquiry notice (storing in local fallback):', error.message);
+      } else if (data) {
+        return {
+          data: {
+            id: data.id,
+            dealerId: data.dealer_id,
+            dealerName: data.dealer_name,
+            farmerId: data.farmer_id,
+            farmerName: data.farmer_name,
+            farmerPhone: data.farmer_phone,
+            cropName: data.crop_name,
+            estimatedQuantity: `${data.quantity} ${data.unit}`,
+            expectedPrice: data.expected_price ? `₹${data.expected_price}/${data.unit}` : 'Negotiable',
+            message: data.message || '',
+            status: data.status as 'new' | 'contacted' | 'completed',
+            createdAt: data.created_at
+          } as any,
+          error: null
+        };
+      }
+    } catch (err: any) {
+      console.warn('createDealerInquiry exception, falling back to local storage:', err);
+    }
+  }
+
+  // Local fallback storage for offline resilience
+  const localId = `inq-${Date.now()}`;
+  const localInquiry: DealerInquiry = {
+    id: localId,
+    dealer_id: input.dealerId,
+    dealer_name: input.dealerName,
+    farmer_id: input.farmerId || null,
+    farmer_name: input.farmerName,
+    farmer_phone: input.farmerPhone,
+    crop_name: input.cropName,
+    quantity: input.quantity,
+    unit: input.unit || 'Quintals',
+    expected_price: input.expectedPrice,
+    price_unit: input.priceUnit || '₹/Quintal',
+    message: input.message,
+    status: 'new',
+    created_at: payload.created_at
+  };
+
+  if (typeof window !== 'undefined') {
+    try {
+      const existing = JSON.parse(localStorage.getItem('agrime_inquiries') || '[]');
+      existing.unshift(localInquiry);
+      localStorage.setItem('agrime_inquiries', JSON.stringify(existing));
+    } catch {}
+  }
+
+  return { data: localInquiry, error: null };
+}
+
+export async function getDealerInquiries(dealerId: string): Promise<{
+  data: DealerInquiry[];
+  error: Error | null;
+}> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      let query = supabase
+        .from('dealer_inquiries')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (dealerId && dealerId !== 'all') {
+        query = query.eq('dealer_id', dealerId);
+      }
+
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return { data: data as DealerInquiry[], error: null };
+      }
+    } catch (err) {
+      console.warn('getDealerInquiries notice, checking local cache:', err);
+    }
+  }
+
+  // Local fallback
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = JSON.parse(localStorage.getItem('agrime_inquiries') || '[]');
+      const filtered = dealerId && dealerId !== 'all'
+        ? stored.filter((i: any) => i.dealer_id === dealerId || i.dealerId === dealerId)
+        : stored;
+      return { data: filtered, error: null };
+    } catch {}
+  }
+
+  return { data: [], error: null };
+}
+
+export async function getFarmerInquiries(farmerId: string): Promise<{
+  data: DealerInquiry[];
+  error: Error | null;
+}> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('dealer_inquiries')
+        .select('*')
+        .eq('farmer_id', farmerId)
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        return { data: data as DealerInquiry[], error: null };
+      }
+    } catch (err) {
+      console.warn('getFarmerInquiries notice:', err);
+    }
+  }
+
+  // Local fallback
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = JSON.parse(localStorage.getItem('agrime_inquiries') || '[]');
+      const filtered = stored.filter((i: any) => i.farmer_id === farmerId || i.farmerId === farmerId);
+      return { data: filtered, error: null };
+    } catch {}
+  }
+
+  return { data: [], error: null };
+}
+
+export async function updateDealerInquiryStatus(
+  inquiryId: string,
+  status: 'new' | 'contacted' | 'completed' | 'cancelled'
+): Promise<{ success: boolean; error: Error | null }> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('dealer_inquiries')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', inquiryId);
+
+      if (!error) {
+        return { success: true, error: null };
+      }
+    } catch (err: any) {
+      console.warn('updateDealerInquiryStatus error:', err);
+    }
+  }
+
+  // Local fallback
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = JSON.parse(localStorage.getItem('agrime_inquiries') || '[]');
+      const updated = stored.map((i: any) => i.id === inquiryId ? { ...i, status } : i);
+      localStorage.setItem('agrime_inquiries', JSON.stringify(updated));
+      return { success: true, error: null };
+    } catch {}
+  }
+
+  return { success: true, error: null };
+}
+

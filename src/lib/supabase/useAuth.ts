@@ -120,29 +120,10 @@ export function useAuth(): AuthState {
   useEffect(() => {
     let isMounted = true;
 
-    // Check for demo session if Supabase is not configured or in fallback
-    const checkDemoSession = () => {
-      if (typeof window !== 'undefined') {
-        try {
-          const demoRaw = localStorage.getItem('agrime_demo_session');
-          if (demoRaw) {
-            const demoData = JSON.parse(demoRaw);
-            if (demoData?.user && isMounted) {
-              setUser(demoData.user);
-              setProfile(demoData.profile);
-              setRole(demoData.profile?.role || 'farmer');
-              document.cookie = 'agrime_auth=true; path=/; max-age=604800; SameSite=Lax';
-              setLoading(false);
-              return true;
-            }
-          }
-        } catch {}
-      }
-      return false;
-    };
-
     if (!isSupabaseConfigured || !supabase) {
-      checkDemoSession();
+      setUser(null);
+      setProfile(null);
+      setRole(null);
       setLoading(false);
       return;
     }
@@ -166,9 +147,7 @@ export function useAuth(): AuthState {
             }
           }
         } else {
-          // Check if local demo session is active
-          const hasDemo = checkDemoSession();
-          if (!hasDemo && isMounted) {
+          if (isMounted) {
             setUser(null);
             setProfile(null);
             setRole(null);

@@ -31,7 +31,7 @@ import DealerCard from '@/components/dealers/DealerCard';
 import { PageHeader, EmptyState, CategoryTabs } from '@/components/ui';
 import { useLanguage } from '@/i18n';
 import { calculateDistanceKm, TAMIL_NADU_DISTRICTS, DistrictPreset } from '@/lib/location';
-import { ALL_DEMO_DEALERS, BUYER_TYPES } from '@/lib/dealers-data';
+import { BUYER_TYPES, ALL_DEMO_DEALERS } from '@/lib/dealers-data';
 
 export default function DealersPageClient() {
   const [realDealers, setRealDealers] = useState<Dealer[]>([]);
@@ -111,13 +111,16 @@ export default function DealersPageClient() {
       if (dealersRes.error) {
         setError(translations.dealers.noDealersDescription);
       } else {
-        // Ensure real dealers are explicitly flagged as not demo and verified
-        const sanitizedReal = (dealersRes.data || []).map((d) => ({
-          ...d,
-          isDemo: false,
-          verified: true
-        }));
-        setRealDealers(sanitizedReal);
+        // Map dealers retrieved from Supabase, preserving demo markers honestly
+        const sanitized = (dealersRes.data || []).map((d) => {
+          const isDemoDealer = Boolean(d.isDemo || d.id.startsWith('demo-') || d.id.startsWith('00000000-0000-0000-0001'));
+          return {
+            ...d,
+            isDemo: isDemoDealer,
+            verified: !isDemoDealer
+          };
+        });
+        setRealDealers(sanitized);
       }
 
       if (pricesRes.data) {
@@ -180,9 +183,9 @@ export default function DealersPageClient() {
     );
   };
 
-  // Combine real dealers and 10 demonstration dealers
+  // Database-backed dealers (retrieved from Supabase with verified/demo markers)
   const allAvailableDealers = useMemo(() => {
-    return [...realDealers, ...ALL_DEMO_DEALERS];
+    return realDealers;
   }, [realDealers]);
 
   // Extract unique crops bought across all dealers

@@ -13,14 +13,18 @@ import {
   Info, 
   PackageCheck,
   Sprout,
-  Store
+  Store,
+  FileText,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
-import { MOCK_PRODUCTS } from '@/lib/mock-data';
 import ProductCard from '@/components/ecommerce/ProductCard';
 import FarmerMarketplace from '@/components/ecommerce/FarmerMarketplace';
-import { Product, ProductCategory } from '@/types';
+import { Product, ProductCategory, Order } from '@/types';
 import { useLanguage } from '@/i18n';
 import { useAgri } from '@/context/AgriContext';
+import { getProducts } from '@/lib/supabase/products';
+import { createOrder, getCustomerOrders } from '@/lib/supabase/orders';
 import { PageHeader, SearchBar, CategoryTabs, EmptyState } from '@/components/ui';
 
 interface ConfirmedOrder {
@@ -35,7 +39,13 @@ interface ConfirmedOrder {
 
 export default function EcommercePageClient() {
   const { cart, addToCart, removeFromCart, updateCartQuantity, clearCart, currentUser } = useAgri();
-  const products = MOCK_PRODUCTS;
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [customerOrders, setCustomerOrders] = useState<Order[]>([]);
+  const [ordersModalOpen, setOrdersModalOpen] = useState(false);
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [orderSubmitError, setOrderSubmitError] = useState<string | null>(null);
+
   const { language, translations, translateCategory } = useLanguage();
   const isTa = language === 'ta';
   const tMarketplace = translations.farmerMarketplace;
@@ -63,14 +73,39 @@ export default function EcommercePageClient() {
     }
   }, []);
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+
+  // Fetch products from Supabase (or fallback)
+  useEffect(() => {
+    let isMounted = true;
+    setProductsLoading(true);
+    getProducts(selectedCategory).then((res) => {
+      if (!isMounted) return;
+      if (res.data) {
+        setProducts(res.data);
+      }
+      setProductsLoading(false);
+    }).catch(() => {
+      if (isMounted) setProductsLoading(false);
+    });
+    return () => { isMounted = false; };
+  }, [selectedCategory]);
+
+  // Fetch customer orders from Supabase (or fallback)
+  useEffect(() => {
+    getCustomerOrders(currentUser?.id).then((res) => {
+      if (res.data) {
+        setCustomerOrders(res.data);
+      }
+    });
+  }, [currentUser?.id]);
+
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartTotal = cart.reduce(
     (total, item) => total + item.product.price * item.quantity,
     0
   );
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   // Categories list for inputs (50 demonstration products across 5 categories of 10 items each)
   const categories: (string | ProductCategory)[] = [
@@ -93,21 +128,58 @@ export default function EcommercePageClient() {
     });
   }, [products, searchTerm, selectedCategory]);
 
-  const handleConfirmOrder = (e: React.FormEvent) => {
+  const handleConfirmOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    const orderId = `ORD-${Date.now().toString().slice(-6)}`;
-    const newOrder: ConfirmedOrder = {
-      id: orderId,
-      method: fulfillmentMethod,
-      address: fulfillmentMethod === 'cod' ? deliveryAddress : 'Dealer Store Pickup',
-      phone: contactPhone,
-      total: cartTotal,
-      items: cart.map(i => ({ name: i.product.name, quantity: i.quantity, price: i.product.price })),
-      placedAt: new Date().toLocaleTimeString(isTa ? 'ta-IN' : 'en-IN', { hour: '2-digit', minute: '2-digit' })
-    };
-    setConfirmedOrder(newOrder);
-    clearCart();
-    setIsCheckingOut(false);
+    setOrderSubmitting(true);
+    setOrderSubmitError(null);
+
+    try {
+      const res = await createOrder({
+        customerId: currentUser?.id || null,
+        customerName: currentUser?.name || 'Customer',
+        customerPhone: contactPhone,
+        deliveryAddress: fulfillmentMethod === 'cod' ? deliveryAddress : 'Store Pickup (Counter Fulfillment)',
+        fulfillmentMethod: fulfillmentMethod,
+        items: cart.map((i) => ({
+          productId: i.product.id,
+          productName: i.product.name,
+          category: i.product.category,
+          quantity: i.quantity,
+          unitPrice: i.product.price
+        }))
+      });
+
+      if (res.error) {
+        setOrderSubmitError(res.error.message);
+        setOrderSubmitting(false);
+        return;
+      }
+
+      if (res.data) {
+        const order = res.data;
+        const newOrder: ConfirmedOrder = {
+          id: order.order_number,
+          method: order.fulfillment_method,
+          address: order.delivery_address,
+          phone: order.customer_phone,
+          total: order.total_amount,
+          items: (order.items || []).map((i) => ({
+            name: i.product_name,
+            quantity: i.quantity,
+            price: i.unit_price
+          })),
+          placedAt: new Date(order.created_at).toLocaleTimeString(isTa ? 'ta-IN' : 'en-IN', { hour: '2-digit', minute: '2-digit' })
+        };
+        setConfirmedOrder(newOrder);
+        setCustomerOrders((prev) => [order, ...prev]);
+        clearCart();
+        setIsCheckingOut(false);
+      }
+    } catch (err: any) {
+      setOrderSubmitError(err.message || 'Failed to persist order');
+    } finally {
+      setOrderSubmitting(false);
+    }
   };
 
   return (
@@ -125,19 +197,29 @@ export default function EcommercePageClient() {
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {activeTab === 'inputs' && (
-              <button
-                type="button"
-                onClick={() => setCartDrawerOpen(true)}
-                className="btn-primary text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 shadow-xs relative"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                <span>{translations.ecommerce.cart} ({cartCount})</span>
-                {cartCount > 0 && (
-                  <span className="bg-amber-400 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
-                    ₹{cartTotal.toLocaleString('en-IN')}
-                  </span>
-                )}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setOrdersModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                >
+                  <FileText className="w-4 h-4 text-purple-600" />
+                  <span>{isTa ? 'என் ஆர்டர்கள்' : 'My Orders'} ({customerOrders.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCartDrawerOpen(true)}
+                  className="btn-primary text-xs sm:text-sm py-2 px-3.5 flex items-center gap-2 shadow-xs relative"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>{translations.ecommerce.cart} ({cartCount})</span>
+                  {cartCount > 0 && (
+                    <span className="bg-amber-400 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
+                      ₹{cartTotal.toLocaleString('en-IN')}
+                    </span>
+                  )}
+                </button>
+              </>
             )}
           </div>
         }
@@ -258,7 +340,18 @@ export default function EcommercePageClient() {
                 </h2>
               </div>
 
-              {filteredProducts.length === 0 ? (
+              {productsLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <div key={i} className="bg-white rounded-2xl p-4 border border-slate-200 animate-pulse space-y-3">
+                      <div className="h-44 bg-slate-100 rounded-xl" />
+                      <div className="h-4 bg-slate-100 rounded w-3/4" />
+                      <div className="h-3 bg-slate-100 rounded w-1/2" />
+                      <div className="h-8 bg-slate-100 rounded-xl" />
+                    </div>
+                  ))}
+                </div>
+              ) : filteredProducts.length === 0 ? (
                 <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
                   <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                   <h3 className="text-base font-semibold text-slate-800">{translations.ecommerce.noProductsFound}</h3>
@@ -481,12 +574,20 @@ export default function EcommercePageClient() {
                       {tEcom.codNotice}
                     </div>
 
+                    {orderSubmitError && (
+                      <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                        <span>{orderSubmitError}</span>
+                      </div>
+                    )}
+
                     <button
                       type="submit"
-                      className="btn-primary w-full py-3 text-xs font-bold flex items-center justify-center gap-2"
+                      disabled={orderSubmitting}
+                      className="btn-primary w-full py-3 text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       <PackageCheck className="w-4 h-4" />
-                      <span>{tEcom.placeOrderBtn}</span>
+                      <span>{orderSubmitting ? (isTa ? 'ஆர்டர் பதிவு செய்யப்படுகிறது...' : 'Recording Order...') : tEcom.placeOrderBtn}</span>
                     </button>
                   </form>
                 ) : cart.length === 0 ? (
@@ -565,6 +666,95 @@ export default function EcommercePageClient() {
                 </div>
               )}
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Orders History Modal */}
+      {ordersModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-200 text-purple-700 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base sm:text-lg">
+                    {isTa ? 'என் ஆர்டர்கள்' : 'My Orders'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {isTa ? 'பதிவு செய்யப்பட்ட அனைத்து வேளாண் பொருட்கள் ஆர்டர்கள்' : 'Database-persisted agricultural input orders'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setOrdersModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto py-4 space-y-4 flex-1">
+              {customerOrders.length === 0 ? (
+                <div className="text-center py-12">
+                  <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-slate-700">{isTa ? 'இன்னும் ஆர்டர்கள் எதுவும் இல்லை' : 'No recorded orders yet'}</p>
+                  <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                    {isTa ? 'கார்ட்டில் பொருட்களைச் சேர்த்து ஆர்டரை உறுதிசெய்தால் இங்கு பதிவாகும்.' : 'When you confirm an order with Cash on Delivery or Store Pickup, it will be saved here.'}
+                  </p>
+                </div>
+              ) : (
+                customerOrders.map((order) => (
+                  <div key={order.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-black text-slate-900">{order.order_number}</span>
+                        <span className="text-[11px] text-slate-400">• {new Date(order.created_at).toLocaleDateString(isTa ? 'ta-IN' : 'en-IN')}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 border border-amber-200">
+                          {isTa ? 'கட்டணம் நிலுவை (COD)' : 'Payment Pending (COD)'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-100 text-blue-800 border border-blue-200">
+                          {order.order_status}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="divide-y divide-slate-200/60 bg-white rounded-xl p-3 border border-slate-200/80 text-xs">
+                      {order.items?.map((item, idx) => (
+                        <div key={idx} className="py-1.5 first:pt-0 last:pb-0 flex items-center justify-between text-slate-700">
+                          <span className="font-medium line-clamp-1 flex-1 pr-2">{item.product_name} × {item.quantity}</span>
+                          <span className="font-mono font-semibold shrink-0">₹{item.total_price.toLocaleString('en-IN')}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200">
+                      <span className="text-slate-500 font-medium">
+                        {order.fulfillment_method === 'pickup' ? (isTa ? 'கடை நேரில் பெறுதல்' : 'Store Pickup') : (isTa ? 'பணம் செலுத்திப் பெறுதல் (COD)' : 'Cash on Delivery')}
+                      </span>
+                      <div className="text-right">
+                        <span className="text-[11px] text-slate-400 block">{isTa ? 'மொத்தத் தொகை' : 'Total'}</span>
+                        <span className="text-sm font-black text-slate-900 font-mono">₹{order.total_amount.toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setOrdersModalOpen(false)}
+                className="btn-primary text-xs py-2 px-4"
+              >
+                {translations.common.close}
+              </button>
             </div>
           </div>
         </div>

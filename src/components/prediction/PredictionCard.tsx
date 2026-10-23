@@ -104,8 +104,8 @@ export default function PredictionCard({ prediction, onSelect }: PredictionCardP
             <div>
               <div className="flex items-center justify-between mb-0.5">
                 <span className="text-[11px] font-medium text-slate-500 block">{translations.prediction.predictedRange}</span>
-                <span className="text-[9px] font-bold uppercase text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
-                  95% CI
+                <span className="text-[9px] font-bold uppercase text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                  {isTa ? 'மதிப்பீடு' : 'EST'}
                 </span>
               </div>
               <span className="text-lg font-black text-blue-900">

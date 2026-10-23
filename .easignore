@@ -1,0 +1,7 @@
+AppData/
+**/AppData/
+node_modules/
+**/node_modules/
+.expo/
+**/.expo/
+.git/

@@ -16,7 +16,6 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 import { MOCK_MACHINERY } from '@/lib/mock-data';
-import { DEMO_MACHINERY_DRIVERS } from '@/lib/machinery-drivers-data';
 import { Machinery, MachineryBooking } from '@/types';
 import MachineryCard from '@/components/machinery/MachineryCard';
 import MachineryBookingForm from '@/components/machinery/MachineryBookingForm';
@@ -130,26 +129,24 @@ export default function MachineryPageClient() {
     );
   };
 
-  // 1. Unified Dataset: Combine all 4 real fleet records + all 10 demo driver profiles into ONE array
+  // 1. Unified Dataset: Load from database (with fallback), preserving demo vs real indicators
   const allMachinery = useMemo<Machinery[]>(() => {
-    const rawReal = dbMachinery.length > 0 ? dbMachinery : contextMachinery;
-    const realItems = rawReal.map((m) => ({
-      ...m,
-      isDemo: false
-    }));
-
-    const demoItems = DEMO_MACHINERY_DRIVERS.map((m) => ({
-      ...m,
-      isDemo: true
-    }));
-
-    // Deduplicate by ID
+    const rawList = dbMachinery.length > 0 ? dbMachinery : contextMachinery;
     const seen = new Set<string>();
     const unified: Machinery[] = [];
-    for (const item of [...realItems, ...demoItems]) {
+
+    for (const item of rawList) {
       if (!seen.has(item.id)) {
         seen.add(item.id);
-        unified.push(item);
+        const isDemo = Boolean(
+          item.isDemo ||
+          item.id.startsWith('demo-') ||
+          item.id.startsWith('00000000-0000-0000-0002')
+        );
+        unified.push({
+          ...item,
+          isDemo
+        });
       }
     }
     return unified;

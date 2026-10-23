@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { Text, View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -93,8 +93,20 @@ function MainTabNavigator() {
 }
 
 export default function AppNavigator() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const { t } = useLanguage();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#15803d', justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 36, fontWeight: '900', color: '#ffffff' }}>🌾 AgriME</Text>
+        <Text style={{ fontSize: 13, color: '#bbf7d0', marginTop: 6, fontWeight: '600' }}>
+          Farmer Decision & Service Platform
+        </Text>
+        <ActivityIndicator size="large" color="#ffffff" style={{ marginTop: 24 }} />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>

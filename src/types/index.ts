@@ -344,3 +344,55 @@ export interface ProduceRequest {
   farmer?: Profile;
 }
 
+export type FulfillmentMethod = 'cod' | 'pickup';
+export type PaymentStatus = 'pending' | 'completed' | 'cancelled';
+export type OrderStatus = 'placed' | 'confirmed' | 'packed' | 'dispatched' | 'delivered' | 'cancelled';
+
+export interface OrderItem {
+  id?: string;
+  order_id?: string;
+  product_id?: string;
+  product_name: string;
+  category: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  created_at?: string;
+}
+
+export interface Order {
+  id: string;
+  order_number: string;
+  customer_id?: string | null;
+  customer_name: string;
+  customer_phone: string;
+  delivery_address: string;
+  fulfillment_method: FulfillmentMethod;
+  payment_method: string;
+  payment_status: PaymentStatus;
+  order_status: OrderStatus;
+  total_amount: number;
+  notes?: string;
+  created_at: string;
+  updated_at?: string;
+  items?: OrderItem[];
+}
+
+export interface DealerInquiry {
+  id: string;
+  farmer_id?: string | null;
+  dealer_id: string;
+  dealer_name: string;
+  farmer_name: string;
+  farmer_phone: string;
+  crop_name: string;
+  quantity: number;
+  unit: string;
+  expected_price?: number | null;
+  price_unit?: string;
+  message?: string;
+  status: 'new' | 'contacted' | 'completed' | 'cancelled';
+  created_at: string;
+  updated_at?: string;
+}
+

@@ -11,8 +11,16 @@ import { spec } from 'node:test/reporters';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { generateAllAssets } from '../scripts/generate-png-assets.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Ensure valid mobile brand assets are prepared
+try {
+  generateAllAssets();
+} catch (e) {
+  console.warn('Asset generation note:', e.message);
+}
 
 const testFiles = [
   path.join(__dirname, 'unit', 'location.test.mjs'),
@@ -30,7 +38,8 @@ const testFiles = [
   path.join(__dirname, 'unit', 'auth-onboarding.test.mjs'),
   path.join(__dirname, 'unit', 'dealer-portal-and-profile.test.mjs'),
   path.join(__dirname, 'unit', 'customization-tasks.test.mjs'),
-  path.join(__dirname, 'unit', 'error-propagation-and-persistence.test.mjs')
+  path.join(__dirname, 'unit', 'error-propagation-and-persistence.test.mjs'),
+  path.join(__dirname, 'unit', 'mobile-app-verification.test.mjs')
 ];
 
 console.log('====================================================');

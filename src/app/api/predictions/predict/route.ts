@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { predictCropPriceWithTreeEnsemble } from '@/lib/tree-inference-engine';
-import { predictCropPrice } from '@/lib/ml-prediction-service';
+import { predictCropPrice, generateAllMLPredictions } from '@/lib/ml-prediction-service';
 import { queryHistoricalPrices, slugify } from '@/lib/historical-data';
+import { MOCK_CROP_PRICES, MOCK_CROPS, MOCK_MARKETS } from '@/lib/mock-data';
 
 function computeForecast(params: {
   cropSlug: string;
@@ -74,6 +75,16 @@ function computeForecast(params: {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+
+    // Support bulk prediction retrieval for all tracked crops and markets
+    if (searchParams.get('all') === 'true' || searchParams.get('suite') === 'true') {
+      const allPredictions = generateAllMLPredictions(MOCK_CROP_PRICES, MOCK_CROPS, MOCK_MARKETS);
+      return NextResponse.json({
+        success: true,
+        data: allPredictions
+      });
+    }
+
     const cropParam = searchParams.get('crop') || searchParams.get('crop_id') || 'tomato';
     const districtParam = searchParams.get('district') || undefined;
     const marketParam = searchParams.get('market') || searchParams.get('market_id') || undefined;

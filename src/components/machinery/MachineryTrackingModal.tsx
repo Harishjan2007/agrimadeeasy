@@ -112,8 +112,16 @@ export default function MachineryTrackingModal({
     name: booking.farmer?.location || 'Katpadi Farm, Vellore'
   };
 
-  // Calculate live distance & ETA if provider GPS is available
-  const hasLiveGps = Boolean(trackingData?.latitude && trackingData?.longitude);
+  // Check if machinery is demonstration data
+  const isDemo = Boolean(
+    machine?.isDemo ||
+    booking.machinery?.isDemo ||
+    booking.machinery_id?.startsWith('demo-') ||
+    booking.machinery_id?.startsWith('00000000-0000-0000-0002')
+  );
+
+  // Calculate live distance & ETA if provider GPS is available and NOT a demo booking
+  const hasLiveGps = !isDemo && Boolean(trackingData?.latitude && trackingData?.longitude);
   const distanceKm = hasLiveGps
     ? calculateDistanceKm(
         trackingData!.latitude,
@@ -209,6 +217,22 @@ export default function MachineryTrackingModal({
 
         {/* Modal Body */}
         <div className="overflow-y-auto p-4 sm:p-6 space-y-4 flex-1">
+          {isDemo && (
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-bold text-amber-900 block">
+                  {isTa ? 'மாதிரி முன்பதிவு — நேரலை ஜிபிஎஸ் இயக்கப்படவில்லை' : 'Demonstration Booking — Live GPS Inactive'}
+                </span>
+                <p className="text-[11px] text-amber-800">
+                  {isTa
+                    ? 'இது செயல்முறை விளக்கத்திற்காக உருவாக்கப்பட்ட மாதிரி உபகரணம் ஆகும். இதற்கு உண்மையான வாகன இயக்கம் அல்லது நேரலை ஜிபிஎஸ் டிராக்கிங் கிடையாது.'
+                    : 'This is an illustrative demonstration booking record. Demo equipment does not have verified real-time availability or physical GPS driver dispatch.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Status & ETA Banner Card */}
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

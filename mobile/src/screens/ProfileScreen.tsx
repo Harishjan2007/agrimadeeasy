@@ -1,18 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView
+  SafeAreaView,
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth, UserRole } from '../context/AuthContext';
 
 export default function ProfileScreen({ navigation }: any) {
   const { t, language, setLanguage } = useLanguage();
-  const { user, setUserRole, signOut } = useAuth();
+  const { user, setUserRole, updateProfile, signOut } = useAuth();
+
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editName, setEditName] = useState(user?.name || '');
+  const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [editLocation, setEditLocation] = useState(user?.location || '');
+  const [editDistrict, setEditDistrict] = useState(user?.district || '');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const roles: { key: UserRole; label: string; icon: string }[] = [
     { key: 'farmer', label: t('farmerRole'), icon: '🌾' },
@@ -21,6 +32,42 @@ export default function ProfileScreen({ navigation }: any) {
     { key: 'buyer', label: t('buyerRole'), icon: '💼' }
   ];
 
+  const handleOpenEdit = () => {
+    setEditName(user?.name || '');
+    setEditPhone(user?.phone || '');
+    setEditLocation(user?.location || '');
+    setEditDistrict(user?.district || '');
+    setEditModalVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      Alert.alert('Required Field', 'Please enter your name.');
+      return;
+    }
+    if (!editPhone.trim() || editPhone.trim().length < 10) {
+      Alert.alert('Invalid Mobile', 'Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    setIsUpdating(true);
+    const { error } = await updateProfile({
+      name: editName.trim(),
+      phone: editPhone.trim(),
+      location: editLocation.trim(),
+      district: editDistrict.trim()
+    });
+    setIsUpdating(false);
+
+    if (error) {
+      Alert.alert('Update Failed', error.message || 'Could not update profile.');
+      return;
+    }
+
+    setEditModalVisible(false);
+    Alert.alert('Success', t('profileUpdated'));
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -28,12 +75,21 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {user.name.slice(0, 2).toUpperCase()}
+              {(user?.name || 'AG').slice(0, 2).toUpperCase()}
             </Text>
           </View>
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.userPhone}>{user.phone}</Text>
-          <Text style={styles.userLoc}>📍 {user.location} ({user.district})</Text>
+          <Text style={styles.userName}>{user?.name || 'AgriME User'}</Text>
+          <Text style={styles.userEmail}>{user?.email || 'Authenticated User'}</Text>
+          {Boolean(user?.phone) && (
+            <Text style={styles.userPhone}>📞 {user?.phone}</Text>
+          )}
+          <Text style={styles.userLoc}>
+            📍 {user?.location || 'Tamil Nadu'} ({user?.district || 'Tamil Nadu'})
+          </Text>
+
+          <TouchableOpacity style={styles.editProfileBtn} onPress={handleOpenEdit}>
+            <Text style={styles.editProfileBtnText}>✏️ Edit Profile</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Role Selector */}
@@ -45,7 +101,7 @@ export default function ProfileScreen({ navigation }: any) {
                 key={r.key}
                 style={[
                   styles.roleTile,
-                  user.role === r.key && styles.roleTileActive
+                  user?.role === r.key && styles.roleTileActive
                 ]}
                 onPress={() => setUserRole(r.key)}
               >
@@ -53,7 +109,7 @@ export default function ProfileScreen({ navigation }: any) {
                 <Text
                   style={[
                     styles.roleText,
-                    user.role === r.key && styles.roleTextActive
+                    user?.role === r.key && styles.roleTextActive
                   ]}
                 >
                   {r.label}
@@ -136,10 +192,85 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
 
         {/* Sign Out Button */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={signOut}>
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          onPress={() => {
+            Alert.alert(
+              t('logout'),
+              'Are you sure you want to sign out of AgriME?',
+              [
+                { text: t('cancel'), style: 'cancel' },
+                { text: t('logout'), style: 'destructive', onPress: signOut }
+              ]
+            );
+          }}
+        >
           <Text style={styles.logoutText}>{t('logout')}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <Modal visible={editModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalHeading}>Edit Profile</Text>
+
+            <Text style={styles.inputLabel}>{t('fullName')} *</Text>
+            <TextInput
+              style={styles.input}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Your Full Name"
+            />
+
+            <Text style={styles.inputLabel}>{t('phone')} *</Text>
+            <TextInput
+              style={styles.input}
+              value={editPhone}
+              onChangeText={setEditPhone}
+              placeholder="10-digit mobile number"
+              keyboardType="phone-pad"
+            />
+
+            <Text style={styles.inputLabel}>{t('location')}</Text>
+            <TextInput
+              style={styles.input}
+              value={editLocation}
+              onChangeText={setEditLocation}
+              placeholder="Village or farm area"
+            />
+
+            <Text style={styles.inputLabel}>{t('district')}</Text>
+            <TextInput
+              style={styles.input}
+              value={editDistrict}
+              onChangeText={setEditDistrict}
+              placeholder="District"
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text style={styles.cancelBtnText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.saveBtn, isUpdating && styles.saveBtnDisabled]}
+                onPress={handleSaveProfile}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : (
+                  <Text style={styles.saveBtnText}>{t('saveChanges')}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -181,15 +312,35 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#0f172a'
   },
-  userPhone: {
+  userEmail: {
     fontSize: 13,
     color: '#64748b',
     marginTop: 2
+  },
+  userPhone: {
+    fontSize: 13,
+    color: '#0f172a',
+    fontWeight: '600',
+    marginTop: 4
   },
   userLoc: {
     fontSize: 12,
     color: '#475569',
     marginTop: 4
+  },
+  editProfileBtn: {
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  editProfileBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a'
   },
   section: {
     marginBottom: 20
@@ -292,6 +443,71 @@ const styles = StyleSheet.create({
   logoutText: {
     color: '#b91c1c',
     fontSize: 14,
+    fontWeight: '800'
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 24
+  },
+  modalHeading: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 16
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 4,
+    marginTop: 4
+  },
+  input: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    fontSize: 14,
+    color: '#0f172a',
+    marginBottom: 10
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9'
+  },
+  cancelBtnText: {
+    color: '#64748b',
+    fontWeight: '700'
+  },
+  saveBtn: {
+    flex: 2,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#15803d'
+  },
+  saveBtnDisabled: {
+    backgroundColor: '#86efac'
+  },
+  saveBtnText: {
+    color: '#ffffff',
     fontWeight: '800'
   }
 });

@@ -16,7 +16,7 @@ export const DEMO_MACHINERY_DRIVERS: Machinery[] = [
     longitude: 79.1380,
     available: true,
     isDemo: true,
-    image_url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80',
+    image_url: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=800&q=80',
     created_at: '2026-08-01T00:00:00Z',
     updated_at: '2026-08-24T00:00:00Z',
     provider: {
@@ -44,7 +44,7 @@ export const DEMO_MACHINERY_DRIVERS: Machinery[] = [
     longitude: 79.1240,
     available: true,
     isDemo: true,
-    image_url: 'https://images.unsplash.com/photo-1595246140625-573b715d11dc?auto=format&fit=crop&w=600&q=80',
+    image_url: 'https://images.unsplash.com/photo-1584441405886-bc91be61e56a?auto=format&fit=crop&w=800&q=80',
     created_at: '2026-08-01T00:00:00Z',
     updated_at: '2026-08-24T00:00:00Z',
     provider: {
@@ -72,7 +72,7 @@ export const DEMO_MACHINERY_DRIVERS: Machinery[] = [
     longitude: 79.3845,
     available: true,
     isDemo: true,
-    image_url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=600&q=80',
+    image_url: 'https://images.unsplash.com/photo-1592417817098-8f3d6910985b?auto=format&fit=crop&w=800&q=80',
     created_at: '2026-08-01T00:00:00Z',
     updated_at: '2026-08-24T00:00:00Z',
     provider: {
@@ -100,7 +100,7 @@ export const DEMO_MACHINERY_DRIVERS: Machinery[] = [
     longitude: 78.8710,
     available: true,
     isDemo: true,
-    image_url: 'https://images.unsplash.com/photo-1530595467537-0b5996c41f2d?auto=format&fit=crop&w=600&q=80',
+    image_url: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?auto=format&fit=crop&w=800&q=80',
     created_at: '2026-08-01T00:00:00Z',
     updated_at: '2026-08-24T00:00:00Z',
     provider: {
@@ -184,7 +184,7 @@ export const DEMO_MACHINERY_DRIVERS: Machinery[] = [
     longitude: 79.4450,
     available: true,
     isDemo: true,
-    image_url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=600&q=80',
+    image_url: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?auto=format&fit=crop&w=800&q=80',
     created_at: '2026-08-01T00:00:00Z',
     updated_at: '2026-08-24T00:00:00Z',
     provider: {

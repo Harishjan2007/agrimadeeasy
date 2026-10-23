@@ -377,35 +377,13 @@ function SignupContent() {
       return;
     }
 
-    // Local / Offline Simulation
-    setTimeout(() => {
-      const demoId = `user_${selectedRole}_${Date.now()}`;
-      const demoUser = {
-        id: demoId,
-        email: email.trim(),
-        user_metadata: {
-          ...signUpPayload
-        }
-      };
-
-      const demoProfile = {
-        id: demoId,
-        ...signUpPayload,
-        created_at: new Date().toISOString()
-      };
-
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('agrime_demo_session', JSON.stringify({ user: demoUser, profile: demoProfile }));
-          localStorage.setItem(`agrime_profile_${demoId}`, JSON.stringify(demoProfile));
-        } catch {}
-        setAuthCookie();
-      }
-
-      setLoading(false);
-      const destination = getDestinationUrl();
-      router.push(destination);
-    }, 400);
+    // Supabase unconfigured mode
+    setErrorMessage(
+      isTa
+        ? 'Supabase தரவுத்தளம் இணைக்கப்படவில்லை. புதிய கணக்குகளைப் பதிவு செய்ய தரவுத்தள இணைப்பு தேவை.'
+        : 'Supabase authentication is not configured. An active database connection is required to create new accounts.'
+    );
+    setLoading(false);
   };
 
   const getInterestIcon = (iconName: string) => {

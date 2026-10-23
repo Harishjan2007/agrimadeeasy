@@ -75,40 +75,13 @@ function LoginContent() {
       return;
     }
 
-    // Supabase unconfigured fallback mode
-    setTimeout(() => {
-      const demoId = `user_${Date.now()}`;
-      const demoUser = {
-        id: demoId,
-        email: email || `user@agrime.in`,
-        user_metadata: {
-          name: email.split('@')[0],
-          role: selectedRole
-        }
-      };
-
-      const demoProfile = {
-        id: demoId,
-        name: email.split('@')[0],
-        email: demoUser.email,
-        phone: '',
-        role: selectedRole,
-        location: 'Tamil Nadu',
-        created_at: new Date().toISOString()
-      };
-
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('agrime_demo_session', JSON.stringify({ user: demoUser, profile: demoProfile }));
-          localStorage.setItem(`agrime_profile_${demoId}`, JSON.stringify(demoProfile));
-        } catch {}
-        setAuthCookie();
-      }
-
-      setLoading(false);
-      const destination = getDestinationUrl(selectedRole);
-      router.push(destination);
-    }, 350);
+    // If Supabase is not configured, do NOT create a fake session
+    setErrorMessage(
+      isTa
+        ? 'Supabase அங்கீகார சேவை கட்டமைக்கப்படவில்லை. தயவுசெய்து உங்கள் சூழல் மாறிகளை கட்டமைக்கவும்.'
+        : 'Supabase authentication is not configured. Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to sign in.'
+    );
+    setLoading(false);
   };
 
   return (
