@@ -79,6 +79,10 @@ export interface MarketPricesApiResponse {
   resource_id: string;
   timestamp: string;
   diagnosticHint?: string;
+  isFallback?: boolean;
+  isLiveSupabaseSync?: boolean;
+  fallbackReason?: string;
+  sourceStatus?: string;
 }
 
 export const TAMIL_NADU_DISTRICTS = [

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "node tests/run-all.mjs",
-    "mobile:deps": "node scripts/fix-mobile-dependencies.mjs"
+    "mobile:deps": "node scripts/fix-mobile-dependencies.mjs",
+    "sync-mandi": "node scripts/sync-mandi.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

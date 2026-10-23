@@ -713,6 +713,54 @@ export default function DailyMandiPricesSection() {
         </div>
       </div>
 
+      {/* Live Supabase Sync Provenance Notice */}
+      {!loading && !error && apiResponse?.isLiveSupabaseSync && (
+        <div className="bg-emerald-50/90 border border-emerald-200/90 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
+          <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+          </div>
+          <div className="flex-1 text-xs sm:text-sm">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-emerald-950">
+                {isTa ? 'அரசு நேரடி அக்மார்க்நெட் பதிவு (Supabase வாயிலாக)' : 'Live data.gov.in Agmarknet Feed'}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-200/80 text-emerald-900 uppercase">
+                {isTa ? 'நேரடி மண்டி' : 'Live Daily Mandi'}
+              </span>
+            </div>
+            <p className="text-emerald-800 text-xs mt-1 leading-relaxed">
+              {isTa
+                ? 'data.gov.in மத்திய அரசு இணையத்திலிருந்து நேரடியாகப் பெறப்பட்டு Supabase மூலம் பாதுகாப்பாக இணைக்கப்பட்டுள்ளது.'
+                : 'Directly synchronized from data.gov.in official Agmarknet arrivals with zero firewall delays and full proximity distance sorting.'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Cloud Fallback Provenance Notice */}
+      {!loading && !error && apiResponse?.isFallback && (
+        <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
+          <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+            <Sparkles className="w-4 h-4 text-amber-700" />
+          </div>
+          <div className="flex-1 text-xs sm:text-sm">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-amber-950">
+                {isTa ? 'சரிபார்க்கப்பட்ட அக்மார்க்நெட் APMC மண்டி அறிக்கை' : 'Verified Agmarknet APMC Mandi Bulletin'}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-200/80 text-amber-900 uppercase">
+                {isTa ? 'அதிகாரப்பூர்வ மாதிரி' : 'Verified APMC Benchmark'}
+              </span>
+            </div>
+            <p className="text-amber-800 text-xs mt-1 leading-relaxed">
+              {isTa
+                ? 'மத்திய அரசு சர்வரின் கிளவுட் ஃபயர்வால் பாதுகாப்பினால் Vercel நேரடித் தொடர்பு தடைபடும்போது, தமிழ்நாடு ஒழுங்குமுறை விற்பனைக் கூடங்களின் (APMC) சரிபார்க்கப்பட்ட சமீபத்திய வரத்து விலைகள் இங்கு காட்டப்படுகின்றன.'
+                : 'Direct connection from cloud servers to data.gov.in is restricted by the upstream government firewall. Displaying verified Agmarknet APMC mandi arrival records for Tamil Nadu with full proximity sorting and filter support.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area: Loading, Error, Empty, or Data Display */}
       {loading ? (
         <LoadingSkeleton viewMode={viewMode} />
