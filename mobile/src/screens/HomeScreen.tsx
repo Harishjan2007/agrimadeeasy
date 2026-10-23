@@ -19,8 +19,13 @@ export default function HomeScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
-    const list = await MobileDataService.getCropPrices();
-    setPrices(list.slice(0, 3));
+    try {
+      const res: any = await MobileDataService.getCropPrices();
+      const list = Array.isArray(res) ? res : (res?.records || []);
+      setPrices(list.slice(0, 3));
+    } catch (e) {
+      console.warn('Failed to load prices for HomeScreen:', e);
+    }
   };
 
   useEffect(() => {
@@ -56,6 +61,24 @@ export default function HomeScreen({ navigation }: any) {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Dedicated Role Portal Banner if user is dealer or machinery provider */}
+        {user?.role === 'dealer' && (
+          <TouchableOpacity
+            style={styles.portalBanner}
+            onPress={() => navigation.navigate('DealerPortal')}
+          >
+            <Text style={styles.portalBannerText}>🏪 Open Your Dealer Portal →</Text>
+          </TouchableOpacity>
+        )}
+        {user?.role === 'machinery_provider' && (
+          <TouchableOpacity
+            style={[styles.portalBanner, { backgroundColor: '#fef3c7', borderColor: '#fde68a' }]}
+            onPress={() => navigation.navigate('MachineryProvider')}
+          >
+            <Text style={[styles.portalBannerText, { color: '#b45309' }]}>🚜 Open Your Machinery Provider Portal →</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Live / Recent Mandi Prices Snapshot */}
         <View style={styles.section}>
@@ -151,7 +174,7 @@ export default function HomeScreen({ navigation }: any) {
 
             <TouchableOpacity
               style={[styles.tile, { backgroundColor: '#ecfeff' }]}
-              onPress={() => navigation.navigate('Marketplace')}
+              onPress={() => navigation.navigate('FarmStore', { initialTab: 'sell' })}
             >
               <Text style={styles.tileEmoji}>🌾</Text>
               <Text style={styles.tileTitle}>{t('sellProduce')}</Text>
@@ -365,5 +388,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#15803d',
     lineHeight: 16
+  },
+  portalBanner: {
+    backgroundColor: '#dcfce7',
+    borderWidth: 1,
+    borderColor: '#86efac',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    alignItems: 'center'
+  },
+  portalBannerText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#15803d'
   }
 });

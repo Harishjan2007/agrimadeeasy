@@ -1,0 +1,261 @@
+/**
+ * AgriME Mobile — Demonstration Machinery Fleet & Driver Profiles
+ * Exact 10 demonstration profiles matching website src/lib/machinery-drivers-data.ts
+ * Includes coordinates across Tamil Nadu for GPS-based proximity calculation.
+ */
+
+export interface MachineryDriver {
+  id: string;
+  provider_id: string;
+  name: string;
+  type: string;
+  service_type: string;
+  driver_name: string;
+  experience_years: number;
+  description: string;
+  price_per_hour: number;
+  location: string;
+  district: string;
+  latitude: number;
+  longitude: number;
+  available: boolean;
+  isDemo: boolean;
+  image_url: string;
+  provider_name: string;
+  provider_phone: string;
+  contact_phone: string;
+  rating: number;
+}
+
+export const MACHINERY_TYPES = [
+  'All Types',
+  'Tractor',
+  'Paddy Harvester',
+  'Power Tiller',
+  'Sprayer',
+  'Thresher',
+  'Other'
+] as const;
+
+export const DEMO_MACHINERY_FLEET: MachineryDriver[] = [
+  {
+    id: 'demo-driver-01',
+    provider_id: 'demo-provider-01',
+    name: 'Murugan K. (Demo Profile) — Mahindra 45HP Tractor',
+    type: 'Tractor',
+    service_type: 'Rotavator & Seedbed Tillage',
+    driver_name: 'Murugan K. (Demo Operator)',
+    experience_years: 9,
+    description: 'Demonstration driver profile for illustrative purposes. Skilled in wetland puddling and fine tilth rotavator preparation for paddy and groundnut.',
+    price_per_hour: 750,
+    location: 'Katpadi, Vellore (Sample Location)',
+    district: 'Vellore',
+    latitude: 12.9710,
+    longitude: 79.1380,
+    available: true,
+    isDemo: true,
+    image_url: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=800&q=80',
+    provider_name: 'Murugan K. (Fictional Demo Driver)',
+    provider_phone: '+91 90000 00001',
+    contact_phone: '+91 90000 00001',
+    rating: 4.8
+  },
+  {
+    id: 'demo-driver-02',
+    provider_id: 'demo-provider-02',
+    name: 'Selvam P. (Demo Profile) — John Deere 50HP with Cultivator',
+    type: 'Tractor',
+    service_type: 'Deep Disc Ploughing & Cultivator',
+    driver_name: 'Selvam P. (Demo Operator)',
+    experience_years: 12,
+    description: 'Demonstration driver profile for illustrative purposes. Specializes in hard-pan breaking, heavy 9-tyne cultivator work, and dryland harrowing.',
+    price_per_hour: 800,
+    location: 'Polur, Thiruvannamalai (Sample Location)',
+    district: 'Tiruvannamalai',
+    latitude: 12.5020,
+    longitude: 79.1240,
+    available: true,
+    isDemo: true,
+    image_url: 'https://images.unsplash.com/photo-1584441405886-bc91be61e56a?auto=format&fit=crop&w=800&q=80',
+    provider_name: 'Selvam P. (Fictional Demo Driver)',
+    provider_phone: '+91 90000 00002',
+    contact_phone: '+91 90000 00002',
+    rating: 4.9
+  },
+  {
+    id: 'demo-driver-03',
+    provider_id: 'demo-provider-03',
+    name: 'Arumugam S. (Demo Profile) — Kubota Track Harvester',
+    type: 'Paddy Harvester',
+    service_type: 'Paddy Reaping, Threshing & Bagging',
+    driver_name: 'Arumugam S. (Demo Operator)',
+    experience_years: 7,
+    description: 'Demonstration driver profile for illustrative purposes. Rubber crawler track harvester operator with minimal grain loss in wet Delta paddy fields.',
+    price_per_hour: 1600,
+    location: 'Kumbakonam, Thanjavur (Sample Location)',
+    district: 'Thanjavur',
+    latitude: 10.9602,
+    longitude: 79.3845,
+    available: true,
+    isDemo: true,
+    image_url: 'https://images.unsplash.com/photo-1592417817098-8f3d6910985b?auto=format&fit=crop&w=800&q=80',
+    provider_name: 'Arumugam S. (Fictional Demo Driver)',
+    provider_phone: '+91 90000 00003',
+    contact_phone: '+91 90000 00003',
+    rating: 4.9
+  },
+  {
+    id: 'demo-driver-04',
+    provider_id: 'demo-provider-04',
+    name: 'Kandasamy V. (Demo Profile) — VST 13HP Power Tiller',
+    type: 'Power Tiller',
+    service_type: 'Wetland Puddling & Small-Plot Work',
+    driver_name: 'Kandasamy V. (Demo Operator)',
+    experience_years: 10,
+    description: 'Demonstration driver profile for illustrative purposes. Maneuverable walking power tiller operator for narrow terrace fields and banana plots.',
+    price_per_hour: 500,
+    location: 'Gudiyatham, Vellore (Sample Location)',
+    district: 'Vellore',
+    latitude: 12.9460,
+    longitude: 78.8710,
+    available: true,
+    isDemo: true,
+    image_url: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?auto=format&fit=crop&w=800&q=80',
+    provider_name: 'Kandasamy V. (Fictional Demo Driver)',
+    provider_phone: '+91 90000 00004',
+    contact_phone: '+91 90000 00004',
+    rating: 4.7
+  },
+  {
+    id: 'demo-driver-05',
+    provider_id: 'demo-provider-05',
+    name: 'Dhanapal M. (Demo Profile) — Sonalika Tractor with Seed Drill',
+    type: 'Tractor',
+    service_type: 'Zero-Till Sowing & Fertilizer Placement',
+    driver_name: 'Dhanapal M. (Demo Operator)',
+    experience_years: 6,
+    description: 'Demonstration driver profile for illustrative purposes. Experienced tractor operator for precision row seeding of groundnut and maize.',
+    price_per_hour: 700,
+    location: 'Attur, Salem (Sample Location)',
+    district: 'Salem',
+    latitude: 11.5975,
+    longitude: 78.6012,
+    available: true,
+    isDemo: true,
+    image_url: 'https://images.unsplash.com/photo-1617576683096-00fc8eecb3af?auto=format&fit=crop&w=600&q=80',
+    provider_name: 'Dhanapal M. (Fictional Demo Driver)',
+    provider_phone: '+91 90000 00005',
+    contact_phone: '+91 90000 00005',
+    rating: 4.6
+  },
+  {
+    id: 'demo-driver-06',
+    provider_id: 'demo-provider-06',
+    name: 'Rajendran N. (Demo Profile) — 500L Tractor Boom Sprayer',
+    type: 'Sprayer',
+    service_type: 'Large-Acreage Canopy Spraying',
+    driver_name: 'Rajendran N. (Demo Operator)',
+    experience_years: 8,
+    description: 'Demonstration driver profile for illustrative purposes. 24-nozzle hydraulic boom sprayer operation for cotton, sugarcane, and turmeric.',
+    price_per_hour: 600,
+    location: 'Perundurai, Erode (Sample Location)',
+    district: 'Erode',
+    latitude: 11.2750,
+    longitude: 77.5830,
+    available: true,
+    isDemo: true,
+    image_url: 'https://images.unsplash.com/photo-1584679109597-c656b19974c9?auto=format&fit=crop&w=600&q=80',
+    provider_name: 'Rajendran N. (Fictional Demo Driver)',
+    provider_phone: '+91 90000 00006',
+    contact_phone: '+91 90000 00006',
+    rating: 4.8
+  },
+  {
+    id: 'demo-driver-07',
+    provider_id: 'demo-provider-07',
+    name: 'Senthilkumar R. (Demo Profile) — 4-Row Paddy Transplanter',
+    type: 'Other',
+    service_type: 'Mechanized Mat-Nursery Transplanting',
+    driver_name: 'Senthilkumar R. (Demo Operator)',
+    experience_years: 5,
+    description: 'Demonstration driver profile for illustrative purposes. Skilled operator for automated paddy transplanting at calibrated seedling density.',
+    price_per_hour: 1100,
+    location: 'Mannargudi, Tiruvarur (Sample Location)',
+    district: 'Tiruvarur',
+    latitude: 10.6660,
+    longitude: 79.4450,
+    available: true,
+    isDemo: true,
+    image_url: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?auto=format&fit=crop&w=800&q=80',
+    provider_name: 'Senthilkumar R. (Fictional Demo Driver)',
+    provider_phone: '+91 90000 00007',
+    contact_phone: '+91 90000 00007',
+    rating: 4.9
+  },
+  {
+    id: 'demo-driver-08',
+    provider_id: 'demo-provider-08',
+    name: 'Venkatesan T. (Demo Profile) — New Holland 55HP Heavy Plough',
+    type: 'Tractor',
+    service_type: 'Deep Summer Ploughing & Land Reclamation',
+    driver_name: 'Venkatesan T. (Demo Operator)',
+    experience_years: 11,
+    description: 'Demonstration driver profile for illustrative purposes. High-power tractor operator for root clearing, hard soil digging, and bund shaping.',
+    price_per_hour: 850,
+    location: 'Cheyyar, Tiruvannamalai (Sample Location)',
+    district: 'Tiruvannamalai',
+    latitude: 12.6580,
+    longitude: 79.5420,
+    available: true,
+    isDemo: true,
+    image_url: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=600&q=80',
+    provider_name: 'Venkatesan T. (Fictional Demo Driver)',
+    provider_phone: '+91 90000 00008',
+    contact_phone: '+91 90000 00008',
+    rating: 4.8
+  },
+  {
+    id: 'demo-driver-09',
+    provider_id: 'demo-provider-09',
+    name: 'Thirunavukkarasu G. (Demo Profile) — Claas Crop Tiger 30',
+    type: 'Paddy Harvester',
+    service_type: 'Wheeled Combine Grain Harvesting',
+    driver_name: 'Thirunavukkarasu G. (Demo Operator)',
+    experience_years: 9,
+    description: 'Demonstration driver profile for illustrative purposes. Multi-crop harvester driver for fast harvesting of paddy, sorghum, and pulses in dry fields.',
+    price_per_hour: 1550,
+    location: 'Musiri, Tiruchirappalli (Sample Location)',
+    district: 'Tiruchirappalli',
+    latitude: 10.9420,
+    longitude: 78.4530,
+    available: true,
+    isDemo: true,
+    image_url: 'https://images.unsplash.com/photo-1592417817098-8f3d6910985b?auto=format&fit=crop&w=600&q=80',
+    provider_name: 'Thirunavukkarasu G. (Fictional Demo Driver)',
+    provider_phone: '+91 90000 00009',
+    contact_phone: '+91 90000 00009',
+    rating: 4.9
+  },
+  {
+    id: 'demo-driver-10',
+    provider_id: 'demo-provider-10',
+    name: 'Mani B. (Demo Profile) — 4WD Mini Tractor with Bed Maker',
+    type: 'Tractor',
+    service_type: 'Horticulture Raised Beds & Plastic Mulch',
+    driver_name: 'Mani B. (Demo Operator)',
+    experience_years: 6,
+    description: 'Demonstration driver profile for illustrative purposes. Compact 27HP 4WD mini-tractor specialist for greenhouse beds and vegetable mulching.',
+    price_per_hour: 650,
+    location: 'Oddanchatram, Dindigul (Sample Location)',
+    district: 'Dindigul',
+    latitude: 10.4850,
+    longitude: 77.7470,
+    available: true,
+    isDemo: true,
+    image_url: 'https://images.unsplash.com/photo-1584441405886-bc91be61e56a?auto=format&fit=crop&w=600&q=80',
+    provider_name: 'Mani B. (Fictional Demo Driver)',
+    provider_phone: '+91 90000 0010',
+    contact_phone: '+91 90000 0010',
+    rating: 4.7
+  }
+];

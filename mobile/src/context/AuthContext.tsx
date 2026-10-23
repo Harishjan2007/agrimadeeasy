@@ -63,40 +63,116 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Load and sync user profile from Supabase and cache
+  // Load and sync user profile from Supabase and cache authoritatively
   const syncProfile = async (userId: string, authUserEmail?: string, authMeta?: Record<string, any>) => {
     try {
       let dbProfile: Record<string, any> | null = null;
+      let authoritativeRole: UserRole | null = null;
+      let shopNameFromDb: string | undefined = undefined;
 
+      // 1. Authoritative check in 'profiles' table
       if (isSupabaseConfigured && isValidUuid(userId)) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
 
-        if (!error && data) {
-          dbProfile = data;
+          if (!error && data) {
+            dbProfile = data;
+            if (data.role && ['farmer', 'machinery_provider', 'dealer', 'buyer'].includes(data.role)) {
+              authoritativeRole = data.role as UserRole;
+            }
+          }
+        } catch (pErr) {
+          console.warn('Profiles table lookup notice:', pErr);
         }
       }
 
+      // 2. Authoritative check in auth metadata
       const meta = authMeta || {};
+      if (!authoritativeRole || authoritativeRole === 'farmer') {
+        if (meta.role && ['dealer', 'machinery_provider', 'buyer', 'farmer'].includes(meta.role)) {
+          authoritativeRole = meta.role as UserRole;
+        } else if (meta.user_type === 'Dealer' || meta.shop_name) {
+          authoritativeRole = 'dealer';
+        } else if (meta.user_type === 'Other' || meta.machinery_types || meta.primary_machine_name) {
+          authoritativeRole = 'machinery_provider';
+        }
+      }
+
+      // 3. Fallback check: check 'dealers' table for profile_id match
+      if (isSupabaseConfigured && isValidUuid(userId) && authoritativeRole !== 'dealer') {
+        try {
+          const { data: dealerRecord } = await supabase
+            .from('dealers')
+            .select('id, shop_name')
+            .eq('profile_id', userId)
+            .maybeSingle();
+
+          if (dealerRecord) {
+            authoritativeRole = 'dealer';
+            shopNameFromDb = dealerRecord.shop_name;
+          }
+        } catch (dErr) {
+          // Ignore table lookup error
+        }
+      }
+
+      // 4. Fallback check: check 'machinery' table for provider_id match
+      if (isSupabaseConfigured && isValidUuid(userId) && authoritativeRole !== 'machinery_provider' && authoritativeRole !== 'dealer') {
+        try {
+          const { data: machRecords } = await supabase
+            .from('machinery')
+            .select('id, name')
+            .eq('provider_id', userId)
+            .limit(1);
+
+          if (machRecords && machRecords.length > 0) {
+            authoritativeRole = 'machinery_provider';
+          }
+        } catch (mErr) {
+          // Ignore table lookup error
+        }
+      }
+
+      // 5. Check local cached role if available
+      if (!authoritativeRole || authoritativeRole === 'farmer') {
+        try {
+          const cached = await AsyncStorage.getItem('agrime_mobile_profile');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed?.id === userId && parsed.role && parsed.role !== 'farmer') {
+              authoritativeRole = parsed.role as UserRole;
+            }
+          }
+        } catch (cErr) {}
+      }
+
+      const finalRole: UserRole = authoritativeRole || (dbProfile?.role as UserRole) || 'farmer';
+
       const resolvedProfile: MobileUserProfile = {
         id: userId,
         email: authUserEmail || dbProfile?.email || meta.email || '',
         name: dbProfile?.name || meta.name || (authUserEmail ? authUserEmail.split('@')[0] : 'AgriME User'),
         phone: dbProfile?.phone || meta.phone || '',
-        role: (dbProfile?.role || meta.role || 'farmer') as UserRole,
+        role: finalRole,
         location: dbProfile?.location || meta.location || 'Tamil Nadu',
         district: dbProfile?.district || meta.district || 'Thanjavur',
         state: dbProfile?.state || meta.state || 'Tamil Nadu',
-        shop_name: dbProfile?.shop_name || meta.shop_name,
+        shop_name: shopNameFromDb || dbProfile?.shop_name || meta.shop_name,
         primary_crops: dbProfile?.primary_crops || meta.primary_crops || []
       };
 
       setUser(resolvedProfile);
       setIsAuthenticated(true);
       await AsyncStorage.setItem('agrime_mobile_profile', JSON.stringify(resolvedProfile));
+
+      // Synchronize back to profiles table if role was authoritatively resolved differently
+      if (isSupabaseConfigured && isValidUuid(userId) && dbProfile && dbProfile.role !== finalRole) {
+        supabase.from('profiles').update({ role: finalRole }).eq('id', userId).then(() => {}).catch(() => {});
+      }
     } catch (e) {
       console.warn('Profile synchronization error:', e);
     }

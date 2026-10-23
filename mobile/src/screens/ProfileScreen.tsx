@@ -103,7 +103,11 @@ export default function ProfileScreen({ navigation }: any) {
                   styles.roleTile,
                   user?.role === r.key && styles.roleTileActive
                 ]}
-                onPress={() => setUserRole(r.key)}
+                onPress={() => {
+                  setUserRole(r.key);
+                  if (r.key === 'dealer') navigation.navigate('DealerPortal');
+                  else if (r.key === 'machinery_provider') navigation.navigate('MachineryProvider');
+                }}
               >
                 <Text style={styles.roleIcon}>{r.icon}</Text>
                 <Text
@@ -117,6 +121,24 @@ export default function ProfileScreen({ navigation }: any) {
               </TouchableOpacity>
             ))}
           </View>
+
+          {user?.role === 'dealer' && (
+            <TouchableOpacity
+              style={[styles.editProfileBtn, { backgroundColor: '#15803d', borderColor: '#15803d', marginTop: 12 }]}
+              onPress={() => navigation.navigate('DealerPortal')}
+            >
+              <Text style={[styles.editProfileBtnText, { color: '#ffffff' }]}>🏪 Go to Dealer Portal →</Text>
+            </TouchableOpacity>
+          )}
+
+          {user?.role === 'machinery_provider' && (
+            <TouchableOpacity
+              style={[styles.editProfileBtn, { backgroundColor: '#b45309', borderColor: '#b45309', marginTop: 12 }]}
+              onPress={() => navigation.navigate('MachineryProvider')}
+            >
+              <Text style={[styles.editProfileBtnText, { color: '#ffffff' }]}>🚜 Go to Machinery Provider Portal →</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Language Switcher */}

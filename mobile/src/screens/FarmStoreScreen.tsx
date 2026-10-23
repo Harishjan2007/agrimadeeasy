@@ -14,21 +14,35 @@ import {
   RefreshControl,
   ScrollView,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Linking
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import {
   MobileDataService,
   MobileProduct,
-  MobileOrder
+  MobileOrder,
+  MobileProduceListing
 } from '../services/dataService';
 
-export default function FarmStoreScreen() {
-  const { t } = useLanguage();
+function FarmStoreScreenContent({ route, navigation }: any) {
+  const { t, language } = useLanguage();
   const { user } = useAuth();
+  const isTa = language === 'ta';
 
-  const [activeTab, setActiveTab] = useState<'catalog' | 'orders'>('catalog');
+  const initialTab = route?.params?.initialTab;
+  const [activeTab, setActiveTab] = useState<'catalog' | 'sell' | 'orders'>(
+    initialTab === 'sell' ? 'sell' : 'catalog'
+  );
+
+  useEffect(() => {
+    if (route?.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+    }
+  }, [route?.params?.initialTab]);
+
+  // E-commerce Store Catalog State
   const [products, setProducts] = useState<MobileProduct[]>([]);
   const [orders, setOrders] = useState<MobileOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,58 +59,90 @@ export default function FarmStoreScreen() {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
-
-  // Broken image tracker to cleanly render fallback icons
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+
+  // Farmer Selling / Produce Marketplace State
+  const [produceSubTab, setProduceSubTab] = useState<'all' | 'mine'>('all');
+  const [produceListings, setProduceListings] = useState<MobileProduceListing[]>([]);
+  const [produceModalVisible, setProduceModalVisible] = useState(false);
+  const [isSubmittingProduce, setIsSubmittingProduce] = useState(false);
+
+  // New Listing Form Fields
+  const [newCropName, setNewCropName] = useState('');
+  const [newProduceCategory, setNewProduceCategory] = useState('Cereals');
+  const [newQuantity, setNewQuantity] = useState('');
+  const [newUnit, setNewUnit] = useState('bags (75kg)');
+  const [newAskingPrice, setNewAskingPrice] = useState('');
+  const [newPriceUnit, setNewPriceUnit] = useState('bag');
+  const [newProduceLocation, setNewProduceLocation] = useState('');
+  const [newProduceDescription, setNewProduceDescription] = useState('');
 
   const categories = ['All', 'Seeds', 'Fertilizers', 'Bio-Inputs', 'Tools'];
 
   const loadCatalog = async () => {
     try {
       const list = await MobileDataService.getProducts();
-      setProducts(list);
+      setProducts(Array.isArray(list) ? list : []);
     } catch (e) {
       console.warn('Failed to load farm store products:', e);
+      setProducts([]);
     }
   };
 
   const loadOrders = async () => {
     try {
       const myOrders = await MobileDataService.getMyOrders(user?.id);
-      setOrders(myOrders);
+      setOrders(Array.isArray(myOrders) ? myOrders : []);
     } catch (e) {
       console.warn('Failed to load user orders:', e);
+      setOrders([]);
+    }
+  };
+
+  const loadProduceListings = async () => {
+    try {
+      const list = await MobileDataService.getProduceListings();
+      setProduceListings(Array.isArray(list) ? list : []);
+    } catch (e) {
+      console.warn('Failed to load produce listings:', e);
+      setProduceListings([]);
     }
   };
 
   const refreshAll = async () => {
     setRefreshing(true);
-    await Promise.all([loadCatalog(), loadOrders()]);
+    await Promise.all([loadCatalog(), loadOrders(), loadProduceListings()]);
     setRefreshing(false);
   };
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([loadCatalog(), loadOrders()]).finally(() => setLoading(false));
+    Promise.all([loadCatalog(), loadOrders(), loadProduceListings()]).finally(() => setLoading(false));
   }, [user?.id]);
 
-  // Sync user profile fields to modal
   useEffect(() => {
     if (user) {
       setCustomerName(user.name || '');
       setCustomerPhone(user.phone || '');
-      setDeliveryAddress(user.location ? `${user.location}, ${user.district}` : '');
+      setDeliveryAddress(user.location ? `${user.location}, ${user.district || 'Tamil Nadu'}` : '');
+      setNewProduceLocation(user.district ? `${user.location || 'Farm'}, ${user.district}` : 'Tamil Nadu');
     }
   }, [user]);
 
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.description.toLowerCase().includes(search.toLowerCase()) ||
-      p.dealer_name.toLowerCase().includes(search.toLowerCase());
-    const matchesCat = category === 'All' || p.category === category;
+  const filteredProducts = (products || []).filter((p) => {
+    if (!p) return false;
+    const s = (search || '').toLowerCase().trim();
+    const name = (p.name || '').toLowerCase();
+    const desc = (p.description || '').toLowerCase();
+    const dealer = (p.dealer_name || '').toLowerCase();
+    const matchesSearch = !s || name.includes(s) || desc.includes(s) || dealer.includes(s);
+    const matchesCat = !category || category === 'All' || p.category === category;
     return matchesSearch && matchesCat;
   });
+
+  const displayedProduce = (produceSubTab === 'mine' && user?.id
+    ? (produceListings || []).filter((l) => l && l.farmer_id === user.id)
+    : (produceListings || [])).filter(Boolean);
 
   const handleOpenOrderModal = (product: MobileProduct) => {
     setSelectedProduct(product);
@@ -151,31 +197,12 @@ export default function FarmStoreScreen() {
         return;
       }
 
-      const ordNum = createdOrder?.order_number || 'ORD-NEW';
-      const paymentNote = fulfillmentMethod === 'pickup'
-        ? 'Payment is settled in-person at the dealer counter upon pickup.'
-        : 'Payment is settled via Cash on Delivery (COD) upon delivery.';
-
+      setSelectedProduct(null);
+      await loadOrders();
+      setActiveTab('orders');
       Alert.alert(
-        t('orderPlaced'),
-        `Order #${ordNum} has been recorded.\n\nTotal: ₹${(orderQuantity * selectedProduct.price).toLocaleString('en-IN')}\n\n${paymentNote}`,
-        [
-          {
-            text: 'View My Orders',
-            onPress: () => {
-              setSelectedProduct(null);
-              setActiveTab('orders');
-              loadOrders();
-            }
-          },
-          {
-            text: 'Continue Shopping',
-            onPress: () => {
-              setSelectedProduct(null);
-              loadOrders();
-            }
-          }
-        ]
+        'Order Received',
+        `Your order #${createdOrder?.id?.slice(0, 8) || 'ORD'} has been successfully placed with ${selectedProduct.dealer_name}. Cash will be collected upon delivery or store pickup.`
       );
     } catch (err: any) {
       setIsSubmittingOrder(false);
@@ -183,16 +210,84 @@ export default function FarmStoreScreen() {
     }
   };
 
+  const handleCreateProduceListing = async () => {
+    if (!newCropName.trim() || !newQuantity.trim() || !newAskingPrice.trim()) {
+      Alert.alert('Required Fields', 'Please enter crop name, quantity, and asking price.');
+      return;
+    }
+
+    const numQty = Number(newQuantity);
+    const numPrice = Number(newAskingPrice);
+
+    if (numQty <= 0 || isNaN(numQty)) {
+      Alert.alert('Invalid Quantity', 'Please enter a positive numeric quantity.');
+      return;
+    }
+    if (numPrice <= 0 || isNaN(numPrice)) {
+      Alert.alert('Invalid Price', 'Please enter a positive numeric asking price.');
+      return;
+    }
+
+    setIsSubmittingProduce(true);
+
+    try {
+      const { data, error } = await MobileDataService.createProduceListing({
+        farmerId: user?.id,
+        farmerName: user?.name || 'Local Farmer',
+        farmerPhone: user?.phone || '+91 98432 12345',
+        cropName: newCropName.trim(),
+        category: newProduceCategory,
+        quantity: numQty,
+        unit: newUnit.trim(),
+        askingPrice: numPrice,
+        priceUnit: newPriceUnit.trim(),
+        location: (newProduceLocation || user?.district || 'Tamil Nadu').trim(),
+        description: newProduceDescription.trim()
+      });
+
+      setIsSubmittingProduce(false);
+
+      if (error) {
+        Alert.alert('Notice', error.message || 'Could not publish produce listing.');
+        return;
+      }
+
+      setProduceModalVisible(false);
+      setNewCropName('');
+      setNewQuantity('');
+      setNewAskingPrice('');
+      setNewProduceDescription('');
+      Alert.alert('Produce Published', 'Your harvest lot is now visible to wholesale buyers and dealers.');
+      await loadProduceListings();
+      setProduceSubTab('mine');
+    } catch (err: any) {
+      setIsSubmittingProduce(false);
+      Alert.alert('Error', err.message || 'Failed to submit produce listing.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Navigation & Sub-Tabs */}
+      {/* 3 Main Tabs: Farm Store | Sell Produce | Orders */}
       <View style={styles.topTabBar}>
         <TouchableOpacity
           style={[styles.topTabBtn, activeTab === 'catalog' && styles.topTabBtnActive]}
           onPress={() => setActiveTab('catalog')}
         >
           <Text style={[styles.topTabBtnText, activeTab === 'catalog' && styles.topTabBtnTextActive]}>
-            🛒 {t('farmStore')} ({products.length})
+            🛒 {t('farmStore') || 'Store'} ({products.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.topTabBtn, activeTab === 'sell' && styles.topTabBtnActive]}
+          onPress={() => {
+            setActiveTab('sell');
+            loadProduceListings();
+          }}
+        >
+          <Text style={[styles.topTabBtnText, activeTab === 'sell' && styles.topTabBtnTextActive]}>
+            🌾 {isTa ? 'விளைபொருள் விற்பனை' : 'Sell Produce'} ({produceListings.length})
           </Text>
         </TouchableOpacity>
 
@@ -204,20 +299,21 @@ export default function FarmStoreScreen() {
           }}
         >
           <Text style={[styles.topTabBtnText, activeTab === 'orders' && styles.topTabBtnTextActive]}>
-            📦 {t('orderHistory')} ({orders.length})
+            📦 {t('orderHistory') || 'Orders'} ({orders.length})
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Honest Transparency Notice Banner */}
-      <View style={styles.noticeBanner}>
-        <Text style={styles.noticeTitle}>🛡️ Direct Dealer Settlement</Text>
-        <Text style={styles.noticeText}>{t('storeNotice')}</Text>
-      </View>
-
-      {activeTab === 'catalog' ? (
+      {/* ================= TAB 1: STORE CATALOG ================= */}
+      {activeTab === 'catalog' && (
         <>
-          {/* Search & Category Filter Section */}
+          <View style={styles.noticeBanner}>
+            <Text style={styles.noticeTitle}>🛡️ Direct Dealer Settlement</Text>
+            <Text style={styles.noticeText}>
+              {t('storeNotice') || 'Genuine seeds, fertilizers, and tools supplied directly by verified regional dealers.'}
+            </Text>
+          </View>
+
           <View style={styles.searchSection}>
             <TextInput
               style={styles.searchInput}
@@ -245,10 +341,9 @@ export default function FarmStoreScreen() {
             />
           </View>
 
-          {loading ? (
+          {loading && !refreshing ? (
             <View style={styles.centerContainer}>
               <ActivityIndicator size="large" color="#15803d" />
-              <Text style={styles.loadingText}>{t('loading')}</Text>
             </View>
           ) : (
             <FlatList
@@ -258,83 +353,202 @@ export default function FarmStoreScreen() {
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyEmoji}>🌾</Text>
-                  <Text style={styles.emptyTitle}>{t('noProducts')}</Text>
+                  <Text style={styles.emptyEmoji}>🛒</Text>
+                  <Text style={styles.emptyTitle}>No matching products available</Text>
+                  <Text style={styles.emptySub}>Try searching with different terms or select 'All'.</Text>
                 </View>
               }
-              renderItem={({ item }) => {
-                const isImageBroken = brokenImages[item.id] || !item.image_url;
+              renderItem={({ item }) => (
+                <View style={styles.productCard}>
+                  <View style={styles.imageFallback}>
+                    <Text style={{ fontSize: 28 }}>📦</Text>
+                  </View>
 
-                return (
-                  <View style={styles.card}>
-                    {/* Image Header or Fallback Icon */}
-                    <View style={styles.imageContainer}>
-                      {!isImageBroken && item.image_url ? (
-                        <Image
-                          source={{ uri: item.image_url }}
-                          style={styles.productImg}
-                          resizeMode="cover"
-                          onError={() => setBrokenImages((prev) => ({ ...prev, [item.id]: true }))}
-                        />
-                      ) : (
-                        <View style={styles.imagePlaceholder}>
-                          <Text style={styles.placeholderEmoji}>
-                            {item.category === 'Seeds' ? '🌾' : item.category === 'Fertilizers' ? '🧪' : item.category === 'Bio-Inputs' ? '🌱' : '🛠️'}
-                          </Text>
-                        </View>
-                      )}
+                  <View style={styles.productContent}>
+                    <View style={styles.cardHeaderRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.productName}>{item.name}</Text>
+                        <Text style={styles.dealerName}>Store: {item.dealer_name}</Text>
+                      </View>
                       <View style={styles.catBadge}>
                         <Text style={styles.catBadgeText}>{item.category}</Text>
                       </View>
                     </View>
 
-                    {/* Content Section */}
-                    <View style={styles.cardBody}>
-                      <Text style={styles.prodName}>{item.name}</Text>
-                      {Boolean(item.description) && (
-                        <Text style={styles.prodDesc} numberOfLines={2}>
-                          {item.description}
+                    <Text style={styles.productDesc} numberOfLines={2}>{item.description}</Text>
+
+                    <View style={styles.priceStockRow}>
+                      <View>
+                        <Text style={styles.priceText}>
+                          ₹{Number(item.price || 0).toLocaleString('en-IN')}{' '}
+                          <Text style={styles.unitSub}>/ {item.unit || 'unit'}</Text>
                         </Text>
-                      )}
-
-                      <Text style={styles.dealerName}>
-                        🏪 {item.dealer_name}
-                      </Text>
-
-                      <View style={styles.priceRow}>
-                        <View>
-                          <Text style={styles.priceVal}>
-                            ₹{item.price.toLocaleString('en-IN')}{' '}
-                            <Text style={styles.unitText}>/ {item.unit || item.pack_size || 'unit'}</Text>
-                          </Text>
-                          {Boolean(item.pack_size) && (
-                            <Text style={styles.packSizeText}>Pack: {item.pack_size}</Text>
-                          )}
-                        </View>
-
-                        <View style={styles.stockBadge}>
-                          <Text style={[styles.stockText, item.stock <= 0 && styles.outOfStockText]}>
-                            {item.stock > 0 ? `${t('inStock')}: ${item.stock}` : t('outOfStock')}
-                          </Text>
-                        </View>
                       </View>
 
-                      <TouchableOpacity
-                        style={[styles.orderBtn, item.stock <= 0 && styles.orderBtnDisabled]}
-                        disabled={item.stock <= 0}
-                        onPress={() => handleOpenOrderModal(item)}
+                      <View
+                        style={[
+                          styles.stockBadge,
+                          item.stock > 0 ? styles.stockIn : styles.stockOut
+                        ]}
                       >
-                        <Text style={styles.orderBtnText}>{t('orderNow')}</Text>
-                      </TouchableOpacity>
+                        <Text
+                          style={[
+                            styles.stockText,
+                            item.stock > 0 ? styles.stockInText : styles.stockOutText
+                          ]}
+                        >
+                          {item.stock > 0 ? `In Stock (${item.stock})` : 'Out of Stock'}
+                        </Text>
+                      </View>
                     </View>
+
+                    <TouchableOpacity
+                      style={[styles.buyBtn, item.stock === 0 && styles.buyBtnDisabled]}
+                      onPress={() => handleOpenOrderModal(item)}
+                      disabled={item.stock === 0}
+                    >
+                      <Text style={styles.buyBtnText}>
+                        {item.stock > 0 ? `🛒 ${t('buyNow') || 'Buy Now'}` : 'Unavailable'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            />
+          )}
+        </>
+      )}
+
+      {/* ================= TAB 2: FARMER PRODUCE SELLING ================= */}
+      {activeTab === 'sell' && (
+        <>
+          {/* Post Produce Action Bar */}
+          <View style={styles.sellTopBar}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sellHeading}>Wholesale Farmer Produce</Text>
+              <Text style={styles.sellSub}>List your crop harvest for wholesale procurement</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.postProduceBtn}
+              onPress={() => setProduceModalVisible(true)}
+            >
+              <Text style={styles.postProduceBtnText}>+ Sell Produce</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Sub Tabs: All Lots vs My Listings */}
+          <View style={styles.subTabBar}>
+            <TouchableOpacity
+              style={[styles.subTabBtn, produceSubTab === 'all' && styles.subTabBtnActive]}
+              onPress={() => setProduceSubTab('all')}
+            >
+              <Text style={[styles.subTabBtnText, produceSubTab === 'all' && styles.subTabBtnTextActive]}>
+                🌾 All Available Produce ({produceListings.length})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.subTabBtn, produceSubTab === 'mine' && styles.subTabBtnActive]}
+              onPress={() => setProduceSubTab('mine')}
+            >
+              <Text style={[styles.subTabBtnText, produceSubTab === 'mine' && styles.subTabBtnTextActive]}>
+                👤 My Listings ({user ? produceListings.filter((l) => l.farmer_id === user.id).length : 0})
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {loading && !refreshing ? (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color="#15803d" />
+            </View>
+          ) : (
+            <FlatList
+              data={displayedProduce}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContainer}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyEmoji}>🌾</Text>
+                  <Text style={styles.emptyTitle}>
+                    {produceSubTab === 'mine' ? 'You have no active produce listings' : 'No produce listings currently available'}
+                  </Text>
+                  <Text style={styles.emptySub}>
+                    {produceSubTab === 'mine'
+                      ? 'Tap "+ Sell Produce" to publish your harvest lot directly to wholesale buyers.'
+                      : 'Check back soon as local farmers publish newly harvested crops.'}
+                  </Text>
+                  {produceSubTab === 'mine' && (
+                    <TouchableOpacity
+                      style={styles.firstPostBtn}
+                      onPress={() => setProduceModalVisible(true)}
+                    >
+                      <Text style={styles.firstPostBtnText}>+ Publish Your First Produce</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              }
+              renderItem={({ item }) => {
+                const isOwnListing = Boolean(user?.id && item.farmer_id === user.id);
+                return (
+                  <View style={styles.produceCard}>
+                    <View style={styles.cardHeaderRow}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.produceCropTitle}>{item.crop_name}</Text>
+                          {isOwnListing && (
+                            <View style={styles.ownBadge}>
+                              <Text style={styles.ownBadgeText}>Your Listing</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.produceFarmerSub}>
+                          👨‍🌾 {item.farmer_name} • 📍 {item.location}
+                        </Text>
+                        {Boolean(item.description) && (
+                          <Text style={styles.produceDescText} numberOfLines={2}>
+                            {item.description}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={styles.qtyPill}>
+                        <Text style={styles.qtyPillText}>
+                          {item.quantity} {item.unit}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.producePriceRow}>
+                      <Text style={styles.producePriceLabel}>Asking Price:</Text>
+                      <Text style={styles.producePriceVal}>
+                        ₹{Number(item.asking_price || 0).toLocaleString('en-IN')} / {item.price_unit || 'unit'}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.contactFarmerBtn}
+                      onPress={() => {
+                        if (item.farmer_phone) {
+                          Linking.openURL(`tel:${item.farmer_phone}`);
+                        } else {
+                          Alert.alert('Contact', 'No contact phone listed for this farmer.');
+                        }
+                      }}
+                    >
+                      <Text style={styles.contactFarmerBtnText}>
+                        📞 {isOwnListing ? 'Call Listing Phone' : 'Contact Farmer'} ({item.farmer_phone})
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 );
               }}
             />
           )}
         </>
-      ) : (
-        /* Orders History View */
+      )}
+
+      {/* ================= TAB 3: ORDER HISTORY ================= */}
+      {activeTab === 'orders' && (
         <FlatList
           data={orders}
           keyExtractor={(item) => item.id}
@@ -343,59 +557,64 @@ export default function FarmStoreScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>📦</Text>
-              <Text style={styles.emptyTitle}>{t('noOrders')}</Text>
-              <TouchableOpacity style={styles.browseStoreBtn} onPress={() => setActiveTab('catalog')}>
-                <Text style={styles.browseStoreBtnText}>Browse Farm Store</Text>
+              <Text style={styles.emptyTitle}>{t('noOrders') || 'No Orders Placed Yet'}</Text>
+              <Text style={styles.emptySub}>
+                Explore the Farm Store tab to purchase certified agricultural inputs.
+              </Text>
+              <TouchableOpacity
+                style={styles.browseStoreBtn}
+                onPress={() => setActiveTab('catalog')}
+              >
+                <Text style={styles.browseStoreBtnText}>Browse Farm Store →</Text>
               </TouchableOpacity>
             </View>
           }
           renderItem={({ item }) => (
             <View style={styles.orderCard}>
-              <View style={styles.orderCardHeader}>
+              <View style={styles.cardHeaderRow}>
                 <View>
-                  <Text style={styles.orderNumText}>{item.order_number}</Text>
-                  <Text style={styles.orderDateText}>
-                    {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recent'}
-                  </Text>
+                  <Text style={styles.orderIdText}>Order #{(item.order_number || item.id || '').slice(0, 8)}</Text>
+                  <Text style={styles.orderDateText}>{item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}</Text>
                 </View>
-
-                <View style={styles.orderStatusBadge}>
-                  <Text style={styles.orderStatusText}>
-                    {item.order_status.toUpperCase()}
+                <View
+                  style={[
+                    styles.orderStatusBadge,
+                    (item.order_status || (item as any).status) === 'delivered' ? styles.orderDelivered : styles.orderConfirmed
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.orderStatusBadgeText,
+                      (item.order_status || (item as any).status) === 'delivered' ? styles.orderDeliveredText : styles.orderConfirmedText
+                    ]}
+                  >
+                    {((item.order_status || (item as any).status || 'placed') as string).toUpperCase()}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.orderDivider} />
-
-              {/* Order Items */}
-              {item.items && item.items.map((it, idx) => (
+              {(item.items || []).map((prod, idx) => (
                 <View key={idx} style={styles.orderItemRow}>
                   <Text style={styles.orderItemName}>
-                    {it.product_name} <Text style={styles.orderItemQty}>× {it.quantity}</Text>
+                    {prod.product_name} × {prod.quantity}
                   </Text>
                   <Text style={styles.orderItemPrice}>
-                    ₹{it.total_price.toLocaleString('en-IN')}
+                    ₹{Number((prod.unit_price || 0) * (prod.quantity || 1)).toLocaleString('en-IN')}
                   </Text>
                 </View>
               ))}
 
               <View style={styles.orderDivider} />
 
-              <View style={styles.orderSummaryRow}>
+              <View style={styles.cardHeaderRow}>
                 <View>
-                  <Text style={styles.paymentMethodLabel}>
-                    💳 {item.payment_method}
-                  </Text>
-                  <Text style={styles.deliveryLocText}>
-                    📍 {item.delivery_address}
-                  </Text>
+                  <Text style={styles.paymentMethodLabel}>💳 {item.payment_method || 'Cash on Delivery'}</Text>
+                  <Text style={styles.deliveryLocText}>📍 {item.delivery_address || 'Address provided'}</Text>
                 </View>
-
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.orderTotalLabel}>{t('totalAmount')}</Text>
+                  <Text style={styles.orderTotalLabel}>Total Amount</Text>
                   <Text style={styles.orderTotalVal}>
-                    ₹{item.total_amount.toLocaleString('en-IN')}
+                    ₹{Number(item.total_amount || 0).toLocaleString('en-IN')}
                   </Text>
                 </View>
               </View>
@@ -404,23 +623,130 @@ export default function FarmStoreScreen() {
         />
       )}
 
-      {/* Order Placement Modal */}
+      {/* ================= MODAL: CREATE PRODUCE LISTING ================= */}
+      <Modal visible={produceModalVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.modalHeaderRow}>
+                <Text style={styles.modalHeading}>Sell Produce Directly</Text>
+                <TouchableOpacity onPress={() => setProduceModalVisible(false)}>
+                  <Text style={styles.modalCloseIcon}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.fieldLabel}>Crop Name & Variety *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. ADT-45 Raw Paddy, Country Onion"
+                value={newCropName}
+                onChangeText={setNewCropName}
+              />
+
+              <View style={styles.row}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={styles.fieldLabel}>Quantity *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 50"
+                    value={newQuantity}
+                    onChangeText={setQuantity}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabel}>Unit *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. bags (75kg)"
+                    value={newUnit}
+                    onChangeText={setNewUnit}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.row}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={styles.fieldLabel}>Asking Price (₹) *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 1850"
+                    value={newAskingPrice}
+                    onChangeText={setNewAskingPrice}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabel}>Price Per *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="bag / quintal / kg"
+                    value={newPriceUnit}
+                    onChangeText={setNewPriceUnit}
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.fieldLabel}>Farm Location *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Village / Farm Area, District"
+                value={newProduceLocation}
+                onChangeText={setNewProduceLocation}
+              />
+
+              <Text style={styles.fieldLabel}>Quality & Lot Details</Text>
+              <TextInput
+                style={[styles.input, { height: 60 }]}
+                placeholder="e.g. Moisture 11%, freshly harvested, ready for inspection"
+                value={newProduceDescription}
+                onChangeText={setNewProduceDescription}
+                multiline
+              />
+
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => setProduceModalVisible(false)}
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.submitProduceBtn}
+                  onPress={handleCreateProduceListing}
+                  disabled={isSubmittingProduce}
+                >
+                  {isSubmittingProduce ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.submitProduceBtnText}>Publish Harvest Lot</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ================= MODAL: STORE ORDER CHECKOUT ================= */}
       {selectedProduct && (
         <Modal visible={Boolean(selectedProduct)} animationType="slide" transparent>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.modalOverlay}
           >
-            <View style={styles.modalContainer}>
-              <ScrollView contentContainerStyle={styles.modalScroll}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Place Farm Order</Text>
+            <View style={styles.modalContent}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.modalHeaderRow}>
+                  <Text style={styles.modalHeading}>Place Store Order</Text>
                   <TouchableOpacity onPress={() => setSelectedProduct(null)}>
-                    <Text style={styles.modalCloseText}>✕</Text>
+                    <Text style={styles.modalCloseIcon}>✕</Text>
                   </TouchableOpacity>
                 </View>
 
-                {/* Selected Item Summary */}
                 <View style={styles.modalProductCard}>
                   <Text style={styles.modalProdName}>{selectedProduct.name}</Text>
                   <Text style={styles.modalDealerSub}>Store: {selectedProduct.dealer_name}</Text>
@@ -429,8 +755,8 @@ export default function FarmStoreScreen() {
                   </Text>
                 </View>
 
-                {/* Quantity Selector */}
-                <Text style={styles.formLabel}>Quantity</Text>
+                {/* Quantity Control */}
+                <Text style={styles.fieldLabel}>Quantity</Text>
                 <View style={styles.qtyControlRow}>
                   <TouchableOpacity
                     style={styles.qtyBtn}
@@ -446,12 +772,12 @@ export default function FarmStoreScreen() {
                     <Text style={styles.qtyBtnText}>+</Text>
                   </TouchableOpacity>
                   <Text style={styles.qtyTotalSummary}>
-                    = ₹{(orderQuantity * selectedProduct.price).toLocaleString('en-IN')}
+                    = ₹{Number((selectedProduct.price || 0) * (orderQuantity || 1)).toLocaleString('en-IN')}
                   </Text>
                 </View>
 
-                {/* Fulfillment Method Selector */}
-                <Text style={styles.formLabel}>{t('paymentMethod')}</Text>
+                {/* Fulfillment Method */}
+                <Text style={styles.fieldLabel}>Fulfillment Method</Text>
                 <View style={styles.fulfillmentRow}>
                   <TouchableOpacity
                     style={[
@@ -467,7 +793,7 @@ export default function FarmStoreScreen() {
                         fulfillmentMethod === 'delivery' && styles.fulfillmentTextActive
                       ]}
                     >
-                      {t('cod')}
+                      Cash on Delivery
                     </Text>
                   </TouchableOpacity>
 
@@ -485,13 +811,12 @@ export default function FarmStoreScreen() {
                         fulfillmentMethod === 'pickup' && styles.fulfillmentTextActive
                       ]}
                     >
-                      {t('pickup')}
+                      Store Pickup
                     </Text>
                   </TouchableOpacity>
                 </View>
 
-                {/* Customer Details Form */}
-                <Text style={styles.formLabel}>{t('fullName')} *</Text>
+                <Text style={styles.fieldLabel}>Contact Name *</Text>
                 <TextInput
                   style={styles.input}
                   value={customerName}
@@ -499,55 +824,43 @@ export default function FarmStoreScreen() {
                   placeholder="Your Full Name"
                 />
 
-                <Text style={styles.formLabel}>{t('phone')} *</Text>
+                <Text style={styles.fieldLabel}>Contact Phone *</Text>
                 <TextInput
                   style={styles.input}
                   value={customerPhone}
                   onChangeText={setCustomerPhone}
-                  placeholder="Contact Mobile Number"
+                  placeholder="10-digit mobile number"
                   keyboardType="phone-pad"
                 />
 
                 {fulfillmentMethod === 'delivery' && (
                   <>
-                    <Text style={styles.formLabel}>{t('deliveryAddress')} *</Text>
+                    <Text style={styles.fieldLabel}>Delivery Address *</Text>
                     <TextInput
-                      style={[styles.input, { height: 60 }]}
+                      style={styles.input}
                       value={deliveryAddress}
                       onChangeText={setDeliveryAddress}
-                      placeholder="Village / Farm delivery destination"
-                      multiline
+                      placeholder="Village / Farm Field, District"
                     />
                   </>
                 )}
 
-                <Text style={styles.formLabel}>Delivery Instructions / Notes</Text>
-                <TextInput
-                  style={styles.input}
-                  value={orderNotes}
-                  onChangeText={setOrderNotes}
-                  placeholder="Optional field / landmark directions"
-                />
-
-                {/* Total Summary */}
                 <View style={styles.modalTotalBox}>
-                  <Text style={styles.modalTotalLabel}>{t('totalAmount')}:</Text>
+                  <Text style={styles.modalTotalLabel}>Total Payable:</Text>
                   <Text style={styles.modalTotalVal}>
-                    ₹{(orderQuantity * selectedProduct.price).toLocaleString('en-IN')}
+                    ₹{Number((selectedProduct.price || 0) * (orderQuantity || 1)).toLocaleString('en-IN')}
                   </Text>
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.submitOrderBtn, isSubmittingOrder && styles.submitOrderBtnDisabled]}
+                  style={styles.submitOrderBtn}
                   onPress={handleConfirmOrder}
                   disabled={isSubmittingOrder}
                 >
                   {isSubmittingOrder ? (
-                    <ActivityIndicator color="#ffffff" size="small" />
+                    <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
-                    <Text style={styles.submitOrderBtnText}>
-                      Confirm Order ({fulfillmentMethod === 'pickup' ? 'Store Pickup' : 'COD'})
-                    </Text>
+                    <Text style={styles.submitOrderBtnText}>Confirm Order</Text>
                   )}
                 </TouchableOpacity>
               </ScrollView>
@@ -556,6 +869,55 @@ export default function FarmStoreScreen() {
         </Modal>
       )}
     </SafeAreaView>
+  );
+}
+
+class FarmStoreErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('FarmStoreScreen caught runtime error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ fontSize: 36, marginBottom: 12 }}>🛒</Text>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', textAlign: 'center' }}>
+            Farm Store Notice
+          </Text>
+          <Text style={{ fontSize: 12, color: '#64748B', marginTop: 6, textAlign: 'center' }}>
+            {this.state.error?.message || 'A render issue occurred in the farm store.'}
+          </Text>
+          <TouchableOpacity
+            style={{ marginTop: 20, backgroundColor: '#15803d', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 }}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Reload Store</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default function FarmStoreScreen(props: any) {
+  return (
+    <FarmStoreErrorBoundary>
+      <FarmStoreScreenContent {...props} />
+    </FarmStoreErrorBoundary>
   );
 }
 
@@ -575,13 +937,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     borderBottomWidth: 2,
-    borderBottomColor: 'transparent'
+    borderColor: 'transparent'
   },
   topTabBtnActive: {
-    borderBottomColor: '#15803d'
+    borderColor: '#15803d'
   },
   topTabBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#64748b'
   },
@@ -589,335 +951,490 @@ const styles = StyleSheet.create({
     color: '#15803d'
   },
   noticeBanner: {
-    backgroundColor: '#fef3c7',
-    padding: 12,
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderColor: '#fde68a'
+    borderColor: '#bbf7d0'
   },
   noticeTitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#92400e',
-    marginBottom: 2
+    color: '#166534'
   },
   noticeText: {
     fontSize: 11,
-    color: '#b45309',
-    lineHeight: 15
+    color: '#15803d',
+    marginTop: 1
   },
   searchSection: {
-    padding: 16,
+    padding: 12,
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderColor: '#e2e8f0'
   },
   searchInput: {
     backgroundColor: '#f1f5f9',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
     color: '#0f172a',
-    marginBottom: 12
+    marginBottom: 8
   },
   catTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 14,
     backgroundColor: '#f1f5f9',
-    marginRight: 8
+    marginRight: 6
   },
   catTabActive: {
-    backgroundColor: '#0f172a'
+    backgroundColor: '#15803d'
   },
   catTabText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#64748b'
   },
   catTabTextActive: {
     color: '#ffffff'
   },
+  listContainer: {
+    padding: 14,
+    paddingBottom: 30
+  },
   centerContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 40
+    alignItems: 'center',
+    padding: 30
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '600'
-  },
-  listContainer: {
-    padding: 16,
-    paddingBottom: 40
-  },
-  card: {
+  productCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    marginBottom: 16,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    overflow: 'hidden'
+    flexDirection: 'row',
+    gap: 12
   },
-  imageContainer: {
-    height: 140,
+  imageFallback: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
     backgroundColor: '#f1f5f9',
-    position: 'relative'
-  },
-  productImg: {
-    width: '100%',
-    height: '100%'
-  },
-  imagePlaceholder: {
-    width: '100%',
-    height: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ecfdf5'
+    justifyContent: 'center'
   },
-  placeholderEmoji: {
-    fontSize: 48
+  productContent: {
+    flex: 1
   },
-  catBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start'
   },
-  catBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#ffffff'
-  },
-  cardBody: {
-    padding: 16
-  },
-  prodName: {
-    fontSize: 16,
+  productName: {
+    fontSize: 14,
     fontWeight: '800',
     color: '#0f172a'
   },
-  prodDesc: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 4,
-    lineHeight: 16
-  },
   dealerName: {
-    fontSize: 12,
-    color: '#475569',
-    fontWeight: '600',
-    marginTop: 8
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 1
   },
-  priceRow: {
+  catBadge: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  catBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#475569'
+  },
+  productDesc: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 4
+  },
+  priceStockRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  priceText: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0f172a'
+  },
+  unitSub: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748b'
+  },
+  stockBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  stockIn: {
+    backgroundColor: '#dcfce7'
+  },
+  stockOut: {
+    backgroundColor: '#fee2e2'
+  },
+  stockText: {
+    fontSize: 10,
+    fontWeight: '800'
+  },
+  stockInText: {
+    color: '#15803d'
+  },
+  stockOutText: {
+    color: '#dc2626'
+  },
+  buyBtn: {
+    backgroundColor: '#15803d',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10
+  },
+  buyBtnDisabled: {
+    backgroundColor: '#cbd5e1'
+  },
+  buyBtnText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 12
+  },
+  sellTopBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 12
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: '#e2e8f0'
   },
-  priceVal: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#15803d'
+  sellHeading: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a'
   },
-  unitText: {
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '600'
-  },
-  packSizeText: {
+  sellSub: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: '#64748b',
+    marginTop: 1
+  },
+  postProduceBtn: {
+    backgroundColor: '#15803d',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8
+  },
+  postProduceBtnText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 12
+  },
+  subTabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#f8fafc',
+    padding: 8,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  subTabBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  subTabBtnActive: {
+    backgroundColor: '#0f172a',
+    borderColor: '#0f172a'
+  },
+  subTabBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748b'
+  },
+  subTabBtnTextActive: {
+    color: '#ffffff'
+  },
+  produceCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  produceCropTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a'
+  },
+  produceFarmerSub: {
+    fontSize: 11,
+    color: '#64748b',
     marginTop: 2
   },
-  stockBadge: {
-    backgroundColor: '#f8fafc',
+  produceDescText: {
+    fontSize: 11,
+    color: '#475569',
+    marginTop: 4
+  },
+  qtyPill: {
+    backgroundColor: '#f0fdf4',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
+    borderColor: '#bbf7d0'
+  },
+  qtyPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#15803d'
+  },
+  producePriceRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6
+  },
+  producePriceLabel: {
+    fontSize: 11,
+    color: '#64748b'
+  },
+  producePriceVal: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0f172a'
+  },
+  contactFarmerBtn: {
+    marginTop: 10,
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#cbd5e1'
+  },
+  contactFarmerBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0f172a'
+  },
+  ownBadge: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  ownBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#b45309'
+  },
+  firstPostBtn: {
+    backgroundColor: '#15803d',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 12
+  },
+  firstPostBtnText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 12
+  },
+  orderCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
     borderColor: '#e2e8f0'
   },
-  stockText: {
-    fontSize: 11,
-    color: '#059669',
-    fontWeight: '700'
-  },
-  outOfStockText: {
-    color: '#dc2626'
-  },
-  orderBtn: {
-    backgroundColor: '#15803d',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 14
-  },
-  orderBtnDisabled: {
-    backgroundColor: '#94a3b8'
-  },
-  orderBtnText: {
-    color: '#ffffff',
+  orderIdText: {
     fontSize: 13,
-    fontWeight: '800'
+    fontWeight: '800',
+    color: '#0f172a'
   },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60
+  orderDateText: {
+    fontSize: 10,
+    color: '#94a3b8',
+    marginTop: 1
   },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 10
+  orderStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
   },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+  orderDelivered: {
+    backgroundColor: '#dcfce7'
+  },
+  orderConfirmed: {
+    backgroundColor: '#dbeafe'
+  },
+  orderStatusBadgeText: {
+    fontSize: 9,
+    fontWeight: '900'
+  },
+  orderDeliveredText: {
+    color: '#15803d'
+  },
+  orderConfirmedText: {
+    color: '#1d4ed8'
+  },
+  orderItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4
+  },
+  orderItemName: {
+    fontSize: 12,
+    color: '#334155'
+  },
+  orderItemPrice: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0f172a'
+  },
+  orderDivider: {
+    height: 1,
+    backgroundColor: '#f1f5f9',
+    marginVertical: 8
+  },
+  paymentMethodLabel: {
+    fontSize: 11,
     color: '#64748b'
+  },
+  deliveryLocText: {
+    fontSize: 11,
+    color: '#334155',
+    marginTop: 2
+  },
+  orderTotalLabel: {
+    fontSize: 10,
+    color: '#64748b'
+  },
+  orderTotalVal: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#15803d',
+    marginTop: 1
   },
   browseStoreBtn: {
     backgroundColor: '#15803d',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 10,
-    marginTop: 16
+    borderRadius: 8,
+    marginTop: 12
   },
   browseStoreBtnText: {
     color: '#ffffff',
     fontWeight: '800',
-    fontSize: 13
-  },
-  orderCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#e2e8f0'
-  },
-  orderCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  orderNumText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0f172a'
-  },
-  orderDateText: {
-    fontSize: 11,
-    color: '#64748b',
-    marginTop: 2
-  },
-  orderStatusBadge: {
-    backgroundColor: '#ecfdf5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#a7f3d0'
-  },
-  orderStatusText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#047857'
-  },
-  orderDivider: {
-    height: 1,
-    backgroundColor: '#f1f5f9',
-    marginVertical: 10
-  },
-  orderItemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 2
-  },
-  orderItemName: {
-    fontSize: 13,
-    color: '#1e293b',
-    fontWeight: '600',
-    flex: 1
-  },
-  orderItemQty: {
-    color: '#64748b',
-    fontWeight: '700'
-  },
-  orderItemPrice: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0f172a'
-  },
-  orderSummaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginTop: 4
-  },
-  paymentMethodLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#475569'
-  },
-  deliveryLocText: {
-    fontSize: 11,
-    color: '#64748b',
-    marginTop: 2
-  },
-  orderTotalLabel: {
-    fontSize: 10,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    fontWeight: '700'
-  },
-  orderTotalVal: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#15803d'
+    fontSize: 12
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end'
   },
-  modalContainer: {
+  modalContent: {
     backgroundColor: '#ffffff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '90%'
+    padding: 20,
+    maxHeight: '85%'
   },
-  modalScroll: {
-    padding: 20
-  },
-  modalHeader: {
+  modalHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16
+    marginBottom: 14
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+  modalHeading: {
+    fontSize: 16,
+    fontWeight: '900',
     color: '#0f172a'
   },
-  modalCloseText: {
+  modalCloseIcon: {
     fontSize: 18,
+    fontWeight: '900',
     color: '#64748b',
     padding: 4
   },
-  modalProductCard: {
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+    marginTop: 8,
+    marginBottom: 4
+  },
+  input: {
     backgroundColor: '#f8fafc',
-    padding: 14,
-    borderRadius: 12,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginBottom: 14
+    fontSize: 13,
+    color: '#0f172a'
+  },
+  row: {
+    flexDirection: 'row'
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 18
+  },
+  cancelBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9'
+  },
+  cancelBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569'
+  },
+  submitProduceBtn: {
+    backgroundColor: '#15803d',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8
+  },
+  submitProduceBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#ffffff'
+  },
+  modalProductCard: {
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
   },
   modalProdName: {
     fontSize: 15,
@@ -925,33 +1442,26 @@ const styles = StyleSheet.create({
     color: '#0f172a'
   },
   modalDealerSub: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748b',
     marginTop: 2
   },
   modalPriceText: {
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '800',
     color: '#15803d',
-    marginTop: 6
-  },
-  formLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#475569',
-    marginBottom: 6,
     marginTop: 4
   },
   qtyControlRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
-    gap: 12
+    gap: 12,
+    marginBottom: 10
   },
   qtyBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 8,
     backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
@@ -964,25 +1474,24 @@ const styles = StyleSheet.create({
     color: '#0f172a'
   },
   qtyDisplayVal: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0f172a'
   },
   qtyTotalSummary: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#15803d',
-    marginLeft: 8
+    color: '#15803d'
   },
   fulfillmentRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14
+    gap: 8,
+    marginBottom: 10
   },
   fulfillmentBtn: {
     flex: 1,
-    padding: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
     backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -993,63 +1502,71 @@ const styles = StyleSheet.create({
     borderColor: '#15803d'
   },
   fulfillmentEmoji: {
-    fontSize: 22,
-    marginBottom: 4
+    fontSize: 18,
+    marginBottom: 2
   },
   fulfillmentText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#64748b',
-    textAlign: 'center'
+    color: '#64748b'
   },
   fulfillmentTextActive: {
     color: '#15803d'
-  },
-  input: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    fontSize: 14,
-    color: '#0f172a',
-    marginBottom: 10
   },
   modalTotalBox: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#f8fafc',
-    padding: 14,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 10,
     marginVertical: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0'
   },
   modalTotalLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: '#0f172a'
   },
   modalTotalVal: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
     color: '#15803d'
   },
   submitOrderBtn: {
     backgroundColor: '#15803d',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 6
-  },
-  submitOrderBtnDisabled: {
-    backgroundColor: '#86efac'
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center'
   },
   submitOrderBtnText: {
     color: '#ffffff',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800'
+  },
+  emptyContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginTop: 10
+  },
+  emptyEmoji: {
+    fontSize: 36,
+    marginBottom: 8
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a'
+  },
+  emptySub: {
+    fontSize: 11,
+    color: '#64748b',
+    textAlign: 'center',
+    marginTop: 4
   }
 });
